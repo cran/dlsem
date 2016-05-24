@@ -922,6 +922,8 @@ dlsem <- function(model.code,group=NULL,context=NULL,data,log=FALSE,control=NULL
       names(pset)[length(pset)] <- auxadd[i]
       }
     }
+  auxvar <- setdiff(c(nodenam,context),colnames(data))
+  if(length(auxvar)>0) stop(paste("Unknown variable: ",paste(auxvar,collapse=", "),sep=""))
   G <- new("graphNEL",nodes=names(pset),edgemode="directed")    
   for(i in 1:length(pset)) {
     if(length(pset[[i]])>0) {
@@ -1130,7 +1132,7 @@ dlsem <- function(model.code,group=NULL,context=NULL,data,log=FALSE,control=NULL
     }
   cat("\n")
   names(res) <- nomi        
-  out <- list(estimate=res,model.code=unname(model.code),context=context,group=group)
+  out <- list(estimate=res,model.code=unname(model.code),context=context,group=group,data=data)
   class(out) <- "dlsem"
   out
   }
@@ -1242,10 +1244,13 @@ applyDiff <- function(x=NULL,group=NULL,time=NULL,data,k=0) {
   #####
   deltaFun <- function(z,k) {
     if(k>0) {
-     c(rep(NA,k),z[1:(length(z)-k)])
-      } else {
-      z
+      auxz <- z
+      z[1:k] <- NA
+      for(i in (k+1):length(z)) {
+        z[i] <- auxz[i]-auxz[i-k]
+        }
       }
+    z
     }
   #####
   diffdat <- data

@@ -61,13 +61,13 @@ data(agres)
 agres.diff <- applyDiff(c("NPATENT","GVA","ENTR_INCOME","PPI"),group="COUNTRY",data=agres,k=1)
 
 # fit without AIC-based selection of lag shapes
-dl0 <- dlaglm(ENTR_INCOME~quec(NPATENT,0,3)+quec(GVA,1,10)+GDP+FARM_SIZE,group="COUNTRY",
+dl0 <- dlaglm(ENTR_INCOME~quec(NPATENT,1,13)+quec(GVA,1,14)+GDP+FARM_SIZE,group="COUNTRY",
   data=agres.diff,log=TRUE)
 
 ### AIC-based selection of lag shapes: NOT RUN
-#dl0 <- dlaglm(ENTR_INCOME~quec(NPATENT,0,3)+quec(GVA,1,10)+GDP+FARM_SIZE,group="COUNTRY",
-#  data=agres.diff,log=TRUE,adapt=T,max.gestation=c(NPATENT=3,GVA=3),
-#  min.width=c(NPATENT=3,GVA=3),sign=c(NPATENT="+",GVA="+")) 
+#dl0 <- dlaglm(ENTR_INCOME~quec(NPATENT,0,15)+quec(GVA,0,15)+GDP+FARM_SIZE,group="COUNTRY",
+#  data=agres.diff,log=TRUE,adapt=TRUE,max.gestation=c(NPATENT=3,GVA=3),
+#  min.width=c(NPATENT=5,GVA=5),sign=c(NPATENT="+",GVA="+")) 
 
 # summaries of model fitting
 summary(dl0)

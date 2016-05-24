@@ -23,17 +23,17 @@
 \examples{
 data(agres)
 mycode <- list(
-  GVA~quec(NPATENT,0,4),
-  PPI~quec(NPATENT,0,6)+quec(GVA,0,10),
-  ENTR_INCOME~quec(NPATENT,0,3)+quec(GVA,1,10)
+  GVA~quec(NPATENT,1,15),
+  PPI~quec(NPATENT,0,9)+quec(GVA,0,10),
+  ENTR_INCOME~quec(NPATENT,1,13)+quec(GVA,1,14)
   )
-mod0 <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),
+myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),
   data=agres,uniroot.check=TRUE,imputation=FALSE,log=TRUE)
 
 # the lag shape associated to specific paths
-lagPlot(mod0,path="NPATENT*PPI",nitt=10000)
-lagPlot(mod0,path="NPATENT*GVA*PPI",nitt=10000)
+lagPlot(myfit,path="NPATENT*PPI",nitt=10000)
+lagPlot(myfit,path="NPATENT*GVA*PPI",nitt=10000)
 
 # the lag shape associated to an overall causal effect
-lagPlot(mod0,from="NPATENT",to="PPI",nitt=10000)
+lagPlot(myfit,from="NPATENT",to="PPI",nitt=10000)
 }

@@ -11,8 +11,8 @@
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 1.0\cr
-  Date: \tab 2016-05-19\cr
+  Version: \tab 1.0.1\cr
+  Date: \tab 2016-05-23\cr
   License: \tab GPL-2
   }
 }
@@ -26,16 +26,16 @@ An Application to Impact Assessment of Research Activity on European Agriculture
 %
 %# model code
 %mycode <- list(
-%  GVA~quec(NPATENT,0,10),
-%  PPI~quec(NPATENT,0,10)+quec(GVA,0,10),
-%  ENTR_INCOME~quec(NPATENT,0,10)+quec(GVA,0,10)
+%  GVA~quec(NPATENT,0,15),
+%  PPI~quec(NPATENT,0,15)+quec(GVA,0,15),
+%  ENTR_INCOME~quec(NPATENT,0,15)+quec(GVA,0,15)
 %  )
 %
 %# define control options
 %mycontrol <- list(
 %  adapt=c(GVA=TRUE,PPI=TRUE,ENTR_INCOME=TRUE),
 %  max.gestation=list(GVA=c(NPATENT=3),PPI=c(NPATENT=3,GVA=3),ENTR_INCOME=c(NPATENT=3,GVA=3)),
-%  min.width=list(GVA=c(NPATENT=3),PPI=c(NPATENT=3,GVA=3),ENTR_INCOME=c(NPATENT=3,GVA=3)),
+%  min.width=list(GVA=c(NPATENT=5),PPI=c(NPATENT=5,GVA=5),ENTR_INCOME=c(NPATENT=5,GVA=5)),
 %  sign=list(GVA=c(NPATENT="+"),PPI=c(NPATENT="-",GVA="-"),ENTR_INCOME=c(NPATENT="+",GVA="+"))
 %  )
 %

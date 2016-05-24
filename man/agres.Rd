@@ -14,7 +14,7 @@
     \item{\code{NPATENT}}{Number of agricultural patent applications.}
     \item{\code{GVA}}{Gross value added of Agriculture.}
     \item{\code{PPI}}{Producer price of agricultural output (Index, 1980=100).}
-    \item{\code{ENTR_INCOME}}{Net intrepreneural income of Agriculture (Index, 1980=100).}
+    \item{\code{ENTR_INCOME}}{Net intrepreneural income of Agriculture (Index, 2005=100).}
   }
 }
 \source{EUROSTAT database. \url{http://ec.europa.eu/eurostat/data/database}}

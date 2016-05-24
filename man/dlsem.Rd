@@ -60,6 +60,7 @@ Argument \code{control} must be a named list containing one or more among the fo
   \item{model.code}{The model code.}
   \item{context}{The names of context variables.}
   \item{group}{The name of the group factor. \code{NULL} is returned if \code{group}=\code{NULL}.}
+  \item{data}{The data used for model fitting.}
 S3 methods available for class \code{dlsem} are:
   \item{print}{provides essential information on the structural model.}
   \item{summary}{shows summaries of model fitting.}
@@ -78,32 +79,39 @@ To be appeared in: \emph{Proceedings of the 48th Meeting of the Italian Statisti
 \examples{
 data(agres)
 
-# model code
-mycode <- list(
-  GVA~quec(NPATENT,0,4),
-  PPI~quec(NPATENT,0,6)+quec(GVA,0,10),
-  ENTR_INCOME~quec(NPATENT,0,3)+quec(GVA,1,10)
-  )
-
-# control options
-mycontrol <- list(
-  adapt=c(GVA=TRUE,PPI=TRUE,ENTR_INCOME=TRUE),
-  max.gestation=list(GVA=c(NPATENT=3),PPI=c(NPATENT=3,GVA=3),ENTR_INCOME=c(NPATENT=3,GVA=3)),
-  min.width=list(GVA=c(NPATENT=3),PPI=c(NPATENT=3,GVA=3),ENTR_INCOME=c(NPATENT=3,GVA=3)),
-  sign=list(GVA=c(NPATENT="+"),PPI=c(NPATENT="-",GVA="-"),ENTR_INCOME=c(NPATENT="+",GVA="+"))
-  )
-
 # fitting without control options
-mod0 <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
-  uniroot.check=TRUE,maxdiff=1,imputation=FALSE,log=TRUE)
+mycode <- list(
+  GVA~quec(NPATENT,1,15),
+  PPI~quec(NPATENT,0,9)+quec(GVA,0,10),
+  ENTR_INCOME~quec(NPATENT,1,13)+quec(GVA,1,14)
+  )
+myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
+  uniroot.check=TRUE,imputation=FALSE,log=TRUE)
+
 
 ### AIC-based selection of lag shapes: not RUN
-#mod0 <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
-#  control=mycontrol,uniroot.check=TRUE,maxdiff=1,imputation=FALSE,log=TRUE)
+## model code
+#mycode <- list(
+#  GVA~quec(NPATENT,0,15),
+#  PPI~quec(NPATENT,0,15)+quec(GVA,0,15),
+#  ENTR_INCOME~quec(NPATENT,0,15)+quec(GVA,0,15)
+#  )
+#
+## control options
+#mycontrol <- list(
+#  adapt=c(GVA=TRUE,PPI=TRUE,ENTR_INCOME=TRUE),
+#  max.gestation=list(GVA=c(NPATENT=3),PPI=c(NPATENT=3,GVA=3),ENTR_INCOME=c(NPATENT=3,GVA=3)),
+#  min.width=list(GVA=c(NPATENT=3),PPI=c(NPATENT=3,GVA=3),ENTR_INCOME=c(NPATENT=3,GVA=3)),
+#  sign=list(GVA=c(NPATENT="+"),PPI=c(NPATENT="-",GVA="-"),ENTR_INCOME=c(NPATENT="+",GVA="+"))
+#  )
+#
+#myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
+#  control=mycontrol,uniroot.check=TRUE,imputation=TRUE,log=TRUE)
+
 
 # summaries of model fitting
-summary(mod0)
+summary(myfit)
 
 # the directed acyclic graph of the structural model
-plot(mod0)
+plot(myfit)
 }

@@ -18,11 +18,11 @@
 \examples{
 data(agres)
 mycode <- list(
-  GVA~quec(NPATENT,0,4),
-  PPI~quec(NPATENT,0,6)+quec(GVA,0,10),
-  ENTR_INCOME~quec(NPATENT,0,3)+quec(GVA,1,10)
+  GVA~quec(NPATENT,1,15),
+  PPI~quec(NPATENT,0,9)+quec(GVA,0,10),
+  ENTR_INCOME~quec(NPATENT,1,13)+quec(GVA,1,14)
   )
-mod0 <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),
+myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),
   data=agres,uniroot.check=TRUE,imputation=FALSE,log=TRUE)
-isIndep(mod0,"NPATENT","ENTR_INCOME",given=c("GVA","PPI"))
+isIndep(myfit,"NPATENT","ENTR_INCOME",given=c("GVA","PPI"))
 }
