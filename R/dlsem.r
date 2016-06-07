@@ -862,11 +862,11 @@ lagPlot <- function(model,from=NULL,to=NULL,path=NULL,maxlag=NULL,cumul=FALSE,co
     auxpoi2 <- max(1,min(auxpoi1)-1):min(length(xaux),max(auxpoi1)+1)
     points(yaux[auxpoi2,2]~xaux[auxpoi2],col="grey35",lty=2,cex=0.5)
     axis(1,at=xaxaux,labels=c(NA,0:(length(xaxaux)-3),NA),cex.axis=1.1)
-    axis(2,at=yaxaux,labels=ylabaux,cex.axis=1.1)                      
+    axis(2,at=yaxaux,labels=ylabaux,cex.axis=1.1)       
     if(cumul==F) {
-      tcaVal <- signif(apply(yaux,2,sum),3)
+      tcaVal <- signif(apply(yaux,2,sum),5)
       } else {
-      tcaVal <- signif(yaux[nrow(yaux),],3)
+      tcaVal <- signif(yaux[nrow(yaux),],5)
       }
     confLeg <- paste(conf*100,"% CI: (",tcaVal[1],", ",tcaVal[3],")",sep="")
     if(max(yaux[,2])>0) {
@@ -1547,7 +1547,7 @@ makeGraph <- function(x,conf=0.95) {
   }
 
 # compute path coefficients at a given lag
-pathCoeff <- function(x,lag=NULL,cumul=FALSE,conf=0.95) {
+pathCoeff <- function(x,lag=NULL,conf=0.95) {            #cumul=FALSE
   if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'")
   if(length(conf)!=1 || !is.numeric(conf) || conf<=0 || conf>=1) stop("Arguent 'conf' must be a real number greater than 0 and less than 1")
   nomi <- names(x$estimate)
@@ -1564,12 +1564,12 @@ pathCoeff <- function(x,lag=NULL,cumul=FALSE,conf=0.95) {
         #ijnam <- gsub("theta0_gamma.","",ijnam)
         #ijnam <- gsub("theta0_koyck.","",ijnam)
         if(ijnam %in% nomi) {
-          cumb <- lagEff(x$estimate[[nomi[i]]],x=ijnam,cumul=cumul,conf=conf)
+          cumb <- lagEff(x$estimate[[nomi[i]]],x=ijnam,cumul=F,conf=conf)  #####
           laglen <- c(laglen,rownames(cumb)[nrow(cumb)])
           }
         }
       }
-    lag <- 0:(max(as.numeric(laglen))-1)
+    lag <- 0:max(as.numeric(laglen))
     }
   bList <- vector("list",length=length(lag))
   for(i in 1:length(nomi)) {
@@ -1583,16 +1583,16 @@ pathCoeff <- function(x,lag=NULL,cumul=FALSE,conf=0.95) {
       #ijnam <- gsub("theta0_gamma.","",ijnam)
       #ijnam <- gsub("theta0_koyck.","",ijnam)
       if(ijnam %in% nomi) {
-        cumb <- lagEff(x$estimate[[nomi[i]]],x=ijnam,cumul=cumul,conf=conf)
+        cumb <- lagEff(x$estimate[[nomi[i]]],x=ijnam,cumul=F,conf=conf)  #####
         for(w in 1:length(lag)) {
           if(as.character(lag[w]) %in% rownames(cumb)) {
             wbhat <- cumb[as.character(lag[w]),]
             } else {
-            if(cumul==F) {
+            #if(cumul==F) {
               wbhat <- rep(0,3)
-              } else {
-              wbhat <- cumb[nrow(cumb),]
-              }
+            #  } else {
+            #  wbhat <- cumb[nrow(cumb),]
+            #  }
             }
           if(isumm[auxnam[j],4]<1-conf) {
             bList[[w]] <- rbind(bList[[w]],wbhat)                       
@@ -1917,23 +1917,27 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95,nitt=500
     names(edcol) <- names(Gobj$sign)
     edcol[intersect(setdiff(ednam,eddel),names(which(Gobj$sign=="+")))] <- "green4"       
     edcol[intersect(setdiff(ednam,eddel),names(which(Gobj$sign=="-")))] <- "tomato3"                       
-    mycoeff <- pathCoeff(x,lag=lag,cumul=cumul,conf=conf)                
+    cutab <- 0
+    if(cumul==T & !is.null(lag)) {
+      lagOK <- lag
+      lag <- 0:max(lag)
+      cutab <- 1
+      }
+    mycoeff <- pathCoeff(x,lag=lag,conf=conf)
     if(is.null(lag)) {
       lag <- as.numeric(names(mycoeff))          
-      cutab <- 1
       } else {
       for(i in 1:length(lag)) {           
         if(!is.numeric(lag[i]) || lag[i]<0 || lag[i]!=round(lag[i])) stop("Argument 'lag' must contain non-negative integer numbers only")
         }
-      cutab <- 0
       }
     newPathList <- list()
     for(i in 1:length(pathList)) {
       newPathList <- c(newPathList,pathList[[i]])
-      }                                                
+      }  
     outList <- auxout <- list()    
     quan <- -qnorm((1-conf)/2)
-    for(i in 1:length(newPathList)) { 
+    for(i in 1:length(newPathList)) {         
       auxout[[i]] <- matrix(nrow=length(lag),ncol=nitt)
       outList[[i]] <- matrix(nrow=length(lag),ncol=3)
       rownames(outList[[i]]) <- lag
@@ -1951,18 +1955,41 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95,nitt=500
         auxout[[i]][j,] <- apply(auxres,1,prod)
         outList[[i]][j,] <- quantile(apply(auxres,1,prod),prob=c((1-conf)/2,0.5,(1+conf)/2))
         }
-      }
+      }                                   
     names(outList) <- sapply(newPathList,function(x){paste(x,collapse="*")})
-    out <- matrix(nrow=length(lag),ncol=3) 
-    rownames(out) <- lag
-    colnames(out) <- c(paste(100*(1-conf)/2,"%",sep=""),"50%",paste(100*(1+conf)/2,"%",sep=""))
+    sd_over <- c()
     for(i in 1:length(lag)) {                                        
       auxsim <- rep(0,nitt)        
       for(j in 1:length(newPathList)) {                              
         auxsim <- auxsim+auxout[[j]][i,]             
         }
-      out[i,] <- quantile(auxsim,prob=c((1-conf)/2,0.5,(1+conf)/2))
+      sd_over[i] <- sd(auxsim)
+      }                                    
+    for(i in 1:length(outList)) {
+      if(length(newPathList[[i]])==2) {
+         auxdeff <- lagEff(x$estimate[[newPathList[[i]][2]]],x=newPathList[[i]][1])
+         for(j in 1:length(lag)) {
+           if(as.character(lag[j]) %in% rownames(auxdeff)) {
+             outList[[i]][j,] <- auxdeff[as.character(lag[j]),]
+             } else {
+             outList[[i]][j,] <- rep(0,3)
+             }
+           }
+         }
+      }                                                         
+    out <- matrix(nrow=length(lag),ncol=3) 
+    rownames(out) <- lag
+    colnames(out) <- c(paste(100*(1-conf)/2,"%",sep=""),"50%",paste(100*(1+conf)/2,"%",sep=""))          
+    q_over <- -qnorm((1-conf)/2)
+    for(j in 1:length(lag)) {
+      auxover <- 0
+      for(i in 1:length(outList)) {
+        auxover <- auxover+outList[[i]][j,2]
+        }
+      out[j,] <- c(auxover-q_over*sd_over[j],auxover,auxover+q_over*sd_over[j])
       }
+    outList[[length(outList)+1]] <- out
+    names(outList)[[length(outList)]] <- "overall"      
     #if(plot==T) {           
     #  if(length(from)>1) {
     #    fromStr <- paste(from,collapse=", ")
@@ -1977,24 +2004,19 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95,nitt=500
     #  plot(x,conf=conf,sign.col=F,node.col=NULL,font.col=mycol1,border.col=mycol2,edge.col=edcol,edge.lab=eLab,max.nchar=max.nchar)
     #  legend("topleft",legend=myleg1,cex=0.8,bty="n")
     #  }
-    outList[[length(outList)+1]] <- out
-    names(outList)[[length(outList)]] <- "overall"
-    if(cutab==1) {
-      auxind <- c()
+   if(cumul==T) {
       for(i in 1:length(outList)) {
-        auxdat <- unname(outList[[i]][,2])
-        if(cumul==T) {
-          auxdat2 <- c()
-          for(j in 2:length(auxdat)) {
-            auxdat2[j] <- auxdat[j]-auxdat[j-1]
+        if(nrow(outList[[i]])>1) {
+          for(j in 2:nrow(outList[[i]])) {        
+            outList[[i]][j,] <- outList[[i]][j-1,]+outList[[i]][j,]
             }
-          auxdat <- auxdat2
-          }                                      
-        auxind <- max(which(auxdat!=0))           
-        }
+          }
+        }    
+      }
+    if(cutab==1) {
       for(i in 1:length(outList)) {
-        outList[[i]] <- outList[[i]][1:max(auxind),]
-        }
+        outList[[i]] <- outList[[i]][as.character(lagOK),]
+        }    
       }
     outList
     }

@@ -11,8 +11,8 @@
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 1.0.1\cr
-  Date: \tab 2016-05-23\cr
+  Version: \tab 1.0.3\cr
+  Date: \tab 2016-06-07\cr
   License: \tab GPL-2
   }
 }

@@ -71,7 +71,7 @@ S3 methods available for class \code{dlsem} are:
   \item{predict}{returns predicted values.}
   \item{extractAIC}{computes the Akaike Information Criterion (AIC) of the structural model.}
 }
-\references{A. Magrini, F. Bartolini, A. Coli, and B. Pacini, 2016. Distributed-Lag Structural Equation Modelling:
+\references{A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016). Distributed-Lag Structural Equation Modelling:
 An Application to Impact Assessment of Research Activity on European Agriculture.
 To be appeared in: \emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.}
 \author{Alessandro Magrini <magrini@disia.unifi.it>}
@@ -101,7 +101,7 @@ myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
 #mycontrol <- list(
 #  adapt=c(GVA=TRUE,PPI=TRUE,ENTR_INCOME=TRUE),
 #  max.gestation=list(GVA=c(NPATENT=3),PPI=c(NPATENT=3,GVA=3),ENTR_INCOME=c(NPATENT=3,GVA=3)),
-#  min.width=list(GVA=c(NPATENT=3),PPI=c(NPATENT=3,GVA=3),ENTR_INCOME=c(NPATENT=3,GVA=3)),
+#  min.width=list(GVA=c(NPATENT=5),PPI=c(NPATENT=5,GVA=5),ENTR_INCOME=c(NPATENT=5,GVA=5)),
 #  sign=list(GVA=c(NPATENT="+"),PPI=c(NPATENT="-",GVA="-"),ENTR_INCOME=c(NPATENT="+",GVA="+"))
 #  )
 #

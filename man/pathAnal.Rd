@@ -1,7 +1,7 @@
 \name{pathAnal}
 \alias{pathAnal}
-\title{Perform path analysis at a given time lag}
-\description{Compute the coefficient associated to each path between one or more starting variables and one ending variable at a give time lag.}
+\title{Perform path analysis at different time lags}
+\description{Compute the coefficient associated to each path between one or more starting variables and one ending variable at one or more time lags.}
 \usage{pathAnal(x, from = NULL, to = NULL, lag = NULL, cumul = FALSE, conf = 0.95, nitt = 50000)}
 \arguments{
   \item{x}{An object of class \code{dlsem}.}
