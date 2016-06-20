@@ -4,7 +4,7 @@
 \description{Missing values of numerical variables are replaced by their expected value computed using the Expectation-Maximization (EM) algorithm. A Multivariate Gaussian distribution is assumed.}
 \usage{EM.imputation(x = NULL, group = NULL, data, plotDir = NULL, tol = 0.0001, maxit = 500)}
 \arguments{
-  \item{x}{A vector containing the name of the numerical variables to be imputed. If \code{NULL}, all numerical variables will be imputed.}
+  \item{x}{A vector containing the names of the numerical variables to be imputed. If \code{NULL}, all numerical variables will be imputed.}
   \item{group}{The name of a group factor (optional). If \code{NULL}, no groups are considered.}
   \item{data}{An object of class \code{data.frame} containing the variables to be imputed and, if \code{group} is not \code{NULL}, the group factor.}
   \item{plotDir}{A directory where to save the plots after imputation (optional). If \code{NULL}, no plots will be produced.}

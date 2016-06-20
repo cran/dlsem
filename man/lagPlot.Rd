@@ -3,7 +3,7 @@
 \title{Plot lag shapes}
 \description{Plot the lag shape associated to a causal effect or a path.}
 \usage{lagPlot(model, from = NULL, to = NULL, path = NULL, maxlag = NULL, cumul = FALSE,
-  conf = 0.95, nitt = 50000, ylim = NULL, title = NULL)}
+  conf = 0.95, ylim = NULL, title = NULL)}
 \arguments{
   \item{model}{An object of class \code{lm} or \code{dlsem}.}
   \item{from}{The name of the covariate. Ignored if an object of class \code{lm} is provided to argument \code{model}.}
@@ -12,7 +12,7 @@
   \item{maxlag}{The maximum lag displayed (optional).}
   \item{cumul}{Logical. If \code{FALSE} (the default), instantaneous path coefficients are returned, otherwise cumulative ones are provided.}
   \item{conf}{The confidence level for edges in the object of class \code{dlsem}. Default is 0.95.}
-  \item{nitt}{An integer number greater or equal than 1000, representing the number of Monte Carlo replications to approximate confidence intervals. Default is 50000.}
+  %\item{nitt}{An integer number greater or equal than 1000, representing the number of Monte Carlo replications to approximate confidence intervals. Default is 50000.}
   \item{ylim}{A vector of two numerical values indicating the limits of the y axis (optional). If \code{NULL}, the limits of the y axis are computed automatically.}
   \item{title}{The title of the plot (optional). If \code{NULL}, a default title is used.}
 }
@@ -31,9 +31,9 @@ myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),
   data=agres,uniroot.check=TRUE,imputation=FALSE,log=TRUE)
 
 # the lag shape associated to specific paths
-lagPlot(myfit,path="NPATENT*PPI",nitt=10000)
-lagPlot(myfit,path="NPATENT*GVA*PPI",nitt=10000)
+lagPlot(myfit,path="NPATENT*PPI")
+lagPlot(myfit,path="NPATENT*GVA*PPI")
 
 # the lag shape associated to an overall causal effect
-lagPlot(myfit,from="NPATENT",to="PPI",nitt=10000)
+lagPlot(myfit,from="NPATENT",to="PPI")
 }

@@ -2,7 +2,8 @@
 \alias{unirootTest}
 \title{Unit root test}
 \description{Perform unit root test on a numerical variable. A single group factor may be taken into account.}
-\usage{unirootTest(x, group = NULL, time = NULL, data, test = "adf", combine = "choi", k = 0)}
+\usage{unirootTest(x, group = NULL, time = NULL, data, test = "adf", combine = "choi",
+  k = 0, lshort = TRUE)}
 \arguments{
   \item{x}{The name of the numerical variable to be tested.}
   \item{group}{The name of a group factor (optional). If \code{NULL}, no groups are considered.}
@@ -15,10 +16,10 @@
   \item{combine}{The method to combine p-values of different groups, that can be either \code{"choi"} (Choi, 2001) or \code{"demetrescu"} (Demetrescu, 2006).
   Ignored if \code{group} is \code{NULL}. Default is \code{"choi"}.}
   \item{k}{The lag order to calculate the test statistic. Ignored if \code{test}=\code{"kpss"}. Default is 0.}
+  \item{lshort}{Logical. If \code{TRUE}, the short version of the truncation lag parameter is used. Ignored if \code{test}=\code{"adf"}. Default is \code{TRUE}.}
   }
-\value{An object of class \code{htest}, containing the following components:
+\value{A list containing the following components:
   \item{statistic}{The value of the test statistic.}
-  \item{lag.order}{The lag order.}
   \item{alternative}{The alternative hypothesis.}
   \item{z.value}{The z-value of the test.}
   \item{p.value}{The p-value of the test.}

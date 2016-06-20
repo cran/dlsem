@@ -4,7 +4,7 @@
 \description{Apply k-th order differentiation to one or more numerical variables. A single group factor may be taken into account.}
 \usage{applyDiff(x = NULL, group = NULL, time = NULL, data, k = 0)}
 \arguments{
-  \item{x}{A vector containing the name of the numerical variables to be differenced. If \code{NULL}, all numerical variables will be differenced.}
+  \item{x}{A vector containing the names of the numerical variables to be differenced. If \code{NULL}, all numerical variables will be differenced.}
   \item{group}{The name of a group factor (optional). If \code{NULL}, no groups are considered.}
   \item{time}{The name of a time factor (optional). If \code{NULL} and \code{group} is not \code{NULL}, data are assumed temporally ordered within each group.
   If both \code{group} and \code{time} are \code{NULL}, data are assumed temporally ordered.}

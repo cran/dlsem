@@ -8,8 +8,10 @@ S3method(residuals, dlsem)
 S3method(predict, dlsem)
 S3method(extractAIC, dlsem)
 
-import(graph, gRbase, Rgraphviz, tseries)
+import(Matrix, graph, gRbase, Rgraphviz)
 importFrom("grDevices", "dev.off", "pdf")
 importFrom("graphics", "abline", "axis", "box", "grid", "legend","mtext", "par", "points", "polygon")
-importFrom("stats", "coefficients", "cov", "extractAIC", "formula","lm", "model.matrix", "na.omit", "pnorm", "predict", "qnorm", "quantile", "residuals", "rnorm", "smooth.spline", "sd","var", "vcov")
+importFrom("stats", "coefficients", "cov", "extractAIC", "formula","lm", "model.matrix", "na.omit",
+  "pnorm", "predict", "qnorm", "quantile", "residuals", "rnorm", "smooth.spline", "sd", "var", "vcov",
+  "approx", "embed")
 importFrom("utils", "flush.console")

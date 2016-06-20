@@ -1,7 +1,7 @@
 \name{isIndep}
 \alias{isIndep}
 \title{Check conditional independence}
-\description{Check conditional independence among two variables.}
+\description{Check conditional independence between two variables using the d-separation criterion (Pearl, 2000).}
 \usage{isIndep(x, var1, var2, given = NULL, conf = 0.95)}
 \arguments{
   \item{x}{An object of class \code{dlsem}.}
@@ -11,7 +11,7 @@
   \item{conf}{The confidence level for edges in the object of class \code{dlsem}. Default is 0.95.}
 }
 \value{Logical}
-\note{The result is unchanged if arguments \code{var1} and \code{var2} are switched. Conditional independence is checked using the d-separation criterion (Pearl, 2000).}
+\note{The result is unchanged if arguments \code{var1} and \code{var2} are switched.}
 \references{J. Pearl (2000). Causality: Models, Reasoning, and Inference. Cambridge University Press. Cambridge, UK.}
 \author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{dlsem}}

@@ -3,8 +3,8 @@
 \title{Distributed-Lag Structural Equation Modelling.}
 \description{Fit a distributed-lag structural equation model.}
 \usage{dlsem(model.code, group = NULL, context = NULL, data, log = FALSE, control = NULL,
-  uniroot.check = TRUE, imputation = TRUE, test = "adf", combine= "choi", maxdiff = 5,
-  tol = 0.0001, maxit = 500, plotDir = NULL)}
+  uniroot.check = TRUE, imputation = TRUE, test = "adf", combine = "choi", k = 0,
+  lshort = TRUE, maxdiff = 5, tol = 0.0001, maxit = 500, plotDir = NULL)}
 \arguments{
   \item{model.code}{A list of objects of class \code{formula}, each describing a single regression model. See \code{Details}.}
   \item{group}{The name of the group factor (optional). If \code{NULL}, no groups are considered.}
@@ -17,6 +17,8 @@
   \item{test}{The unit root test to use, that can be either \code{"adf"} or \code{"kpss"} (see \link{unirootTest}). Ignored if \code{uniroot.check}=\code{FALSE}. Default is \code{"adf"}.}
   \item{combine}{The method to combine p-values of different groups, that can be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest}).
   Ignored if \code{uniroot.check}=\code{FALSE} or \code{group} is \code{NULL}. Default is \code{"choi"}.}
+  \item{k}{The lag order to calculate the test statistic. Ignored if \code{test}=\code{"kpss"}. Default is 0.}
+  \item{lshort}{Logical. If \code{TRUE}, the short version of the truncation lag parameter is used. Ignored if \code{test}=\code{"adf"}. Default is \code{TRUE}.}
   \item{maxdiff}{The maximum differentiation order to apply. Ignored if \code{uniroot.check}=\code{FALSE}. Default is 5.}
   \item{maxit}{The maximum number of iterations for the EM algorithm (see \link{EM.imputation}). Ignored if \code{imputation}=\code{FALSE}. Default is 500.}
   \item{tol}{The tolerance threshold of the EM algorithm (see \link{EM.imputation}). Ignored if \code{imputation}=\code{FALSE}. Default is 0.0001.}
@@ -54,7 +56,11 @@ Argument \code{control} must be a named list containing one or more among the fo
 %
 %For the last three components, values associated to covariates without a lag specification
 %or to variables not mentioned in the model code will be ignored.
+
+Variables mentioned in the model code but not included in the dataset will be considered as unobserved.
+If there is at least one unobserved variable, imputation using EM will be performed whatever the value of argument \code{imputation}.
 }
+\note{Model indentification is not checked. Standard error and confidence intervals may be uncorrect if the model is not identified.}
 \value{An object of class \code{dlsem}, with the following components:
   \item{estimate}{A list of objects of class \code{lm}, one for each response variable.}
   \item{model.code}{The model code.}
@@ -73,7 +79,7 @@ S3 methods available for class \code{dlsem} are:
 }
 \references{A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016). Distributed-Lag Structural Equation Modelling:
 An Application to Impact Assessment of Research Activity on European Agriculture.
-To be appeared in: \emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.}
+\emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.}
 \author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{dlsem-package}, \link{unirootTest}, \link{applyDiff}, \link{EM.imputation}}
 \examples{

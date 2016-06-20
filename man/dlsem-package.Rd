@@ -2,17 +2,13 @@
 \alias{dlsem-package}
 \docType{package}
 \title{Distributed-Lag Structural Equation Modelling}
-\description{Fit distributed-lag structural equation models and perform path analysis at different time lags.
-%A distributed-lag structural equation model can be fitted using function \link{dlsem}.
-%Path analysis can be performed using function \link{pathAnal}.
-%Function \link{lagPlot} displays the lag shape associated to a causal effect or a path.
-}
+\description{Estimation and path analysis functionalities for structural equation models with polynomial lag shapes.}
 \details{
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 1.0.3\cr
-  Date: \tab 2016-06-07\cr
+  Version: \tab 1.2.0\cr
+  Date: \tab 2016-06-20\cr
   License: \tab GPL-2
   }
 }
