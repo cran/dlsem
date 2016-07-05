@@ -30,7 +30,7 @@ Zmat <- function(x,type,theta) {
       if(i<minlag | i>maxlag) {
         H[i+1] <- 0
         } else {
-        H[i+1] <- -4/(minlag-maxlag-2)^2*(i^2-(minlag+maxlag)*i+(minlag-1)*(maxlag+1))
+        H[i+1] <- -4/(maxlag-minlag+2)^2*(i^2-(minlag+maxlag)*i+(minlag-1)*(maxlag+1))
         }
       }
     lagFun(x,maxlag)%*%matrix(H,ncol=1)
@@ -92,10 +92,16 @@ Zmat <- function(x,type,theta) {
     }
   }
 
+# compute aic (internal use only)
+get_aic <- function(x,k=2) {
+  npar <- 2*(length(x$coefficients)+1)
+  c(npar,deviance(x)+k*npar)
+  }
+
 # selezione modello (internal use only)
-selModFun <- function(aicMat,pvalMat,betaHat,sign) {
-  auxsig <- which(pvalMat<0.05,arr.ind=T)   ### consider only models with significative elasticity
-  #auxsig <- which(pvalMat<2,arr.ind=T)     ### take the model with highest aic disregarding significance
+selModFun <- function(pMat,aicMat,betaHat,sign) {
+  auxsig <- which(pMat<0.05,arr.ind=T)
+  #auxsig <- which(pMat<2,arr.ind=T)
   if(is.null(sign)) {
     if(nrow(auxsig)>0) {
       auxaic <- c()
@@ -390,206 +396,107 @@ dlaglm <- function(formula,group=NULL,data,log=FALSE,L=0,adapt=FALSE,max.gestati
       modOK$call <- paste(y," ~ 1",sep="")
       }
     } else {
-    bestPar <- lagPar
-    islagged <- sapply(lagPar,function(x){sum(!is.na(x))})
-    repeaT <- ifelse(length(which(islagged>0))>1,0,1)
-    while(repeaT<=1) {
-      for(i in length(lagNam):1) {
-        if(lagNam[i] %in% names(sign)) {
-          if(sign[lagNam[i]] %in% c("+","-")==F) {
-            if(repeaT<1) warning("Argument 'sign' is invalid (",lagNam[i]," -> ",y,"), thus it has been ignored")
+    #islagged <- sapply(lagPar,function(x){sum(!is.na(x))})
+    bestPar <- vector("list",length=length(lagNam))
+    names(bestPar) <- lagNam
+    xOK <- c()
+    fine <- 0
+    while(fine==0) {
+      xtest <- setdiff(lagNam,xOK)                 
+      if(length(xtest)>0) {
+        currentAIC <- currentP <- rep(NA,length(xtest))
+        names(currentAIC) <- names(currentP) <- xtest
+        for(i in 1:length(xtest)) {                         
+          if(xtest[i] %in% names(sign)) {
+            isign <- sign[xtest[i]]
+            if(sum(isign %in% c("+","-"))<length(isign)) stop("Invalid argument 'sign'")
+            } else {
             isign <- NULL
-            } else {
-            isign <- sign[lagNam[i]]
             }
+          if(lagType[xtest[i]]=="quec" | lagType[xtest[i]]=="qdec") {                   
+            sx <- lagPar[[xtest[i]]][1]
+            dx <- lagPar[[xtest[i]]][2]
+            if(xtest[i] %in% names(max.gestation)) {
+              auxj <- max.gestation[xtest[i]]              
+              if(!is.numeric(auxj) || auxj>=dx || auxj!=round(auxj)) stop("Invalid argument 'max.gestation'")
+              } else {
+              auxj <- dx-1
+              }
+            if(xtest[i] %in% names(min.width)) {
+              if(min.width[xtest[i]]>dx || min.width[xtest[i]]!=round(min.width[xtest[i]])) stop("Invalid argument 'min.width'")
+              if(xtest[i] %in% names(max.gestation)) {
+                auxj <- min(max.gestation[xtest[i]],dx-min.width[xtest[i]])
+                } else {
+                auxj <- dx-min.width[xtest[i]]
+                }
+              }
+            aic0 <- bhat0 <- pval0 <- matrix(nrow=dx+1,ncol=dx+1)                   
+            for(j in 0:auxj) {
+              if(xtest[i] %in% names(min.width)) {
+                auxk <- j+min.width[xtest[i]]  
+                } else {
+                auxk <- j+1
+                }
+              for(k in auxk:dx) {                                
+                testType <- lagType[c(xOK,xtest[i])]     
+                testPar <- lagPar[c(xOK,xtest[i])]                       
+                testPar[[xtest[i]]] <- c(j,k)                 
+                mod0 <- dlagLS(y=y,X=names(testPar),group=group,data=data,type=testType,theta=testPar,L=0)          
+                if(lagType[xtest[i]]=="quec") {
+                  bhat0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_quec.",xtest[i],sep=""),1]
+                  pval0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_quec.",xtest[i],sep=""),4]
+                  } else {
+                  bhat0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_qdec.",xtest[i],sep=""),1]
+                  pval0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_qdec.",xtest[i],sep=""),4]                
+                  }                           
+                aic0[j+1,k+1] <- get_aic(mod0,k=2)[2]
+                }
+              }
+            auxbest <- selModFun(pMat=pval0,aicMat=aic0,betaHat=bhat0,sign=isign)
+            bestPar[[xtest[i]]] <- auxbest-1                                                  
+            mystr <- paste("currentP[xtest[i]] <- pval0[",auxbest[1],",",auxbest[2],"]",sep="")            
+            eval(parse(text=mystr))
+            mystr <- paste("currentAIC[xtest[i]] <- aic0[",auxbest[1],",",auxbest[2],"]",sep="")
+            eval(parse(text=mystr))            
+            } else {
+            testType <- lagType[c(xOK,xtest[i])]     
+            testPar <- lagPar[c(xOK,xtest[i])]                       
+            mod0 <- dlagLS(y=y,X=names(testPar),group=group,data=data,type=testType,theta=testPar,L=0)
+            auxsumm <- summary(mod0)$coefficients
+            if(xtest[i] %in% rownames(auxsumm)) {
+              currentP[xtest[i]] <- auxsumm[xtest[i],4]           
+              currentAIC[xtest[i]] <- get_aic(mod0)[2]
+              } else {
+              currentP[xtest[i]] <- 1          
+              currentAIC[xtest[i]] <- Inf            
+              }
+            }
+          }
+        issig <- which(currentP<0.05)
+        if(length(issig)>0) {
+          xOK <- c(xOK,names(currentAIC[issig])[which.min(currentAIC[issig])])
           } else {
-          isign <- NULL
+          fine <- 1
           }
-        if(lagType[i]=="quec" | lagType[i]=="qdec") {
-          sx <- lagPar[[i]][1]
-          dx <- lagPar[[i]][2]
-          if(lagNam[i] %in% names(max.gestation)) {
-            if(!is.numeric(max.gestation[lagNam[i]]) || max.gestation[lagNam[i]]<0 || max.gestation[lagNam[i]]>=dx || max.gestation[lagNam[i]]!=round(max.gestation[lagNam[i]])) {
-              if(repeaT<1) warning("Argument 'max.gestation' is invalid (",lagNam[i]," -> ",y,"), thus it has been ignored")
-              auxj <- dx-1            
-              } else {
-              auxj <- max.gestation[lagNam[i]]              
-              }
-            } else {
-            auxj <- dx-1
-            }
-          if(lagNam[i] %in% names(min.width)) {
-            if(!is.numeric(min.width[lagNam[i]]) || min.width[lagNam[i]]<1 || min.width[lagNam[i]]>dx || min.width[lagNam[i]]!=round(min.width[lagNam[i]])) {
-              if(repeaT<1) warning("Argument 'min.width' is invalid (",lagNam[i]," -> ",y,"), thus it has been ignored")
-              min.width[lagNam[i]] <- 1
-              } else {
-              if(lagNam[i] %in% names(max.gestation)) {
-                auxj <- min(max.gestation[lagNam[i]],dx-min.width[lagNam[i]])
-                } else {
-                auxj <- dx-min.width[lagNam[i]]
-                }
-              }
-            } else {
-            min.width[lagNam[i]] <- 1
-            }
-          aic0 <- bhat0 <- pval0 <- matrix(nrow=dx+1,ncol=dx+1)         
-          for(j in 0:auxj) {
-            auxk <- j+min.width[lagNam[i]]
-            for(k in auxk:dx) {
-              testPar <- bestPar                      
-              testPar[[i]] <- c(j,k)
-              mod0 <- dlagLS(y=y,X=lagNam,group=group,data=data,type=lagType,theta=testPar,L=0)          
-              if(lagType[i]=="quec") {
-                bhat0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_quec.",lagNam[i],sep=""),1]
-                pval0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_quec.",lagNam[i],sep=""),4]
-                } else {
-                bhat0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_qdec.",lagNam[i],sep=""),1]
-                pval0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_qdec.",lagNam[i],sep=""),4]                
-                }
-              aic0[j+1,k+1] <- extractAIC(mod0,k=2)[2]
-              }
-            }                                                         
-          #auxbest <- which(aic0==min(aic0,na.rm=T),arr.ind=T)
-          #bestPar[[i]] <- unname(auxbest[1,]-1)                 
-          bestPar[[i]] <- selModFun(aicMat=aic0,pvalMat=pval0,betaHat=bhat0,sign=isign)-1
-          #####
-          #} else if(lagType[i]=="trap") {
-          #s1 <- 0          
-          #s4 <- lagPar[[i]][4]
-          #if(lagNam[i] %in% names(max.gestation)) {
-          #  auxj <- max.gestation[lagNam[i]]                 
-          #  if(!is.numeric(auxj) || auxj>=s4 || auxj!=round(auxj)) stop("Invalid argument 'max.gestation'")
-          #  } else {
-          #  auxj <- s4-1
-          #  }
-          #if(lagNam[i] %in% names(min.width)) {
-          #  if(min.width[lagNam[i]]>s4 || min.width[lagNam[i]]!=round(min.width[lagNam[i]])) stop("Invalid argument 'min.width'")
-          #  if(lagNam[i] %in% names(max.gestation)) {
-          #    auxj <- min(max.gestation[lagNam[i]],s4-min.width[lagNam[i]])
-          #    } else {
-          #    auxj <- s4-min.width[lagNam[i]]
-          #    }
-          #  }
-          #aic0 <- bhat0 <- pval0 <- matrix(nrow=s4+1,ncol=s4+1)
-          #for(j in s1:auxj) {
-          #  if(lagNam[i] %in% names(min.width)) {
-          #    auxk <- j+min.width[lagNam[i]]  
-          #    } else {
-          #    auxk <- j+1
-          #    }
-          #  for(k in auxk:s4) {
-          #    testPar <- bestPar
-          #    testPar[[i]] <- c(s1,j,k,s4)
-          #    mod0 <- dlagLS(y=y,X=lagNam,group=group,data=data,type=lagType,theta=testPar,L=0)
-          #    bhat0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_trap.",lagNam[i],sep=""),1]
-          #    pval0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_trap.",lagNam[i],sep=""),4]
-          #    aic0[j+1,k+1] <- extractAIC(mod0,k=2)[2]
-          #    }
-          #  }                                                                
-          #auxbest <- selModFun(aicMat=aic0,pvalMat=pval0,betaHat=bhat0,sign=isign)
-          #s2 <- auxbest[1]-1
-          #s3 <- auxbest[2]-1
-          #aic0 <- bhat0 <- pval0 <- matrix(nrow=s4+1,ncol=s4+1)
-          #for(j in s1:s2) {
-          #  for(k in s3:s4) {
-          #    testPar <- bestPar
-          #    testPar[[i]] <- c(j,s2,s3,k)
-          #    mod0 <- dlagLS(y=y,X=lagNam,group=group,data=data,type=lagType,theta=testPar,L=0)
-          #    bhat0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_trap.",lagNam[i],sep=""),1]
-          #    pval0[j+1,k+1] <- summary(mod0)$coefficients[paste("theta0_trap.",lagNam[i],sep=""),4]
-          #    aic0[j+1,k+1] <- extractAIC(mod0,k=2)[2]
-          #    }
-          #  }
-          #auxbest <- selModFun(aicMat=aic0,pvalMat=pval0,betaHat=bhat0,sign=isign)
-          #bestPar[[i]] <- c(auxbest[1]-1,s2,s3,auxbest[2]-1)
-          #####
-          #} else if(lagType[i]=="koyck") {                        
-          #sx <- 0
-          #dx <- qgamma(0.99,1,-log(lagPar[[i]][1]))+sx
-          #if(lagNam[i] %in% names(min.width)) {
-          #  if(min.width[lagNam[i]]>dx || min.width[lagNam[i]]!=round(min.width[lagNam[i]])) stop("Invalid argument 'min.width'")
-          #  if(lagNam[i] %in% names(max.gestation)) {
-          #    auxk <- min.width[lagNam[i]]
-          #    } else {
-          #    auxk <- 1
-          #    }
-          #  } else {
-          #  auxk <- 1 
-          #  }         
-          #deltaVal <- 0
-          #lambdaVal <- seq(0.01,0.99,by=0.01)  #####
-          #aic0 <- bhat0 <- pval0 <- matrix(nrow=length(deltaVal),ncol=length(lambdaVal))
-          #for(j in 1:length(deltaVal)) {
-          #  for(k in 1:length(lambdaVal)) {
-          #    maxgam <- qgamma(0.99,1,-log(lambdaVal[k]))+sx                    
-          #    if(maxgam>=auxk & maxgam<dx) { 
-          #      testPar <- bestPar
-          #      testPar[[i]] <- lambdaVal[k]
-          #      mod0 <- dlagLS(y=y,X=lagNam,group=group,data=data,type=lagType,theta=testPar,L=0)
-          #      bhat0[j,k] <- summary(mod0)$coefficients[paste("theta0_koyck.",lagNam[i],sep=""),1]
-          #      pval0[j,k] <- summary(mod0)$coefficients[paste("theta0_koyck.",lagNam[i],sep=""),4]
-          #      aic0[j,k] <- extractAIC(mod0,k=2)[2]
-          #      }
-          #    }
-          #  }                                                  
-          #####
-          #auxbest <- selModFun(aicMat=aic0,pvalMat=pval0,betaHat=bhat0,sign=isign)
-          #bestPar[[i]] <- lambdaVal[auxbest[2]]
-          #####
-          #} else if(lagType[i]=="gamma") {                        
-          #sx <- 0
-          #dx <- qgamma(0.99,1/(1-lagPar[[i]][1]),-log(lagPar[[i]][2]))+sx
-          #if(lagNam[i] %in% names(max.gestation)) {
-          #  auxj <- max.gestation[lagNam[i]]
-          #  if(auxj>=dx || auxj!=round(auxj)) stop("Invalid argument 'max.gestation'")
-          #  } else {
-          #  auxj <- dx-1
-          #  }
-          #if(lagNam[i] %in% names(min.width)) {
-          #  if(min.width[lagNam[i]]>dx || min.width[lagNam[i]]!=round(min.width[lagNam[i]])) stop("Invalid argument 'min.width'")
-          #  if(lagNam[i] %in% names(max.gestation)) {
-          #    auxk <- min.width[lagNam[i]]
-          #    } else {
-          #    auxk <- 1
-          #    }
-          #  } else {
-          #  auxk <- 1 
-          #  }         
-          #deltaVal <- lambdaVal <- seq(0.01,0.99,by=0.01)  #####
-          #aic0 <- bhat0 <- pval0 <- matrix(nrow=length(deltaVal),ncol=length(lambdaVal))
-          #for(j in 1:length(deltaVal)) {
-          #  for(k in 1:length(lambdaVal)) {
-          #    mingam <- qgamma(0.01,1/(1-deltaVal[j]),-log(lambdaVal[k]))+sx
-          #    maxgam <- qgamma(0.99,1/(1-deltaVal[j]),-log(lambdaVal[k]))+sx
-          #    modegam <- (deltaVal[j]/(deltaVal[j]-1))/log(lambdaVal[k])+sx-1                      
-          #    if(mingam<=auxj & maxgam-mingam>=auxk & mingam>0 & maxgam<dx & modegam>mingam & modegam<maxgam) { 
-          #      testPar <- bestPar
-          #      testPar[[i]] <- c(deltaVal[j],lambdaVal[k])
-          #      mod0 <- dlagLS(y=y,X=lagNam,group=group,data=data,type=lagType,theta=testPar,L=0)
-          #      bhat0[j,k] <- summary(mod0)$coefficients[paste("theta0_gamma.",lagNam[i],sep=""),1]
-          #      pval0[j,k] <- summary(mod0)$coefficients[paste("theta0_gamma.",lagNam[i],sep=""),4]
-          #      aic0[j,k] <- extractAIC(mod0,k=2)[2]
-          #      }
-          #    }
-          #  }
-          #auxbest <- selModFun(aicMat=aic0,pvalMat=pval0,betaHat=bhat0,sign=isign)
-          #bestPar[[i]] <- c(deltaVal[auxbest[1]],lambdaVal[auxbest[2]])
-          }
+        } else {
+        fine <- 1
         }
-      repeaT <- repeaT+1
+      }                              
+    nonsig <- setdiff(xtest,xOK)
+    if(length(nonsig)>0) {
+      xOK <- c(xOK,nonsig)
+      lagType[nonsig] <- "none"
       }
     modOK <- dlagLS(y=y,X=lagNam,group=group,data=data,type=lagType,theta=bestPar,L=L)
-    auxcall <- paste(y," ~ ",paste(c(group,auX),collapse="+"),sep="")
+    auxcall <- paste(y," ~ ",paste(c(group,lagNam),collapse="+"),sep="")
     for(i in 1:length(lagNam)) {
-      oldstr <- paste("\\(",lagNam[i],",",paste(lagPar[[i]],collapse=","),"\\)",sep="")
-      newstr <- paste("\\(",lagNam[i],",",paste(bestPar[[i]],collapse=","),"\\)",sep="")
-      auxcall <- gsub(oldstr,newstr,auxcall)
+      if(lagType[i]!="none") auxcall <- gsub(lagNam[i],paste(lagType[i],"\\(",lagNam[i],",",paste(bestPar[[i]],collapse=","),"\\)",sep=""),auxcall)
       }
     modOK$call <- auxcall
     }
   modOK
   }
-
+  
 ## vcov method for class lm
 #vcov.lm <- function(object,...) {
 #  if("vcov" %in% names(object)) {
@@ -1089,7 +996,7 @@ dlsem <- function(model.code,group=NULL,context=NULL,data,log=FALSE,control=NULL
   flush.console()
   for(i in 1:length(model.code)) {
     nomi[i] <- as.character(model.code[[i]])[2]
-    auxmess <- paste("Estimating equation ",i,"/",length(model.code)," (",nomi[i],")",sep="")
+    auxmess <- paste("Estimating regression model ",i,"/",length(model.code)," (",nomi[i],")",sep="")
     auxdel <- messlen-nchar(auxmess)+1
     if(auxdel>0) {
       cat('\r',auxmess,rep(" ",auxdel))
@@ -1215,9 +1122,14 @@ summary.dlsem <- function(object,...) {
   lapply(object$estimate,summary)
   }
 
+# deviance method for class dlsem
+deviance.dlsem <- function(object,...) {
+  sum(sapply(object$estimate,deviance))
+  }
+
 # extractAIC method for class dlsem
 extractAIC.dlsem <- function(fit,scale,k=2,...) {
-  aic0 <- lapply(fit$estimate,extractAIC)
+  aic0 <- lapply(fit$estimate,get_aic,k=k)
   res <- c(0,0)
   for(i in 1:length(aic0)) {
     res[1] <- res[1]+aic0[[i]][1]
@@ -1620,8 +1532,8 @@ makeGraph <- function(x,conf=0.95) {
   list(graph=G,full.graph=G0,sign=eSign)
   }
 
-# compute path coefficients at a given lag
-pathCoeff <- function(x,lag=NULL,conf=0.95) {
+# compute the coefficient associated to each edge at different time lags
+edgeCoeff <- function(x,lag=NULL,conf=0.95) {
   if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'")
   if(length(conf)!=1 || !is.numeric(conf) || conf<=0 || conf>=1) stop("Arguent 'conf' must be a real number greater than 0 and less than 1")
   nomi <- names(x$estimate)
@@ -1683,11 +1595,12 @@ pathCoeff <- function(x,lag=NULL,conf=0.95) {
       }
     rownames(bList[[i]]) <- newnam
     }
+  for(i in 1:length(bList)) colnames(bList[[i]]) <- c(paste(100*(1-conf)/2,"%",sep=""),"50%",paste(100*(1+conf)/2,"%",sep=""))
   bList
   }
 
 # plot method for class dlsem
-plot.dlsem <- function(x,conf=0.95,sign.col=TRUE,node.col=NULL,font.col=NULL,border.col=NULL,edge.col=NULL,edge.lab=NULL,max.nchar=12,...) {
+plot.dlsem <- function(x,conf=0.95,sign.col=TRUE,node.col=NULL,font.col=NULL,border.col=NULL,edge.col=NULL,edge.lab=NULL,...) {
   defpar <- par()
   G <- makeGraph(x,conf=conf)
   nomi <- nodes(G$full.graph)  
@@ -1704,10 +1617,10 @@ plot.dlsem <- function(x,conf=0.95,sign.col=TRUE,node.col=NULL,font.col=NULL,bor
   #####
   nAttr <- list()
   nAttr$shape <- rep("ellipse",length(nomi))
-  nAttr$fontsize <- rep(2.5,length(nomi))
+  nAttr$fontsize <- rep(14,length(nomi))
   nAttr$height <- rep(2.5,length(nomi))
   nAttr$width <- rep(4,length(nomi))
-  nAttr$label <- sapply(nomi,cutString,l=max.nchar)
+  nAttr$label <- sapply(nomi,cutString,l=12)  ##### max number of characters: 12
   for(i in 1:length(nAttr)) {
     names(nAttr[[i]]) <- nomi
     }
@@ -1937,7 +1850,7 @@ confound <- function(G,from,to) {
   }
 
 # find lag to sum (internal use only)
-findlag2sum <- function(x,lag) {              
+findlag2sum <- function(x,lag) {
   g <- length(x)                             
   auxlag <- 0:lag
   out <- list()
@@ -2043,7 +1956,7 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
           auxeff <- lagEff(x$estimate[[newPathList[[i]][j]]],x=newPathList[[i]][j-1],cumul=F,conf=conf)
           auxpos <- which(auxeff[,2]!=0)
           if(length(auxpos)>0) {
-            jlaglen[[j-1]] <- as.numeric(rownames(auxeff[auxpos,]))
+            jlaglen[[j-1]] <- as.numeric(rownames(auxeff)[auxpos])
             } else {
             jlaglen[[j-1]] <- NA
             }
@@ -2060,7 +1973,7 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
       lag <- 0:max(lag)
       cutab <- 1
       }
-    mycoeff <- pathCoeff(x,lag=lag,conf=conf)
+    mycoeff <- edgeCoeff(x,lag=lag,conf=conf)
     #
     sd_calc <- function(muvet,sdvet) { sqrt(prod(muvet^2+sdvet^2)-prod(muvet^2)) }
     quan <- -qnorm((1-conf)/2)
@@ -2075,8 +1988,8 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
       rownames(bhat[[i]]) <- rownames(mycoeff[[i]])
       }
     names(bhat) <- names(mycoeff)
-    outList <- list()
-    for(i in 1:length(newPathList)) {                    
+    outList <- list()                       
+    for(i in 1:length(newPathList)) {           
       outList[[i]] <- matrix(nrow=length(lag),ncol=3)
       rownames(outList[[i]]) <- lag
       colnames(outList[[i]]) <- c(paste(100*(1-conf)/2,"%",sep=""),"50%",paste(100*(1+conf)/2,"%",sep=""))
@@ -2085,13 +1998,13 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
         auxnam <- paste(newPathList[[i]][j],"~",newPathList[[i]][j-1],sep="")
         auxeff <- lagEff(x$estimate[[newPathList[[i]][j]]],x=newPathList[[i]][j-1],cumul=F,conf=conf)
         auxpos <- which(auxeff[,2]!=0)
-        if(length(auxpos)>0) {
-          auxbetalag[[j-1]] <- as.numeric(rownames(auxeff[auxpos,]))
+        if(length(auxpos)>0) {                                 
+          auxbetalag[[j-1]] <- as.numeric(rownames(auxeff)[auxpos])
           } else {
           auxbetalag[[j-1]] <- 0
           }
         names(auxbetalag)[j-1] <- auxnam
-        }
+        }                              
       lagsumMat <- findlag2sum(auxbetalag,lag=max(lag))
       for(j in 1:length(lagsumMat)) {
         auxlag <- as.character(lag[j])                           
@@ -2155,7 +2068,7 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
     #    auxeff <- lagEff(x$estimate[[newPathList[[i]][j]]],x=newPathList[[i]][j-1],cumul=F,conf=conf)
     #    auxpos <- which(auxeff[,2]!=0)
     #    if(length(auxpos)>0) {
-    #      auxbetalag[[j-1]] <- as.numeric(rownames(auxeff[auxpos,]))
+    #      auxbetalag[[j-1]] <- as.numeric(rownames(auxeff)[auxpos])
     #      } else {
     #      auxbetalag[[j-1]] <- 0
     #      }
@@ -2224,8 +2137,32 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
         outList[[i]] <- outList[[i]][as.character(lagOK),]    
         }
       }                                                           
-    outList[[length(outList)+1]] <- confound(G,from=from,to=to)
-    names(outList)[length(outList)] <- "confounders"
+    #outList[[length(outList)+1]] <- confound(G,from=from,to=to)
+    #names(outList)[length(outList)] <- "confounders"
     outList
     }
+  }
+
+# fit indices
+fitIndices <- function(x) {
+  if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'")
+  xfit <- x$estimate     
+  deg <- n <- expdev <- resdev <- Rsq <- aic <- bic <- c()
+  for(i in 1:length(xfit)) {
+    resdev[i] <- deviance(xfit[[i]])
+    auxss <- anova(xfit[[i]])$'Sum Sq'
+    expdev[i] <- sum(auxss[1:(length(auxss)-1)])
+    n[i] <- length(which(!is.na(residuals(xfit[[i]]))))
+    deg[i] <- xfit[[i]]$df.residual
+    Rsq[i] <- summary(xfit[[i]])$'r.squared'
+    aic[i] <- get_aic(xfit[[i]],k=2)[2]
+    bic[i] <- get_aic(xfit[[i]],k=log(n[i]))[2]
+    }  
+  out1 <- c(Rsq,sum(expdev)/(sum(expdev)+sum(resdev)))
+  names(out1) <- c(names(xfit),"(overall)")
+  out2 <- c(aic,extractAIC(x,k=2)[2])
+  names(out2) <- c(names(xfit),"(overall)")
+  out3 <- c(bic,extractAIC(x,k=log(min(n)))[2])
+  names(out3) <- c(names(xfit),"(overall)")
+  list('R squared'=out1,'AIC'=out2,'BIC'=out3)
   }

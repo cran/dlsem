@@ -1,7 +1,7 @@
 \name{dlsem}
 \alias{dlsem}
 \title{Distributed-Lag Structural Equation Modelling.}
-\description{Fit a distributed-lag structural equation model.}
+\description{Fit a distributed-lag structural equation model with second-order polynomial lag shapes.}
 \usage{dlsem(model.code, group = NULL, context = NULL, data, log = FALSE, control = NULL,
   uniroot.check = TRUE, imputation = TRUE, test = "adf", combine = "choi", k = 0,
   lshort = TRUE, maxdiff = 5, tol = 0.0001, maxit = 500, plotDir = NULL)}
@@ -12,6 +12,7 @@
   \item{data}{An object of class \code{data.frame} containing the variables included in the model.}
   \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to numerical variables. Default is \code{FALSE}.}
   \item{control}{A list containing various options for the fitting. See \code{Details}.}
+  %\item{criterion}{The criterion for model selection, that can be either \code{"p.value"} to minimise the p-value, or \code{"aic"} to minimise the Akaike Information Criterion (AIC). Default is \code{"p.value"}.}
   \item{uniroot.check}{Logical. If \code{TRUE}, unit root test is performed for each variable, and appropriate differentation is applied. Default is \code{FALSE}.}
   \item{imputation}{Logical. If \code{TRUE}, missing data will be imputed using the EM algorithm. Default is \code{FALSE}.}
   \item{test}{The unit root test to use, that can be either \code{"adf"} or \code{"kpss"} (see \link{unirootTest}). Ignored if \code{uniroot.check}=\code{FALSE}. Default is \code{"adf"}.}
@@ -44,15 +45,19 @@ The formula of regression models with no covariates excepting context variables 
 
 Argument \code{control} must be a named list containing one or more among the following components:
 
-- \code{L}: a named vector of non-negative integer values including the highest lag with non-zero autocorrelation for a certain response variable. Default is 0 for all response variables.
+- \code{L}: a named vector of non-negative integer values including the highest lag with non-zero autocorrelation for one or more response variables.
+  If greater than 0, the Newey-West correction of the covariance matrix of estimates (Newey and West, 1987) is used. Default is 0 for all response variables.
 
-- \code{adapt}: a named vector of logical values indicating if AIC-based selection of lag shapes must be performed for a certain response variable. Default is \code{FALSE} for all response variables.
+- \code{adapt}: a named vector of logical values indicating if adaptation of lag shapes must be performed for one or more response variables. Default is \code{FALSE} for all response variables.
 
 - \code{max.gestation}: a named list. Each component of the list must refer to one response variable and contain a named vector, including the maximum gestation lag for one or more covariates.
+  Ignored if \code{adapt}=\code{FALSE} for a certain covariate.
 
 - \code{min.width}: a named list. Each component of the list must refer to one response variable and contain a named vector, including the minimum lag width for one or more covariates.
+  Ignored if \code{adapt}=\code{FALSE} for a certain covariate.
 
 - \code{sign}: a named list. Each component of the list must refer to one response variable and contain a named vector, including the sign (either '+' or '-') of the coefficients of one or more covariates.
+  Ignored if \code{adapt}=\code{FALSE} for a certain covariate.
 %
 %For the last three components, values associated to covariates without a lag specification
 %or to variables not mentioned in the model code will be ignored.
@@ -75,11 +80,14 @@ S3 methods available for class \code{dlsem} are:
   \item{fitted}{returns fitted values.}
   \item{residuals}{returns residuals.}
   \item{predict}{returns predicted values.}
+  \item{deviance}{returns the deviance of the structural model.}
   \item{extractAIC}{computes the Akaike Information Criterion (AIC) of the structural model.}
 }
 \references{A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016). Distributed-Lag Structural Equation Modelling:
 An Application to Impact Assessment of Research Activity on European Agriculture.
-\emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.}
+\emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.
+
+W. K. Newey, and K. D. West (1978). A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. \emph{Econometrica}, 55(3), 703-708.}
 \author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{dlsem-package}, \link{unirootTest}, \link{applyDiff}, \link{EM.imputation}}
 \examples{
@@ -88,14 +96,14 @@ data(agres)
 # fitting without control options
 mycode <- list(
   GVA~quec(NPATENT,1,15),
-  PPI~quec(NPATENT,0,9)+quec(GVA,0,10),
-  ENTR_INCOME~quec(NPATENT,1,13)+quec(GVA,1,14)
+  PPI~quec(NPATENT,0,13)+quec(GVA,0,14),
+  ENTR_INCOME~quec(NPATENT,0,14)+quec(GVA,1,14)
   )
 myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
   uniroot.check=TRUE,imputation=FALSE,log=TRUE)
 
 
-### AIC-based selection of lag shapes: not RUN
+### adaptation of lag shapes: not RUN
 ## model code
 #mycode <- list(
 #  GVA~quec(NPATENT,0,15),

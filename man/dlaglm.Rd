@@ -1,7 +1,8 @@
 \name{dlaglm}
 \alias{dlaglm}
 \title{Distributed-lag linear regression}
-\description{Fit a distributed-lag linear regression model. A single group factor may be taken into account using fixed effect panel estimation.}
+\description{Fit a distributed-lag linear regression model with second-order polynomial lag shapes.
+A single group factor may be taken into account using fixed effect panel estimation.}
 \usage{dlaglm(formula, group = NULL, data, log = FALSE, L = 0, adapt = FALSE,
   max.gestation = NULL, min.width = NULL, sign = NULL)}
 \arguments{
@@ -10,7 +11,7 @@
   \item{data}{An object of class \code{data.frame} containing the variables included in the model.}
   \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to numerical variables. Default is \code{FALSE}.}
   \item{L}{The highest lag with non-zero autocorrelation (non-negative integer). If greater than 0, the Newey-West correction of the covariance matrix of estimates (Newey and West, 1987) is used. Default is 0.}
-  \item{adapt}{Logical. If \code{TRUE}, AIC-based selection of lag shapes is performed (see \code{Details}). Default is \code{FALSE}.}
+  \item{adapt}{Logical. If \code{TRUE}, adaptation of lag shapes is performed (see \code{Details}). Default is \code{FALSE}.}
   \item{max.gestation}{See \code{Details}. Ignored if \code{adapt}=\code{FALSE}.}
   \item{min.width}{See \code{Details}. Ignored if \code{adapt}=\code{FALSE}.}
   \item{sign}{See \code{Details}. Ignored if \code{adapt}=\code{FALSE}.}
@@ -32,8 +33,8 @@ Each operator must have the following three arguments (provided within brackets)
 
 For example, \code{quec(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15).
 
-If \code{adapt}=\code{TRUE}, AIC-based selection of lag shapes is performed.
-The selection involves only the second and the third arguments of each lag operator in the model formula.
+If \code{adapt}=\code{TRUE}, adaptation of lag shapes is performed.
+During adaptation, the second and the third arguments of each lag operator in the model formula is selected on the basis of the best fit to data.
 The following arguments of function \code{dlaglm} are considered in the selection:
 
 - \code{max.gestation}: a named vector, including the maximum gestation lag for one or more covariates;
@@ -60,12 +61,12 @@ data(agres)
 # first order differentiation
 agres.diff <- applyDiff(c("NPATENT","GVA","ENTR_INCOME","PPI"),group="COUNTRY",data=agres,k=1)
 
-# fit without AIC-based selection of lag shapes
-dl0 <- dlaglm(ENTR_INCOME~quec(NPATENT,1,13)+quec(GVA,1,14)+GDP+FARM_SIZE,group="COUNTRY",
+# no adaptation of lag shapes
+dl0 <- dlaglm(PPI~quec(NPATENT,0,13)+quec(GVA,0,14)+GDP+FARM_SIZE,group="COUNTRY",
   data=agres.diff,log=TRUE)
 
-### AIC-based selection of lag shapes: NOT RUN
-#dl0 <- dlaglm(ENTR_INCOME~quec(NPATENT,0,15)+quec(GVA,0,15)+GDP+FARM_SIZE,group="COUNTRY",
+### adaptation of lag shapes: NOT RUN
+#dl0 <- dlaglm(PPI~quec(NPATENT,0,15)+quec(GVA,0,15)+GDP+FARM_SIZE,group="COUNTRY",
 #  data=agres.diff,log=TRUE,adapt=TRUE,max.gestation=c(NPATENT=3,GVA=3),
 #  min.width=c(NPATENT=5,GVA=5),sign=c(NPATENT="+",GVA="+")) 
 

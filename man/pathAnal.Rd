@@ -11,14 +11,14 @@
   \item{cumul}{Logical. If \code{FALSE} (the default), instantaneous path coefficients are returned, otherwise cumulative ones are provided.}
   \item{conf}{The confidence level for edges in the object of class \code{dlsem}. Default is 0.95.}
 }
-\value{A list containing one matrix for each path between the starting variables and the ending variable, one matrix for the overall coefficient, and a character vector.
-Each matrix contains point estimate and asymptotic \code{conf}*100\% confidence interval for the associated coefficient at each requested time lag.
-The character vector contains the names of the variables counfounding the relationship, thus the overall coefficient at each lag should be interpreted at constant values of those variables.}
-\note{This is an extension of the classical path analysis techniques (Wright, 1934; Pearl, 2009, 2012) to distributed-lag structural equation models.}
+\value{A list containing one matrix for each path between the starting variables and the ending variable and one matrix for the overall coefficient. %, and a character vector.
+Each matrix contains point estimate and asymptotic \code{conf}*100\% confidence interval for the associated coefficient at each requested time lag.}
+%The character vector contains the names of the variables counfounding the relationship, thus the overall coefficient at each lag should be interpreted at constant values of those variables.
+\note{This is an extension of trace rules for classical path analysis (Wright, 1934; Pearl, 2012) to distributed-lag structural equation models.}
 \references{
 J. Pearl (2012). The Causal Foundations of Structural Equation Modelling. In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY.
 
-J. Pearl (2009). Causal Inference in Statistics: An overview. \emph{Statistics Surveys}, 3: 96-146.
+%J. Pearl (2009). Causal Inference in Statistics: An overview. \emph{Statistics Surveys}, 3: 96-146.
 
 S. Wright (1934). The Method of Path Coefficients. \emph{Annals of Mathematical Statistics}, 5(3): 161-215.
 }
@@ -28,8 +28,8 @@ S. Wright (1934). The Method of Path Coefficients. \emph{Annals of Mathematical 
 data(agres)
 mycode <- list(
   GVA~quec(NPATENT,1,15),
-  PPI~quec(NPATENT,0,9)+quec(GVA,0,10),
-  ENTR_INCOME~quec(NPATENT,1,13)+quec(GVA,1,14)
+  PPI~quec(NPATENT,0,13)+quec(GVA,0,14),
+  ENTR_INCOME~quec(NPATENT,0,14)+quec(GVA,1,14)
   )
 myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),
   data=agres,uniroot.check=TRUE,imputation=FALSE,log=TRUE)

@@ -1,7 +1,7 @@
 \name{EM.imputation}
 \alias{EM.imputation}
 \title{Imputation of missing values using Expectation-Maximization}
-\description{Missing values of numerical variables are replaced by their expected value computed using the Expectation-Maximization (EM) algorithm. A Multivariate Gaussian distribution is assumed.}
+\description{Missing values of numerical variables are replaced by their expected value computed using the Expectation-Maximization (EM) algorithm (Dempster et al., 1977). A Multivariate Gaussian distribution is assumed.}
 \usage{EM.imputation(x = NULL, group = NULL, data, plotDir = NULL, tol = 0.0001, maxit = 500)}
 \arguments{
   \item{x}{A vector containing the names of the numerical variables to be imputed. If \code{NULL}, all numerical variables will be imputed.}

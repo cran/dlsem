@@ -2,7 +2,7 @@
 \alias{agres}
 \docType{data}
 \title{Agricultural research data}
-\description{Data on agricultural research, profitability and consumer surplus in 10 European countries.}
+\description{Data on agricultural research, profitability and consumer surplus for 10 European countries in the period 1990-2012.}
 \usage{data("agres")}
 \format{
   A data frame with a total of 260 observations on the following 8 variables:
