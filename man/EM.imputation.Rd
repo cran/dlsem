@@ -1,10 +1,10 @@
 \name{EM.imputation}
 \alias{EM.imputation}
 \title{Imputation of missing values using Expectation-Maximization}
-\description{Missing values of numerical variables are replaced by their expected value computed using the Expectation-Maximization (EM) algorithm (Dempster et al., 1977). A Multivariate Gaussian distribution is assumed.}
+\description{Missing values of quantitative variables are replaced by their expected value computed using the Expectation-Maximization (EM) algorithm (Dempster et al., 1977). A Multivariate Gaussian distribution is assumed.}
 \usage{EM.imputation(x = NULL, group = NULL, data, plotDir = NULL, tol = 0.0001, maxit = 500)}
 \arguments{
-  \item{x}{A vector containing the names of the numerical variables to be imputed. If \code{NULL}, all numerical variables will be imputed.}
+  \item{x}{A vector containing the names of the quantitative variables to be imputed. If \code{NULL}, all quantitative variables will be imputed.}
   \item{group}{The name of a group factor (optional). If \code{NULL}, no groups are considered.}
   \item{data}{An object of class \code{data.frame} containing the variables to be imputed and, if \code{group} is not \code{NULL}, the group factor.}
   \item{plotDir}{A directory where to save the plots after imputation (optional). If \code{NULL}, no plots will be produced.}

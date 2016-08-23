@@ -27,9 +27,10 @@
 
 \title{Distributed-Lag Structural Equation Modelling \\ with the R package dlsem}
 \author{Alessandro Magrini\\
-Dep. Statistics, Informatics, Applications\\
-University of Florence, Italy}
-\date{\texttt{dlsem} version 1.2.1 -- \today.}
+Dep. Statistics, Computer Science, Applications\\
+University of Florence, Italy\\
+<magrini@disia.unifi.it>}
+\date{\texttt{dlsem} version 1.3.0 -- \today.}
 
 
 
@@ -78,7 +79,7 @@ for structural equation models with second-order polynomial lag shapes.
 %Missing data are allowed and replaced by their expected value computed with
 In this vignette, the theory on distributed-lag structural equation
 modelling is presented in Section \ref{sec:theory}, then the practical
-use of \texttt{dlsem} is illustrated through worked examples in
+use of \texttt{dlsem} is illustrated through a worked example in
 Section \ref{sec:example}.
 Concluding remarks are pointed out in Section \ref{sec:conclu}.
 
@@ -246,6 +247,9 @@ to value $0$ at lag $b_j$ according to
 a quadratic function.
 We refer to $a_j$ as the \textit{gestation lag},
 and to $b_j-a_j$ as the \textit{lag width}.
+A second-order polynomial lag shape is monotonic
+in the sign, that is $\beta_{j,l}$ is either
+non-negative or non-positive for any $j$ and $l$.
 
 
 \begin{figure}[ht]
@@ -262,8 +266,8 @@ A distributed-lag linear regression model with
 second-order polynomial lag shapes is
 linear in parameters $\theta_j$ ($j=1,\ldots,J$), provided that
 parameters $a_j$ and $b_j$ ($j=1,\ldots,J$) are known.
-Thus, one can fit several models by applying ordinary
-least squares where the value of $a_j$ and $b_j$ is
+Thus, one can use ordinary least squares to estimate
+the parameters of several models where the value of $a_j$ and $b_j$ is
 varied within a grid of values, and then select the
 model with the best fit to data.
 See \cite{baltagi08} (Chapter 6) for further details
@@ -283,7 +287,15 @@ of unit root for all of them.
 
 Distributed-lag structural equation modelling (DLSEM) is an
 extension of SEM, where variables are related by distributed-lag
-linear regression models \cite{magrini16}.
+linear regression models with second-order polynomial lag shapes \cite{magrini16}.
+In DLSEM, the DAG does not explicitly include time lags but
+a special semantic holds:
+\begin{itemize}
+\item if an edge connects two variables, there is at
+least one time lag where the coefficient of the variable originating
+the edge in the regression model of the variable receiving the edge
+is non-zero.
+\end{itemize}
 DLSEM can be used to perform path analysis at different time lags
 by extending tracing rules reported in Subsection \ref{sub:sem}
 (see the box below).
@@ -335,8 +347,14 @@ A causal effect evaluated at a single lag is denoted as
 \textit{instantaneous} causal effect.
 The \textit{cumulative} causal effect at a prespecified lag,
 say $k$, is obtained by summing all the instantaneous causal
-effects sat each lag up to $k$.
+effects for each lag up to $k$.
 
+Parameter estimation in DLSEM can be performed by applying the method proposed
+in Subsection \ref{sub:dlaglm} to each regression model.
+An edge of the DAG is considered as statistically significant
+if there is at least one time lag where the estimate of the
+coefficient of the variable originating the edge in the regression
+model of the variable receiving the edge is statistically significant.
 
 
 \section{Distributed-lag structural equation modelling with dlsem}
@@ -345,19 +363,16 @@ effects sat each lag up to $k$.
 The practical use of package \texttt{dlsem} is illustrated
 by an application to impact assessment of research activity
 on European Agriculture.
-%Agricultural productivity is an important factor for
-%profitability and consumer surplus.
 It is widely acknowledged that research activity is
 effective in increasing productivity,
 however, it is also expected to improve profitability
 and consumer surplus independently from productivity.
-The goal is to test if the influence through time of
+Here, a distributed-lag structural
+equation model with DAG shown in Figure \ref{fig:dag0} is
+estimated from dataset $\mathsf{agres}$ in order to test
+whether the influence through time of
 research activity on profitability and consumer surplus
 is direct and/or mediated by productivity.
-In this section, the use of package \texttt{dlsem} is
-illustrated to address this research question by fitting a
-distributed-lag structural equation model with DAG
-shown in Figure \ref{fig:dag0} to dataset $\mathsf{agres}$.
 
 
 \begin{figure}[ht]
@@ -371,23 +386,25 @@ assessment of research activity on European Agriculture.
 \end{figure}
 
 
+Dataset $\mathsf{agres}$
+contains data for $10$ European countries (Austria, Germany, Spain, Finland,
+France, Ireland, Italy, Netherlands, Sweden, United Kingdom)
+in the period 1990-2010 from the EUROSTAT database
+(\url{http://ec.europa.eu/eurostat/data/database}).
+
 @
 <<echo=F>>=
 require(dlsem)
 @
 
-Dataset $\mathsf{agres}$ can be loaded using the command: 
-
+\small
 @
 <<echo=T>>=
 data(agres)
 summary(agres)
 @
+\normalsize
 
-It contains data for $10$ European countries (Austria, Germany, Spain, Finland,
-France, Ireland, Italy, Netherlands, Sweden, United Kingdom)
-in the period 1990-2010 from the EUROSTAT database
-(\url{http://ec.europa.eu/eurostat/data/database}).
 Variable $\mathsf{NPATENT}$ representing
 the number of Agriculture-related patent applications
 will be used as a proxy of research activity in Agriculture.
@@ -401,25 +418,29 @@ Variable $\mathsf{PPI}$ representing
 the price index of agricultural products
 will be used as a proxy of consumer surplus.
 
-The first step is to specify the model code containing
+
+\subsection{The model code}
+\label{sub:example1}
+
+The first step is the specification of the model code containing
 the hypothesized DAG and the lag shapes.
 The model code must be a list of formulas, one for each regression model.
-In each formula, the response must be a quantitative variable
+In each formula, the response and the covariates must be quantitative variables
 and operators $\mathsf{quec}(~)$ and $\mathsf{qdec}(~)$
-can be employed to specify an endpoint-constrained quadratic
-or a quadratic decreasing lag shape for any quantitative variables,
-respectively.
+can be employed to specify, respectively, an endpoint-constrained quadratic
+or a quadratic decreasing lag shape.
 Each of these operators has three arguments: the name of
 the variable to which the lag shape is applied,
 the minimum lag with a non-zero coefficient ($a_j$), and
 the maximum lag with a non-zero coefficient ($b_j$).
-The application of one of these two operators is not
-mandatory for all variables, although the group factor and
-context variables must not be specified in the model code
-(see below).
-The regression model for variables with no parents besides
-the group factor and context variables can be omitted from
-the model code.
+If none of these two operators is applied to a variable, it
+is assumed that the coefficient associated to
+that variable is $0$ for time lags greater than $0$ (no lag shape).
+The group factor and context variables must not be specified
+in the model code (see Subsection \ref{sub:example3}).
+The regression model for variables with no parents
+besides the group factor and context variables
+can be omitted from the model code.
 In this illustration, we assume an endpoint-constrained quadratic
 lag shape between 0 and 15 time lags for all variables:
 
@@ -432,7 +453,11 @@ mycode <- list(
   )
 @
 
-The second step is to specify control options.
+
+\subsection{Control options}
+\label{sub:example2}
+
+The second step is the specification of control options.
 Control options must be a named list containing one or more among
 several components.
 %A first component useful to specify is $\mathsf{L}$, a named
@@ -443,17 +468,19 @@ several components.
 %of the covariance matrix of estimates \cite{newey78} is applied.
 The key component is $\mathsf{adapt}$,
 a named vector of logical values where each value must refer to one
-response variable and indicates if, for each lag shape in the regression
-model of that variable, the minimum and the maximum lag with a non-zero
-coefficient must be adapted (selected on the basis of the best fit to data),
+response variable and indicates whether values $a_j$ and $b_j$
+for each lag shape in the regression model of that variable
+%the minimum and the maximum lag with a non-zero coefficient
+must be selected on the basis of the best fit to data,
 instead of employing the ones specified in the model code.
 If adaption is requested for a regression model, three further
 components are taken into account:
 $\mathsf{max.gestation}$, $\mathsf{min.width}$ and $\mathsf{sign}$.
-Each of these three components is a named list, where each component
-of the list must refer to one response variable and contain a named vector,
-including the maximum gestation lag, the minimum lag width and the
-sign (either '+' or '-') of the coefficients of one or more covariates.
+Each of these three components is a named list, where each component of
+the list must refer to one response variable and must be a named vector
+including, respectively, the maximum gestation lag, the minimum lag width
+and the sign (either '+' for non-negative, or '-' for non-positive) of
+the coefficients of one or more covariates.
 %
 %Note that the first and the second numerical arguments of operators
 %$\mathsf{quec}(~)$ and $\mathsf{qdec}(~)$ in the model code are taken
@@ -462,19 +489,15 @@ sign (either '+' or '-') of the coefficients of one or more covariates.
 %$\mathsf{quec}(X1,2,10)$ in the model code, gestation lags of
 %0 and 1, as well as lag width greater than 8 will not be considered in the selection.
 %
-Here, we choose to
+In this illustration, we choose to
 %not apply the Newey-West correction and to
 perform adaptation of lag shapes for all regression models
 with the following constraints:
 (i) maximum gestation lag of $3$ years,
 (ii) minimum lag width of $5$ years,
-(iii) all coefficients with positive sign, excepting the ones in the
+(iii) all coefficients with non-negative sign, excepting the ones in the
 regression model of the price index of agricultural products,
 as consumer surplus improves with the decreasing of prices:
-
-%Variables mentioned in the model code but not included in the dataset will be considered as %unobserved.
-%If there is at least one unobserved variable, imputation using EM will be performed whatever %the value of argument \code{imputation}.
-%\note{Model indentification is not checked. Standard error and confidence intervals may be %uncorrect if the model is not identified.}
 
 @
 <<echo=T>>=
@@ -489,15 +512,22 @@ mycontrol <- list(
   )
 @
 
-Once model code and control options are specified, the
-structural model can be fitted using the command $\mathsf{dlsem}(~)$.
+
+\subsection{Estimation}
+\label{sub:example3}
+
+Once the model code and control options are specified, the
+structural model can be estimated from data using the command $\mathsf{dlsem}(~)$.
 The user can indicate a group factor to argument $\mathsf{group}$
 and one or more context variables to argument $\mathsf{context}$.
-By providing the group factor, one intercept for each level
+By indicating the group factor, one intercept for each level
 of the group factor will be estimated in each regression model.
-By providing context variables, they will be included as covariates
+By indicating context variables, they will be included as covariates
 in each regression model in order to eliminate spurious
 effects due to differences between the levels of the group factor.
+Each context variable can be either qualitative or quantitative
+and its coefficient in each regression
+model is $0$ for time lags greater than $0$ (no lag shape).
 Furthermore, the user can decide to perform any number of the following
 operations:
 \begin{itemize}
@@ -509,13 +539,13 @@ for all the quantitative variables
 using the Expectation-Maximization algorithm \cite{dempster77}
 (by setting argument $\mathsf{imputation}$ to $\mathsf{TRUE}$);
 \item apply the logarithmic transformation to all quantitative variables
-in order to interpret each regression coefficient as an elasticity
+in order to interpret each coefficient as an elasticity
 (by setting argument $\mathsf{log}$ to $\mathsf{TRUE}$).
 \end{itemize}
 %(approximatively) as the percentage increase in the value
 %of the response variable for $1\%$ increase in the value
 %of a covariate (elasticity)
-Here we consider the country as group factor, provide
+In this illustration, we indicate the country as the group factor,
 gross domestic product and average farm size as context variables,
 allow differentiation until stationarity, imputation
 of missing values and logarithmic transformation for all
@@ -527,56 +557,61 @@ mod0 <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),
   data=agres,control=mycontrol,uniroot.check=T,imputation=T,log=T)
 @
 
-%First order differentiation was needed to obtain the
-%rejection of the hypothesis of unit root for all variables.
-
-After fitting the structural model, the user can display the DAG
-including only the edges associated to statistically
-significant estimates of regression coefficients, coloured
-according to the sign of the estimates (green for positive, red for negative):
+After estimating the structural model, the user can display the DAG
+including only statistically significant edges.
 
 @
 <<echo=T,eval=F>>=
 plot(mod0)
 @
 
-The result is shown in Figure \ref{fig:dag1}.
+The result is shown in Figure \ref{fig:dag1}:
+each edge is coloured according to the sign of its causal effect
+(green for non-negative, red for non-positive), while
+the group factor and context variables are omitted from the DAG.
 
 
 \begin{figure}[ht]
 \centering
 \includegraphics[scale=1]{figures/dag1.pdf}
-\caption{The DAG showing only the edges associated to statistically
-significant estimates of regression coefficients.
-Positive regression coefficients are shown in green.
-Negative regression coefficients are shown in red.}
+\caption{The DAG including only statistically significant edges.
+Green: non-negative causal effect. Red: non-positive causal effect.}
 \label{fig:dag1}
 \end{figure}
 
 
-We see that all edges are associated to statistically significant
-coefficients, excepting the one linking research activity to profitability.
+We see that all edges are statistically significant,
+excepting the one linking research activity to profitability.
 This provides evidence that the effect of research activity on
 consumer surplus is both direct and mediated by productivity,
 and the effect of research activity on profitability is
 only mediated by productivity.
 
-The user can also request the summary of model fitting:
+The user can also request the summary of estimation:
 
+\small
 @
 <<echo=T>>=
 summary(mod0)
 @
+\normalsize
 
-The summary of model fitting returns estimates of parameters $\theta_j$ ($j=1,\ldots,J$).
+~\\
+The summary of estimation returns estimates of parameters $\theta_j$ ($j=1,\ldots,J$).
 Instead, the command $\mathsf{edgeCoeff}(~)$ can be used to obtain estimates
-and confidence intervals of regression coefficients at the relevant time lags
+and confidence intervals of coefficients at the relevant time lags
 $\beta_{j,l}$ ($j=1,\ldots,J$; $l=0,1,\ldots$):
 
+\small
 @
 <<echo=T>>=
 edgeCoeff(mod0)
 @
+\normalsize
+
+
+\subsection{Path analysis}
+\label{sub:example4}
 
 Path analysis can be performed using the command $\mathsf{pathAnal}(~)$.
 The user must specify one or more starting variables (argument $\mathsf{from}$)
@@ -587,11 +622,13 @@ otherwise all the relevant ones are considered.
 Also, the user can choose whether instantaneous 
 (argument $\mathsf{cumul}$ set to $\mathsf{FALSE}$, the default)
 or cumulative (argument $\mathsf{cumul}$ set to $\mathsf{TRUE}$)
-coefficients must be returned.
-Here we perform path analysis from research activity to profitability
-and consumer surplus at time lags 5, 10, 15, 20 and 25, requesting
-cumulative coefficients:
+causal effects must be returned.
+Here we perform two path analysis tasks: one from research activity to profitability
+and the other from research activity to consumer surplus.
+For both, we focus on time lags 5, 10, 15, 20 and 25, and request
+cumulative causal effects:
 
+\small
 @
 <<echo=T>>=
 pathAnal(mod0,from="NPATENT",to="ENTR_INCOME",lag=c(5,10,15,20,25),cumul=T)
@@ -601,24 +638,25 @@ pathAnal(mod0,from="NPATENT",to="ENTR_INCOME",lag=c(5,10,15,20,25),cumul=T)
 <<echo=T>>=
 pathAnal(mod0,from="NPATENT",to="PPI",lag=c(5,10,15,20,25),cumul=T)
 @
+\normalsize
 
 ~\\
 The output of path analysis is a list of matrices, each containing
-estimates and confidence intervals of the coefficient associate to
+estimates and confidence intervals of the causal effect associated to
 each path connecting the starting variables to the ending variable
 at the requested time lags.
-Also, estimates and confidence intervals of the overall coefficient
+Also, estimates and confidence intervals of the overall causal effect
 is shown in the component named $\mathsf{overall}$.
 %and potential confounders of the overall causal effect \cite{pearl09} are listed
 %in the component named $\mathsf{confounders}$.
 
 Since the logarithmic trasformation was applied to all quantitative
-variables, coefficients above are interpreted as elasticities,
+variables, causal effects above are interpreted as elasticities,
 that is, for a $1\%$ of patent applications more,
 profitability and consumer surplus are expected to grow
 by $6.6\%$ and $1.8\%$, respectively, after 25 years.
 
-The estimated lag shape associated to any overall causal
+The estimated lag shape associated to an overall causal
 effect can be displayed using the command $\mathsf{lagPlot}(~)$:
 
 @
@@ -652,21 +690,17 @@ $95\%$ confidence intervals are shown in grey.}
 
 Package \texttt{dlsem} is conceived to perform impact analysis,
 that is the quantitative assessment of the consequences on a
-system due to an investment.
-%In recent years, impact analysis has been applied to evaluate
-%research expenditure (both at government and corporate level)
-%and health policy.
+system due to an internal or external impulse, using distributed-lag
+structural equation modelling with second-order polynomial lag shapes.
+Second-order polynomial lag shapes have several advantages, including
+simplicity of estimation and a clear interpretation of parameters for
+domain experts.
 The illustration proposed in this tutorial applies impact analysis
 to a simplified problem of agricultural economics.
 The model here proposed can be extended by considering research
-investment as a parent of research activities, besides a larger
+investment as a direct cause of research activity, as well as a larger
 number variables to better measure the macroeconomic state of
 the system.
-
-Future implementation of package \texttt{dlsem} will include
-a graphical user interface allowing the user to exploit any
-of the implemented functionalities without writing R code.
-
 
 
 

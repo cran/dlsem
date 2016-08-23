@@ -1,4 +1,4 @@
-export(applyDiff, unirootTest, EM.imputation, dlaglm, dlsem, lagPlot, isIndep, edgeCoeff, pathAnal, fitIndices)
+export(applyDiff, unirootTest, EM.imputation, dlsem, lagPlot, isIndep, edgeCoeff, pathAnal, fitIndices)
 
 S3method(print, dlsem)
 S3method(summary, dlsem)

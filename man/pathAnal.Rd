@@ -14,7 +14,9 @@
 \value{A list containing one matrix for each path between the starting variables and the ending variable and one matrix for the overall coefficient. %, and a character vector.
 Each matrix contains point estimate and asymptotic \code{conf}*100\% confidence interval for the associated coefficient at each requested time lag.}
 %The character vector contains the names of the variables counfounding the relationship, thus the overall coefficient at each lag should be interpreted at constant values of those variables.
-\note{This is an extension of trace rules for classical path analysis (Wright, 1934; Pearl, 2012) to distributed-lag structural equation models.}
+\note{This is an extension of trace rules for classical path analysis (Wright, 1934; Pearl, 2012).
+%to distributed-lag structural equation models with second-order polynomial lag shapes.
+}
 \references{
 J. Pearl (2012). The Causal Foundations of Structural Equation Modelling. In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY.
 

@@ -1,7 +1,7 @@
 \name{dlsem}
 \alias{dlsem}
-\title{Distributed-Lag Structural Equation Modelling.}
-\description{Fit a distributed-lag structural equation model with second-order polynomial lag shapes.}
+\title{Distributed-lag structural equation modelling}
+\description{Estimation of a distributed-lag structural equation model with second-order polynomial lag shapes from data.}
 \usage{dlsem(model.code, group = NULL, context = NULL, data, log = FALSE, control = NULL,
   uniroot.check = TRUE, imputation = TRUE, test = "adf", combine = "choi", k = 0,
   lshort = TRUE, maxdiff = 5, tol = 0.0001, maxit = 500, plotDir = NULL)}
@@ -10,8 +10,8 @@
   \item{group}{The name of the group factor (optional). If \code{NULL}, no groups are considered.}
   \item{context}{The name of context variables (optional). Context variables never appear on the right side of an equation and are not lagged.}  
   \item{data}{An object of class \code{data.frame} containing the variables included in the model.}
-  \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to numerical variables. Default is \code{FALSE}.}
-  \item{control}{A list containing various options for the fitting. See \code{Details}.}
+  \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to quantitative variables. Default is \code{FALSE}.}
+  \item{control}{A list containing options for estimation. See \code{Details}.}
   %\item{criterion}{The criterion for model selection, that can be either \code{"p.value"} to minimise the p-value, or \code{"aic"} to minimise the Akaike Information Criterion (AIC). Default is \code{"p.value"}.}
   \item{uniroot.check}{Logical. If \code{TRUE}, unit root test is performed for each variable, and appropriate differentation is applied. Default is \code{FALSE}.}
   \item{imputation}{Logical. If \code{TRUE}, missing data will be imputed using the EM algorithm. Default is \code{FALSE}.}
@@ -42,6 +42,8 @@ Each operator must have the following three arguments (provided within brackets)
 
 For example, \code{quec(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15).
 The formula of regression models with no covariates excepting context variables can be omitted from argument \code{model.code}.
+Variables appearing in any formula are treated as quantitative.
+The group factor and context variables must appear in no formulas.
 
 Argument \code{control} must be a named list containing one or more among the following components:
 
@@ -56,13 +58,13 @@ Argument \code{control} must be a named list containing one or more among the fo
 - \code{min.width}: a named list. Each component of the list must refer to one response variable and contain a named vector, including the minimum lag width for one or more covariates.
   Ignored if \code{adapt}=\code{FALSE} for a certain covariate.
 
-- \code{sign}: a named list. Each component of the list must refer to one response variable and contain a named vector, including the sign (either '+' or '-') of the coefficients of one or more covariates.
-  Ignored if \code{adapt}=\code{FALSE} for a certain covariate.
+- \code{sign}: a named list. Each component of the list must refer to one response variable and contain a named vector, including the sign
+  (either '+' for non-negative, or '-' for non-positive) of the coefficients of one or more covariates. Ignored if \code{adapt}=\code{FALSE} for a certain covariate.
 %
 %For the last three components, values associated to covariates without a lag specification
-%or to variables not mentioned in the model code will be ignored.
+%or to variables not appearing in the model code will be ignored.
 
-Variables mentioned in the model code but not included in the dataset will be considered as unobserved.
+Variables appearing in the model code but not included in the dataset will be considered as unobserved.
 If there is at least one unobserved variable, imputation using EM will be performed whatever the value of argument \code{imputation}.
 }
 \note{Model indentification is not checked. Standard error and confidence intervals may be uncorrect if the model is not identified.}
@@ -71,11 +73,14 @@ If there is at least one unobserved variable, imputation using EM will be perfor
   \item{model.code}{The model code.}
   \item{context}{The names of context variables.}
   \item{group}{The name of the group factor. \code{NULL} is returned if \code{group}=\code{NULL}.}
-  \item{data}{The data used for model fitting.}
+  \item{data}{The data used for estimation.}
 S3 methods available for class \code{dlsem} are:
   \item{print}{provides essential information on the structural model.}
-  \item{summary}{shows summaries of model fitting.}
-  \item{plot}{displays the directed acyclic graph of the structural model. The method contains a further argument:
+  \item{summary}{shows summaries of estimation.}
+  \item{plot}{displays the directed acyclic graph including only statistically significant edges
+  (an edge is statistically significant if there is at least one time lag where the coefficient of
+  the variable originating the edge in the regression model of the variable receiving the edge
+  is statistically significant). The method contains a further argument:
   \code{sign.col}, a logical value indicating whether edges should be coloured with respect to their sign (green: positive, red: negative. Default is \code{TRUE}).}
   \item{fitted}{returns fitted values.}
   \item{residuals}{returns residuals.}
@@ -93,7 +98,7 @@ W. K. Newey, and K. D. West (1978). A Simple, Positive Semi-Definite, Heterosked
 \examples{
 data(agres)
 
-# fitting without control options
+# estimation without control options
 mycode <- list(
   GVA~quec(NPATENT,1,15),
   PPI~quec(NPATENT,0,13)+quec(GVA,0,14),
@@ -103,7 +108,7 @@ myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
   uniroot.check=TRUE,imputation=FALSE,log=TRUE)
 
 
-### adaptation of lag shapes: not RUN
+### adaptation of lag shapes (may take some seconds more)
 ## model code
 #mycode <- list(
 #  GVA~quec(NPATENT,0,15),
@@ -123,9 +128,9 @@ myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
 #  control=mycontrol,uniroot.check=TRUE,imputation=TRUE,log=TRUE)
 
 
-# summaries of model fitting
+# summaries of estimation
 summary(myfit)
 
-# the directed acyclic graph of the structural model
+# display the DAG with significant edges only
 plot(myfit)
 }

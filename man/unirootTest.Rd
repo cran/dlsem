@@ -1,11 +1,11 @@
 \name{unirootTest}
 \alias{unirootTest}
 \title{Unit root test}
-\description{Perform unit root test on a numerical variable. A single group factor may be taken into account.}
+\description{Perform unit root test on a quantitative variable. A single group factor may be taken into account.}
 \usage{unirootTest(x, group = NULL, time = NULL, data, test = "adf", combine = "choi",
   k = 0, lshort = TRUE)}
 \arguments{
-  \item{x}{The name of the numerical variable to be tested.}
+  \item{x}{The name of the quantitative variable to be tested.}
   \item{group}{The name of a group factor (optional). If \code{NULL}, no groups are considered.}
   \item{time}{The name of a time factor (optional). If \code{NULL} and \code{group} is not \code{NULL}, data are assumed temporally ordered within each group.
   If both \code{group} and \code{time} are \code{NULL}, data are assumed temporally ordered.}
@@ -40,7 +40,7 @@
   S. E. Said, and D. A. Dickey (1984). Testing for Unit Roots in Autoregressive-Moving Average Models of Unknown Order. \emph{Biometrika}, 71, 599-607.
 }
 \author{Alessandro Magrini <magrini@disia.unifi.it>}
-\seealso{\link{applyDiff}}
+\seealso{\link{applyDiff}, \link{EM.imputation}}
 \examples{
 data(agres)
 unirootTest("NPATENT",group="COUNTRY",data=agres,k=1)
