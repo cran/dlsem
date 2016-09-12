@@ -2,13 +2,13 @@
 \alias{dlsem}
 \title{Distributed-lag structural equation modelling}
 \description{Estimation of a distributed-lag structural equation model with second-order polynomial lag shapes from data.}
-\usage{dlsem(model.code, group = NULL, context = NULL, data, log = FALSE, control = NULL,
+\usage{dlsem(model.code, group = NULL, exogenous = NULL, data, log = FALSE, control = NULL,
   uniroot.check = TRUE, imputation = TRUE, test = "adf", combine = "choi", k = 0,
   lshort = TRUE, maxdiff = 5, tol = 0.0001, maxit = 500, plotDir = NULL)}
 \arguments{
   \item{model.code}{A list of objects of class \code{formula}, each describing a single regression model. See \code{Details}.}
   \item{group}{The name of the group factor (optional). If \code{NULL}, no groups are considered.}
-  \item{context}{The name of context variables (optional). Context variables never appear on the right side of an equation and are not lagged.}  
+  \item{exogenous}{The name of exogenous variables (optional). Exogenous variables never appear on the left side of an equation and are not lagged.}  
   \item{data}{An object of class \code{data.frame} containing the variables included in the model.}
   \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to quantitative variables. Default is \code{FALSE}.}
   \item{control}{A list containing options for estimation. See \code{Details}.}
@@ -41,9 +41,9 @@ Each operator must have the following three arguments (provided within brackets)
 3) the maximum lag with a non-zero coefficient.
 
 For example, \code{quec(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15).
-The formula of regression models with no covariates excepting context variables can be omitted from argument \code{model.code}.
+The formula of regression models with no covariates excepting exogenous variables can be omitted from argument \code{model.code}.
 Variables appearing in any formula are treated as quantitative.
-The group factor and context variables must appear in no formulas.
+The group factor and exogenous variables must appear in no formulas.
 
 Argument \code{control} must be a named list containing one or more among the following components:
 
@@ -71,7 +71,7 @@ If there is at least one unobserved variable, imputation using EM will be perfor
 \value{An object of class \code{dlsem}, with the following components:
   \item{estimate}{A list of objects of class \code{lm}, one for each response variable.}
   \item{model.code}{The model code.}
-  \item{context}{The names of context variables.}
+  \item{exogenous}{The names of exogenous variables.}
   \item{group}{The name of the group factor. \code{NULL} is returned if \code{group}=\code{NULL}.}
   \item{data}{The data used for estimation.}
 S3 methods available for class \code{dlsem} are:
@@ -104,7 +104,7 @@ mycode <- list(
   PPI~quec(NPATENT,0,13)+quec(GVA,0,14),
   ENTR_INCOME~quec(NPATENT,0,14)+quec(GVA,1,14)
   )
-myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
+myfit <- dlsem(mycode,group="COUNTRY",exogenous=c("GDP","FARM_SIZE"),data=agres,
   uniroot.check=TRUE,imputation=FALSE,log=TRUE)
 
 
@@ -124,7 +124,7 @@ myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
 #  sign=list(GVA=c(NPATENT="+"),PPI=c(NPATENT="-",GVA="-"),ENTR_INCOME=c(NPATENT="+",GVA="+"))
 #  )
 #
-#myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),data=agres,
+#myfit <- dlsem(mycode,group="COUNTRY",exogenous=c("GDP","FARM_SIZE"),data=agres,
 #  control=mycontrol,uniroot.check=TRUE,imputation=TRUE,log=TRUE)
 
 

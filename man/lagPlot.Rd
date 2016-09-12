@@ -27,7 +27,7 @@ mycode <- list(
   PPI~quec(NPATENT,0,13)+quec(GVA,0,14),
   ENTR_INCOME~quec(NPATENT,0,14)+quec(GVA,1,14)
   )
-myfit <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),
+myfit <- dlsem(mycode,group="COUNTRY",exogenous=c("GDP","FARM_SIZE"),
   data=agres,uniroot.check=TRUE,imputation=FALSE,log=TRUE)
 
 # the lag shape associated to specific paths

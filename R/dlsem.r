@@ -839,7 +839,7 @@ simpleLagPlot <- function(model,from=NULL,to=NULL,maxlag=NULL,cumul=FALSE,conf=0
   }
 
 # fit a distributed-lag SEM
-dlsem <- function(model.code,group=NULL,context=NULL,data,log=FALSE,control=NULL,uniroot.check=TRUE,imputation=TRUE,test="adf",combine="choi",k=0,lshort=TRUE,maxdiff=5,tol=0.0001,maxit=500,plotDir=NULL) {
+dlsem <- function(model.code,group=NULL,exogenous=NULL,data,log=FALSE,control=NULL,uniroot.check=TRUE,imputation=TRUE,test="adf",combine="choi",k=0,lshort=TRUE,maxdiff=5,tol=0.0001,maxit=500,plotDir=NULL) {
   if(sum(sapply(model.code,class)!="formula")>0) stop("Argument 'model code' must be a list of formulas")
   if(!is.null(control) && !is.list(control)) stop("Argument 'control' must be a list") 
   if(uniroot.check==T) {
@@ -881,7 +881,7 @@ dlsem <- function(model.code,group=NULL,context=NULL,data,log=FALSE,control=NULL
       names(pset)[length(pset)] <- auxadd[i]
       }
     }
-  auxvar <- setdiff(c(nodenam,context),colnames(data))
+  auxvar <- setdiff(c(nodenam,exogenous),colnames(data))
   if(length(auxvar)>0) {
     data[,auxvar] <- as.numeric(rep(NA,nrow(data)))
     cat(paste("Unobserved variables: ",paste(auxvar,collapse=", "),sep=""),"\n")
@@ -913,7 +913,7 @@ dlsem <- function(model.code,group=NULL,context=NULL,data,log=FALSE,control=NULL
   if("sign" %in% names(control)) {
     if(!is.list(control[["sign"]])) stop("Component 'sign' of argument 'control' must be a list")
     }
-  nodenam <- c(context,topG)
+  nodenam <- c(exogenous,topG)
   if(log==T) {
     nolog <- c()
     for(i in 1:length(nodenam)) {
@@ -985,10 +985,10 @@ dlsem <- function(model.code,group=NULL,context=NULL,data,log=FALSE,control=NULL
       cat('\r',auxmess)
       }
     flush.console()
-    if(is.null(context)) {
+    if(is.null(exogenous)) {
       iform <- paste(model.code[[i]])
       } else {
-      iform <- formula(paste(paste(as.character(model.code[[i]])[c(2,1,3)],collapse=""),"+",paste(context,collapse="+"),sep=""))
+      iform <- formula(paste(paste(as.character(model.code[[i]])[c(2,1,3)],collapse=""),"+",paste(exogenous,collapse="+"),sep=""))
       }                           
     if("L" %in% names(control)) {
       if(nomi[i] %in% names(control[["L"]])) {
@@ -1081,7 +1081,7 @@ dlsem <- function(model.code,group=NULL,context=NULL,data,log=FALSE,control=NULL
     }
   cat("\n")
   names(res) <- nomi        
-  out <- list(estimate=res,model.code=unname(model.code),context=context,group=group,data=data)
+  out <- list(estimate=res,model.code=unname(model.code),exogenous=exogenous,group=group,data=data)
   class(out) <- "dlsem"
   out
   }
@@ -1916,9 +1916,9 @@ pathAnal <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
   if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'")
   auxcheck <- setdiff(c(from,to),names(x$estimate))
   if(length(auxcheck)>0) {
-    auxcntx <- intersect(auxcheck,x$context)
+    auxcntx <- intersect(auxcheck,x$exogenous)
     if(length(auxcntx)>0) {
-      stop("Path analysis with context variables is not allowed")
+      stop("Exogenous variables cannot be involved in path analysis")
       } else {
       stop("Unknown variable: ",paste(auxcheck,collapse=", "))
       }

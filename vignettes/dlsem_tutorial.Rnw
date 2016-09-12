@@ -25,12 +25,12 @@
 %@
 
 
-\title{Distributed-Lag Structural Equation Modelling \\ with the R package dlsem}
+\title{Distributed-Lag Structural Equation Modelling \\ with the R Package dlsem}
 \author{Alessandro Magrini\\
 Dep. Statistics, Computer Science, Applications\\
 University of Florence, Italy\\
 <magrini@disia.unifi.it>}
-\date{\texttt{dlsem} version 1.3.0 -- \today.}
+\date{\texttt{dlsem} version 1.3.1 -- \today.}
 
 
 
@@ -76,8 +76,39 @@ University of Florence, Italy\\
 
 Package \texttt{dlsem} implements estimation and path analysis functionalities
 for structural equation models with second-order polynomial lag shapes.
-%Missing data are allowed and replaced by their expected value computed with
-In this vignette, the theory on distributed-lag structural equation
+
+The main idea behind structural equation modelling (SEM, \cite{kline00})
+is to perform a quantitative assessment
+of the dependence relationships among the considered variables,
+which is subsequently employed to perform path analysis, that is the
+decomposition of the causal effect of any variable on another.
+
+Here, an extension of SEM, called Distributed-lag structural equation modelling (DLSEM),
+is proposed to account for temporal
+delays in the dependence relationships among the variables.
+This topic is of great interest in econometric problems,
+as problem domains are typically dynamic and traditional (static)
+path analysis cannot be applied.
+However, there is no consensus on the formal specification
+of lag relationships to be applied,
+as a given application typically requires to take into
+account specific domain knowledge.
+%
+%there is no widely accepted methodology so far
+%due to two main issues: problema dell'attribuzione (in senso causale) e della stima del lag.
+%
+%DLSEM can be employed to perform path analysis, that is the
+%decomposition of the causal effect of any variable on another,
+%at different time lags.
+%
+DLSEM consists in enhancing linear regression models with
+second order polynomial lag shapes \cite[Chapter 6]{baltagi08}.
+One one hand, second-order polynomial lag shapes are simple to be estimated,
+and, on the other hand, the interpretation of parameters is clear for
+domain experts, thus prior knowledge can be taken into account in
+statistical analyses by introducing simple mathematical constraints.
+
+In this vignette, theory on distributed-lag structural equation
 modelling is presented in Section \ref{sec:theory}, then the practical
 use of \texttt{dlsem} is illustrated through a worked example in
 Section \ref{sec:example}.
@@ -96,14 +127,22 @@ An Application to Impact Assessment of Research Activity on European Agriculture
 \section{Theory}
 \label{sec:theory}
 
-Distributed-lag structural equation modelling
-was firstly formalised by \cite{magrini16} as
-a combination of structural equation modelling
-(for example, \cite{kline00})
-and distributed-lag linear regression \cite{baltagi08}.
-In this chapter, theory on structural equation modelling
-and distributed-lag linear regression is briefly reported
-before presenting distributed-lag structural equation modelling.
+In this section, theory on structural equation modelling (Subsection \ref{sub:sem})
+and distributed-lag linear regression (Subsection \ref{sub:dlaglm})
+is briefly reported before detailing distributed-lag structural equation modelling
+(Subsection \ref{sub:dlsem}).
+The accounting of clustering and exogenous variables is also addressed
+(Subsection \ref{sub:context}).
+
+%Distributed-lag structural equation modelling
+%was firstly formalised by \cite{magrini16} as
+%a combination of structural equation modelling
+%(for example, \cite{kline00})
+%and distributed-lag linear regression \cite[Chapter 6]{baltagi08}.
+%In this chapter, theory on structural equation modelling
+%and distributed-lag linear regression is briefly reported
+%before providing the formal definition of
+%distributed-lag structural equation modelling.
 
 
 \subsection{Structural equation modelling}
@@ -143,8 +182,14 @@ V_m=f_m(\Pi_m)
 where $V_j=f_j(\Pi_j)$ is the equation describing
 the linear regression model where $V_j$ is the response %dependent
 variable and its parents in the DAG are the covariates. %independent variables.
+Parameter estimation in SEM can be performed by applying ordinary least
+squares to each regression model.
+An edge of the DAG is considered as statistically significant
+if the estimate of the coefficient of the variable originating
+the edge in the regression model of the variable receiving the edge
+is statistically significant.
 A comprehensive review of SEM can be found in \cite{kline00}.
-%Causal inference using SEM is described by \cite{pearl09,pearl12}.
+
 
 \begin{figure}[ht]
 \centering
@@ -153,9 +198,10 @@ A comprehensive review of SEM can be found in \cite{kline00}.
 \label{fig:dagsam}
 \end{figure}
 
-An important utility of SEM is path analysis, that is the
+
+SEM can be employed to perform path analysis, that is the
 decomposition of the causal effect of any variable on another.
-Path analysis can be performed according to trace rules
+Path analysis in SEM must follow some tracing rules
 developed by \cite{wright34} (see also \cite{pearl12}):
 \begin{itemize}
 \item the causal effect associated to each edge in the DAG
@@ -182,7 +228,7 @@ The causal effect associated to the third path is the
 coefficient of $V_3$ in the regression model of $V_5$
 multiplied by the coefficient of $V_5$ in the regression
 model of $V_6$, say $\beta_{5|3} \cdot \beta_{6|5}$.
-The overal causal effect of $V_3$ on $V_6$ is the sum
+The overall causal effect of $V_3$ on $V_6$ is the sum
 of the causal effect associated to each of the three
 paths above, say $\beta_{6|3}+\beta_{4|3} \cdot \beta_{6|4}+\beta_{5|3} \cdot \beta_{6|5}$.
 
@@ -270,7 +316,7 @@ Thus, one can use ordinary least squares to estimate
 the parameters of several models where the value of $a_j$ and $b_j$ is
 varied within a grid of values, and then select the
 model with the best fit to data.
-See \cite{baltagi08} (Chapter 6) for further details
+See \cite[Chapter 6]{baltagi08} for further details
 on distributed-lag linear regression.
 
 Note that neither the response variable nor
@@ -296,7 +342,7 @@ least one time lag where the coefficient of the variable originating
 the edge in the regression model of the variable receiving the edge
 is non-zero.
 \end{itemize}
-DLSEM can be used to perform path analysis at different time lags
+DLSEM can be employed to perform path analysis at different time lags
 by extending tracing rules reported in Subsection \ref{sub:sem}
 (see the box below).
 
@@ -336,13 +382,6 @@ by extending tracing rules reported in Subsection \ref{sub:sem}
 \vspace{.25cm}
 
 
-%The substancial difference between the original and the extended
-%tracing rules is in the computation of the causal effect associated
-%to a directed path at a certain lag, which requires to take into
-%account not simply the causal effect of each edge at that lag, but
-%all the causal effects of each edge such that the sum of the
-%respective lags equates that lag.
-
 A causal effect evaluated at a single lag is denoted as
 \textit{instantaneous} causal effect.
 The \textit{cumulative} causal effect at a prespecified lag,
@@ -357,6 +396,40 @@ coefficient of the variable originating the edge in the regression
 model of the variable receiving the edge is statistically significant.
 
 
+\subsection{Clustering and exogenous variables}
+\label{sub:context}
+
+In econometric problems, data are often clustered into groups sharing
+similar features (e.g., productive or territorial units) and a number of
+exogenous variables (e.g., context variables and external drivers)
+must be considered to avoid bias in the estimates (endogeneity).
+
+In DLSEM, clustering can be taken into account by using
+the fixed effect or the random effect approach.
+In the fixed effect approach, an intercept is estimated
+for each cluster in each regression model, while
+in the random effect approach intercepts are
+Gaussian random variables sharing the same variance.
+The convenience of using one approach rather than the
+other depends on the case at hand: random effects
+allow the generalization of the model to new clusters,
+but their estimate tends to have high variance when the
+number of clusters %and/or the sample size for each cluster
+is small, and the omission of second-level covariates
+(i.e., constant within clusters) may involve bias
+in the estimate of regression coefficients
+(second-level endogeneity).
+See \cite[Chapter 14]{dougherty11} for a comparison.
+
+Similarly, exogenous variables can be included in DLSEM
+as non-lagged cova\-riates in each regression model,
+and they may be qualitative or quantitative.
+Dummy variables identifying clusters and exogenous variables
+are not shown in the DAG and they are not involved in path
+analysis, but the results of path analysis are net of their
+influence.
+
+
 \section{Distributed-lag structural equation modelling with dlsem}
 \label{sec:example}
 
@@ -366,7 +439,7 @@ on European Agriculture.
 It is widely acknowledged that research activity is
 effective in increasing productivity,
 however, it is also expected to improve profitability
-and consumer surplus independently from productivity.
+and consumer surplus independently from productivity \cite{renkow11,walker08}.
 Here, a distributed-lag structural
 equation model with DAG shown in Figure \ref{fig:dag0} is
 estimated from dataset $\mathsf{agres}$ in order to test
@@ -435,11 +508,11 @@ the minimum lag with a non-zero coefficient ($a_j$), and
 the maximum lag with a non-zero coefficient ($b_j$).
 If none of these two operators is applied to a variable, it
 is assumed that the coefficient associated to
-that variable is $0$ for time lags greater than $0$ (no lag shape).
-The group factor and context variables must not be specified
+that variable is $0$ for time lags greater than $0$ (no lag).
+The group factor and exogenous variables must not be specified
 in the model code (see Subsection \ref{sub:example3}).
 The regression model for variables with no parents
-besides the group factor and context variables
+besides the group factor and exogenous variables
 can be omitted from the model code.
 In this illustration, we assume an endpoint-constrained quadratic
 lag shape between 0 and 15 time lags for all variables:
@@ -519,15 +592,15 @@ mycontrol <- list(
 Once the model code and control options are specified, the
 structural model can be estimated from data using the command $\mathsf{dlsem}(~)$.
 The user can indicate a group factor to argument $\mathsf{group}$
-and one or more context variables to argument $\mathsf{context}$.
+and one or more exogenous variables to argument $\mathsf{exogenous}$.
 By indicating the group factor, one intercept for each level
 of the group factor will be estimated in each regression model.
-By indicating context variables, they will be included as covariates
-in each regression model in order to eliminate spurious
+By indicating exogenous variables, they will be included as
+non-lagged covariates in each regression model, in order to eliminate spurious
 effects due to differences between the levels of the group factor.
-Each context variable can be either qualitative or quantitative
+Each exogenous variable can be either qualitative or quantitative
 and its coefficient in each regression
-model is $0$ for time lags greater than $0$ (no lag shape).
+model is $0$ for time lags greater than $0$ (no lag).
 Furthermore, the user can decide to perform any number of the following
 operations:
 \begin{itemize}
@@ -536,6 +609,8 @@ hypothesis of unit root is rejected by the Dickey-Fuller test
 for all the quantitative variables
 (by setting argument $\mathsf{uniroot.check}$ to $\mathsf{TRUE}$);
 \item imputation of missing values for quantitative variables
+%missing data are replaced with their conditional expected value
+%under a Multivariate Gaussian distribution, computed
 using the Expectation-Maximization algorithm \cite{dempster77}
 (by setting argument $\mathsf{imputation}$ to $\mathsf{TRUE}$);
 \item apply the logarithmic transformation to all quantitative variables
@@ -546,14 +621,14 @@ in order to interpret each coefficient as an elasticity
 %of the response variable for $1\%$ increase in the value
 %of a covariate (elasticity)
 In this illustration, we indicate the country as the group factor,
-gross domestic product and average farm size as context variables,
+gross domestic product and average farm size as exogenous variables,
 allow differentiation until stationarity, imputation
 of missing values and logarithmic transformation for all
 quantitative variables:
 
 @
 <<echo=T>>=
-mod0 <- dlsem(mycode,group="COUNTRY",context=c("GDP","FARM_SIZE"),
+mod0 <- dlsem(mycode,group="COUNTRY",exogenous=c("GDP","FARM_SIZE"),
   data=agres,control=mycontrol,uniroot.check=T,imputation=T,log=T)
 @
 
@@ -568,7 +643,7 @@ plot(mod0)
 The result is shown in Figure \ref{fig:dag1}:
 each edge is coloured according to the sign of its causal effect
 (green for non-negative, red for non-positive), while
-the group factor and context variables are omitted from the DAG.
+the group factor and exogenous variables are omitted from the DAG.
 
 
 \begin{figure}[ht]
@@ -647,8 +722,6 @@ each path connecting the starting variables to the ending variable
 at the requested time lags.
 Also, estimates and confidence intervals of the overall causal effect
 is shown in the component named $\mathsf{overall}$.
-%and potential confounders of the overall causal effect \cite{pearl09} are listed
-%in the component named $\mathsf{confounders}$.
 
 Since the logarithmic trasformation was applied to all quantitative
 variables, causal effects above are interpreted as elasticities,
@@ -692,16 +765,25 @@ Package \texttt{dlsem} is conceived to perform impact analysis,
 that is the quantitative assessment of the consequences on a
 system due to an internal or external impulse, using distributed-lag
 structural equation modelling with second-order polynomial lag shapes.
-Second-order polynomial lag shapes have several advantages, including
-simplicity of estimation and a clear interpretation of parameters for
-domain experts.
-The illustration proposed in this tutorial applies impact analysis
-to a simplified problem of agricultural economics.
-The model here proposed can be extended by considering research
-investment as a direct cause of research activity, as well as a larger
-number variables to better measure the macroeconomic state of
-the system.
 
+Impact analysis is widely employed in econometrics, where
+temporal attribution is a debated problem.
+In particular, there is no consensus on the formal specification
+of lag relationships to be applied in a certain problem domain.
+Our proposal appears as a suitable solution, because
+second-order polynomial lag shapes involve simplicity of estimation
+and a clear interpretation of parameters for domain experts,
+so that prior knowledge can be taken into account in statistical analyses
+by introducing simple mathematical constraints.
+In our empirical analysis, we forced each lag shape to have
+a maximum gestation lag of $3$ years and minimum lag width of $5$ years.
+
+The empirical analysis here presented can be extended by considering research
+investment as a direct cause of research activity, as well as a larger
+number variables to better measure the macroeconomic state of the system.
+%Although the two proposed lag shapes can represent, in principle,
+%a large number of real-world events, future work may be directed towards
+%the development of lag shapes with further special features.
 
 
 \begin{thebibliography}{99.}%
@@ -712,6 +794,9 @@ Econometrics. Springer Verlag, 4th edition, Berlin, DE.
 \bibitem{dempster77} A. P. Dempster, N. M. Laird, and D. B. Rubin (1977).
 Maximum Likelihood from Incomplete Data via the EM Algorithm.
 \textit{Journal of the Royal Statistical Society}, Series B, 39(1): 1-38.
+
+\bibitem{dougherty11} C. Dougherty (2011). Introduction to Econometrics.
+Oxford University Press, 4th edition, Oxford, UK.
 
 \bibitem{granger74} C. W. J. Granger, and P. Newbold (1974).
 Spurious Regressions in Econometrics.
@@ -739,6 +824,14 @@ In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Gui
 %\bibitem{pearl09} J. Pearl (2009).
 %Causal Inference in Statistics: An overview.
 %\textit{Statistics Surveys}, 3: 96-146.
+
+\bibitem{renkow11} M. Renkow (2011)
+Assessing the Environmental Impacts of CGIAR Research: Toward an Analytical Framework.
+In: Measuring the Environmental Impacts of Agricultural Research: Theory and Applications to CGIAR Research. Independent Science and Partnership Council Secretariat, Rome, IT.
+
+\bibitem{walker08} T. Walker, M. Maredia, T. Kelley, R. La Rovere, D. Templeton, G. Thiele, and B. Douthwaite (2008).
+Strategic Guidance for Ex Post Impact Assessment of Agricultural Research.
+Report prepared for the Standing Panel on Impact Assessment, CGIAR Science Council. Science Council Secretariat: Rome, IT.
 
 \bibitem{wright34} S. Wright (1934). The Method of Path Coefficients.
 \textit{Annals of Mathematical Statistics}, 5(3): 161-215.

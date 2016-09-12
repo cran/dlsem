@@ -7,8 +7,8 @@
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 1.3.0\cr
-  Date: \tab 2016-08-23\cr
+  Version: \tab 1.3.1\cr
+  Date: \tab 2016-09-12\cr
   License: \tab GPL-2
   }
 }
