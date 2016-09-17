@@ -2,20 +2,20 @@
 ### Encoding: ISO8859-1
 
 ###################################################
-### code chunk number 1: dlsem_tutorial.Rnw:469-470
+### code chunk number 1: dlsem_tutorial.Rnw:417-418
 ###################################################
 require(dlsem)
 
 
 ###################################################
-### code chunk number 2: dlsem_tutorial.Rnw:475-477
+### code chunk number 2: dlsem_tutorial.Rnw:423-425
 ###################################################
 data(agres)
 summary(agres)
 
 
 ###################################################
-### code chunk number 3: dlsem_tutorial.Rnw:521-526
+### code chunk number 3: dlsem_tutorial.Rnw:472-477
 ###################################################
 mycode <- list(
   GVA~quec(NPATENT,0,15),
@@ -25,7 +25,7 @@ mycode <- list(
 
 
 ###################################################
-### code chunk number 4: dlsem_tutorial.Rnw:576-585
+### code chunk number 4: dlsem_tutorial.Rnw:527-536
 ###################################################
 mycontrol <- list(
   adapt=c(GVA=T,PPI=T,ENTR_INCOME=T),
@@ -39,50 +39,50 @@ mycontrol <- list(
 
 
 ###################################################
-### code chunk number 5: dlsem_tutorial.Rnw:630-632
+### code chunk number 5: dlsem_tutorial.Rnw:581-583
 ###################################################
 mod0 <- dlsem(mycode,group="COUNTRY",exogenous=c("GDP","FARM_SIZE"),
   data=agres,control=mycontrol,uniroot.check=T,imputation=T,log=T)
 
 
 ###################################################
-### code chunk number 6: dlsem_tutorial.Rnw:639-640 (eval = FALSE)
+### code chunk number 6: dlsem_tutorial.Rnw:590-591 (eval = FALSE)
 ###################################################
 ## plot(mod0)
 
 
 ###################################################
-### code chunk number 7: dlsem_tutorial.Rnw:669-670
+### code chunk number 7: dlsem_tutorial.Rnw:623-624
 ###################################################
 summary(mod0)
 
 
 ###################################################
-### code chunk number 8: dlsem_tutorial.Rnw:682-683
+### code chunk number 8: dlsem_tutorial.Rnw:636-637
 ###################################################
 edgeCoeff(mod0)
 
 
 ###################################################
-### code chunk number 9: dlsem_tutorial.Rnw:708-709
+### code chunk number 9: dlsem_tutorial.Rnw:670-671
 ###################################################
 pathAnal(mod0,from="NPATENT",to="ENTR_INCOME",lag=c(5,10,15,20,25),cumul=T)
 
 
 ###################################################
-### code chunk number 10: dlsem_tutorial.Rnw:713-714
+### code chunk number 10: dlsem_tutorial.Rnw:675-676
 ###################################################
 pathAnal(mod0,from="NPATENT",to="PPI",lag=c(5,10,15,20,25),cumul=T)
 
 
 ###################################################
-### code chunk number 11: dlsem_tutorial.Rnw:736-737 (eval = FALSE)
+### code chunk number 11: dlsem_tutorial.Rnw:698-699 (eval = FALSE)
 ###################################################
 ## lagPlot(mod0,from="NPATENT",to="ENTR_INCOME")
 
 
 ###################################################
-### code chunk number 12: dlsem_tutorial.Rnw:741-742 (eval = FALSE)
+### code chunk number 12: dlsem_tutorial.Rnw:703-704 (eval = FALSE)
 ###################################################
 ## lagPlot(mod0,from="NPATENT",to="PPI")
 
