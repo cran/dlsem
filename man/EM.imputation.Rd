@@ -14,7 +14,7 @@
 \value{The object of class \code{data.frame} provided to argument \code{data}, where the requested variables have been imputed.}
 \note{If data contain unit roots, appropriate differentiation should be applied before.}
 \references{A. P. Dempster, N. M. Laird, D. B. Rubin (1977). Maximum Likelihood from Incomplete Data via the EM Algorithm. \emph{Jornal of the Royal Statustical Society}, Series B, 39(1), 1-38.}
-\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{unirootTest}, \link{applyDiff}}
 \examples{
 data(agres)

@@ -12,7 +12,7 @@
 \value{A list of matrices, one for each dimension of argument \code{lag}. Each matrix contains point estimate and \code{conf}*100\% confidence interval for each path coefficient.}
 %\note{}
 %\references{}
-\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{dlsem}}
 \examples{
 data(agres)

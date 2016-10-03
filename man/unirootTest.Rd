@@ -39,7 +39,7 @@
   
   S. E. Said, and D. A. Dickey (1984). Testing for Unit Roots in Autoregressive-Moving Average Models of Unknown Order. \emph{Biometrika}, 71, 599-607.
 }
-\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{applyDiff}, \link{EM.imputation}}
 \examples{
 data(agres)

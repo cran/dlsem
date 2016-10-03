@@ -93,7 +93,8 @@ An Application to Impact Assessment of Research Activity on European Agriculture
 \emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.
 
 W. K. Newey, and K. D. West (1978). A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. \emph{Econometrica}, 55(3), 703-708.}
-\author{Alessandro Magrini <magrini@disia.unifi.it>}
+\keyword{Directed acyclic graphs; Dynamic path analysis; Lag modelling.}
+%\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{dlsem-package}, \link{unirootTest}, \link{applyDiff}, \link{EM.imputation}}
 \examples{
 data(agres)

@@ -18,7 +18,7 @@
 }
 %\value{}
 %\references{}
-\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{dlsem}}
 \examples{
 data(agres)

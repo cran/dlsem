@@ -24,7 +24,7 @@ J. Pearl (2012). The Causal Foundations of Structural Equation Modelling. In: R.
 
 S. Wright (1934). The Method of Path Coefficients. \emph{Annals of Mathematical Statistics}, 5(3): 161-215.
 }
-\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{dlsem}}
 \examples{
 data(agres)

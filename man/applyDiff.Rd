@@ -15,7 +15,7 @@
   }
 \value{The object of class \code{data.frame} provided to argument \code{data}, where the requested variables have been differenced.}
 %\references{}
-\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{unirootTest}, \link{EM.imputation}}
 \examples{
 data(agres)

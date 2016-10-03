@@ -1,7 +1,7 @@
 \documentclass[10pt]{article}
 %\VignetteIndexEntry{Distributed-Lag Structural Equation Modelling with the R Package dlsem}
 %\VignettePackage{dlsem}
-%\VignetteKeyword{Acyclic directed graphs}
+%\VignetteKeyword{Directed acyclic graphs}
 %\VignetteKeyword{Dynamic path analysis}
 %\VignetteKeyword{Lag modelling}
 
@@ -12,7 +12,7 @@
 \usepackage{Sweave}
 %\SweaveOpts{height=4}
 %\SweaveOpts{prefix.string=figures/graph}
-\setkeys{Gin}{width=0.45\textwidth}
+\setkeys{Gin}{width=0.4\textwidth}
 
 \def\pkg#1{\texttt{#1}}
 \def\dlsem{\texttt{dlsem}}
@@ -31,7 +31,7 @@
 Dep. Statistics, Computer Science, Applications\\
 University of Florence, Italy\\
 <magrini@disia.unifi.it>}
-\date{\texttt{dlsem} version 1.3.1 -- \today.}
+\date{\texttt{dlsem} version 1.4 -- \today.}
 
 
 
@@ -77,150 +77,30 @@ University of Florence, Italy\\
 
 Package \texttt{dlsem} implements estimation and path analysis functionalities
 for structural equation modelling with second-order polynomial lag shapes
-\cite{magrini16}.
-Structural equation modelling is of great interest in econometric problems,
-as they allow to perform path analysis, that is the
-decomposition of the causal effect of any variable on another.
-Second-order polynomial lag shapes were introduced by \cite{magrini16}
+(DLSEM, \cite{magrini16}).
+DLSEM is an extension of structural equation modelling (SEM)
+where each regression model is enhanced by second-order polynomial lag shapes,
 in order to account for temporal delays in the dependence relationships
 among the variables.
 Second-order polynomial lag shapes have several advantages, including
 simplicity of estimation, and a clear interpretation of parameters for
-domain experts, so that prior knowledge can be taken into account in
-statistical analyses by introducing simple mathematical constraints.
+domain experts, so that prior knowledge can be taken into account
+by applying simple mathematical constraints.
 
 In this vignette, theory on structural equation modelling
-with second-order polynomial lag shapes
-is summarized in Section \ref{sec:theory},
-then the practical use of \texttt{dlsem} is illustrated in Section \ref{sec:example}.
-Concluding remarks are pointed out in Section \ref{sec:conclu}.
-
-%To cite \texttt{dlsem} in publications, please use:
-%
-%\begin{quote}
-%A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016).  Distributed-Lag Structural Equation Modelling:
-%An Application to Impact Assessment of Research Activity on European Agriculture.
-%\emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.
-%\end{quote}
-
+with second-order polynomial lag shapes is provided
+in Section \ref{sec:theory}, then
+the practical use of \texttt{dlsem} is illustrated in Section \ref{sec:example}
+through an empi\-rical analysis on EUROSTAT data aiming at assessing
+the impact of technological innovation on European Agriculture.
 
 
 \section{Theory}
 \label{sec:theory}
 
-%In this section, theory on structural equation modelling (Subsection \ref{sub:sem})
-%and distributed-lag linear regression (Subsection \ref{sub:dlaglm})
-%is briefly reported before detailing distributed-lag structural equation modelling
-%(Subsection \ref{sub:dlsem}).
-%The accounting of clustering and exogenous variables is also addressed
-%(Subsection \ref{sub:context}).
-
-
-%\subsection{Structural equation modelling}
-%\label{sub:sem}
-
-%Structural equation modelling (SEM) has a long history
-%starting with the contribution of Wright \cite{wright34}.
-The basic feature of SEM is a directed acyclic graph (DAG).
-In a DAG, variables are represented by nodes and directed
-edges may connect pairs of variables without creating
-directed cycles (See Figure \ref{fig:dagsam}).
-If a variable receives an edge from another variable,
-the latter is called \textit{parent} of the former.
-A DAG encodes a factorization of the joint probability distribution:
-\begin{equation}
-p(V_1,\dots,V_m )=\prod_{j=1}^J p(V_j \mid \Pi_j)
-\end{equation}
-where $\Pi_j$ is the set of parents of variable $V_j$.
-As such, if some pairs of variables are not connected by an edge,
-the DAG implies a set of conditional independence statements
-\cite{lauritzen90}.
-The DAG may eventually have a causal interpretation.
-If this is the case, edges represent direct causal relationships.
-SEM is implemented by simultaneously applying linear regression models:
-\begin{equation}\label{eq:sem}
-\begin{cases}
-V_1=f_1(\Pi_1)\\
-\ldots\\
-V_j=f_j(\Pi_j)\\
-\ldots\\
-V_m=f_m(\Pi_m)
-\end{cases}
-\end{equation}
-where $V_j=f_j(\Pi_j)$ is the equation describing
-the linear regression model where $V_j$ is the response %dependent
-variable and its parents in the DAG are the covariates. %independent variables.
-%Parameter estimation in SEM can be performed by applying ordinary least
-%squares to each regression model.
-%An edge of the DAG is considered as statistically significant
-%if the estimate of the coefficient of the variable originating
-%the edge in the regression model of the variable receiving the edge
-%is statistically significant.
-A comprehensive review of SEM can be found in \cite{kline00}.
-
-
-\begin{figure}[ht]
-\centering
-\includegraphics[scale=1]{figures/dagsam.png}
-\caption{A directed acyclic graph.}
-\label{fig:dagsam}
-\end{figure}
-
-
-SEM can be employed to perform path analysis, that is the
-decomposition of the causal effect of any variable on another.
-Path analysis in SEM must follow some tracing rules
-developed by \cite{wright34} (see also \cite{pearl12}):
-\begin{itemize}
-\item the causal effect associated to each edge in the DAG
-is represented by the coefficient of the variable originating
-the edge in the regression model of the variable receiving the edge;
-\item the causal effect associated to a directed path is represented by
-the product of the causal effects associated to each edge in the path;
-\item the causal effect of a variable on another is represented
-by the sum of the causal effects associated to each
-directed path connecting the two variables.
-\end{itemize}
-%For instance, consider variables $V_3$ and $V_6$ in the DAG
-%displayed in Figure \ref{fig:dagsam}.
-%The directed paths connecting the two variables are
-%$(V_3,V_6)$, $(V_3,V_4,V_6)$ and $(V_3,V_5,V_6)$.
-%The causal effect associated to the first path is the
-%coefficient of $V_3$ in the regression model of $V_6$,
-%say $\beta_{6|3}$.
-%The causal effect associated to the second path is the
-%coefficient of $V_3$ in the regression model of $V_4$,
-%multiplied by the coefficient of $V_4$ in the regression
-%model of $V_6$, say $\beta_{4|3} \cdot \beta_{6|4}$.
-%The causal effect associated to the third path is the
-%coefficient of $V_3$ in the regression model of $V_5$
-%multiplied by the coefficient of $V_5$ in the regression
-%model of $V_6$, say $\beta_{5|3} \cdot \beta_{6|5}$.
-%The causal effect of $V_3$ on $V_6$ is the sum
-%of the causal effect associated to each of the three
-%paths above, say $\beta_{6|3}+\beta_{4|3} \cdot \beta_{6|4}+\beta_{5|3} \cdot \beta_{6|5}$.
-%
-Often, the causal effect of a variable on another is
-termed \textit{overall} causal effect,
-the causal effect associated to a directed path
-made by a single edge is called \textit{direct} effect,
-while the causal effects associated to the other directed
-paths are denoted as \textit{indirect} effects.
-%In the example above, $\beta_{6|3}$ represents the
-%direct effect of $V_3$ on $V_6$, while causal effects
-%$\beta_{4|3} \cdot \beta_{6|4}$ and $\beta_{5|3} \cdot \beta_{6|5}$
-%represent the indirect effects of $V_3$ on $V_6$,
-%and $\beta_{6|3}+\beta_{4|3} \cdot \beta_{6|4}+\beta_{5|3} \cdot \beta_{6|5}$
-%is the overall causal effect of $V_3$ on $V_6$.
-
-
-%\subsection{Distributed-lag linear regression}
-%\label{sub:dlaglm}
-
-~\\
-Distributed-lag linear regression is an extension
-of the classic linear model including lagged instances
-of one or more quantitative covariates:
+Lagged instances of one or more quantitative covariates
+can be included in the classical linear regression model
+to to account for temporal delays in their influence on the response:
 \begin{equation}\label{eq:uncons_dllm}
 y_t = \beta_0+\sum_{j=1}^J \sum_{l=0}^{L_j} \beta_{j,l} ~ x_{j,t-l}+\epsilon_t \hspace{1cm} \epsilon_t \sim \text{N}(0,\sigma^2)
 \end{equation}
@@ -230,15 +110,15 @@ $j$-th covariate at $l$ time lags before $t$.
 The set $(\beta_{j,0},\beta_{j,1},\ldots,\beta_{j,L_j})$
 is denoted as the \textit{lag shape} of the $j$-th covariate and
 represents its effect on the response variable at different time lags.
-Estimation of a distributed-lag linear regression model using
+
+Parameter estimation using
 ordinary least squares is inefficient because lagged instances
 of the same covariate are typically highly correlated.
 Also, the lag shape of a covariate is completely
 unrestricted, thus problems of interpretation may arise.
-
 Second-order polynomial lag shapes can be used
 to solve these drawbacks \cite[Chapter 6]{baltagi08}.
-They include the endpoint-constrained quadratic lag shape:
+Package \texttt{dlsem} includes the endpoint-constrained quadratic lag shape:
 \begin{equation}\label{eq:quec}
 \beta_{j,l} = \begin{cases}
   \theta_j \left[-\frac{4}{(b_j-a_j+2)^2} l^2+\frac{4(a_j+b_j)}{(b_j-a_j+2)^2} l-\frac{4(a_j-1)(b_j+1)}{(b_j-a_j+2)^2} \right] & a_j \leq l \leq b_j\\
@@ -252,7 +132,6 @@ and the quadratic decreasing lag shape:
   0 & \text{otherwise}
   \end{cases}
 \end{equation}
-(see Figure \ref{fig:polylag}).
 The endpoint-constrained quadratic lag shape
 is zero for a lag $l \leq a_j-1$ or $l \geq b_j+1$,
 and symmetric with mode equal to $\theta_j$ at $(a_j+b_j)/2$.
@@ -266,25 +145,14 @@ A second-order polynomial lag shape is monotonic
 in the sign, that is $\beta_{j,l}$ is either
 non-negative or non-positive for any $j$ and $l$.
 
-
-\begin{figure}[ht]
-\centering
-\includegraphics[scale=1]{figures/polylag.png}
-\caption{Second-order polynomial lag shapes:
-endpoint-constrained quadratic lag shape (straight line),
-quadrating decreasing lag shape (dotted line).}
-\label{fig:polylag}
-\end{figure}
-
-
-A distributed-lag linear regression model with
+A linear regression model with
 second-order polynomial lag shapes is
-linear in parameters $\theta_j$ ($j=1,\ldots,J$), provided that
-parameters $a_j$ and $b_j$ ($j=1,\ldots,J$) are known.
+linear in parameters $\beta_0,\theta_1,\ldots,$ $\theta_J$, provided
+that the values of $a_1,\ldots,a_J,b_1,\ldots,b_J$ are known.
 Thus, one can use ordinary least squares to estimate
-the parameters of several models where the value of $a_j$ and $b_j$ is
-varied within a grid of values, and then select the
-model with the lowest value of the Akaike Information Criterion \footnote{
+parameters $\beta_0,\theta_1,\ldots,\theta_J$ for several models
+with different values of $a_1,\ldots,a_J,b_1,\ldots,b_J$,
+and then select the one with the lowest Akaike Information Criterion\footnote{
 %
 Neither the response variable nor
 the covariates must contain a trend in order
@@ -297,34 +165,64 @@ of unit root for all of them.
 }.
 
 
-%\subsection{Distributed-lag structural equation modelling}
-%\label{sub:dlsem}
+\begin{figure}[ht]
+\centering
+\includegraphics[scale=1]{figures/sampledag.png}
+\caption{A directed acyclic graph for SEM.
+The regression model applied to variable $V_1$ has no covariates,
+the regression models applied to variables $V_2$ and $V_3$ have $V_1$ as covariate,
+the regression model applied to variable $V_4$ has $V_2$ and $V_3$ as covariates.}
+\label{fig:dagsam}
+\end{figure}
 
-~\\
-Distributed-lag structural equation modelling (DLSEM) is an
-extension of SEM, where variables are related by distributed-lag
-linear regression models with second-order polynomial lag shapes \cite{magrini16}.
-In DLSEM, the DAG does not explicitly include time lags but
-a special semantic holds:
+
+In structural equation modelling (SEM), a linear regression model
+is applied to each variable and all linear regression models
+define an acyclic directed graph (DAG).
+In such DAG, variables are represented by nodes, a node
+receives a directed edge from another node
+if the variable represented by the latter is a covariate
+in the regression model of the variable represented by the former,
+and no directed cycles are present (see Figure \ref{fig:dagsam}).
+If a node receives a directed edge from another node in the DAG,
+the former is called child of the latter, and the latter is
+called parent of the former.
+A comprehensive review of SEM can be found in \cite{kline00}.
+If the DAG has a causal interpretation, a causal effect is associated
+to each edge, directed path or couple of variables
+(tracing rules: \cite{wright34}; see also \cite{pearl12}):
 \begin{itemize}
-\item if an edge connects two variables, there is at
-least one time lag where the coefficient of the variable originating
-the edge in the regression model of the variable receiving the edge
-is non-zero.
+\item the causal effect associated to each edge in the DAG
+is represented by the coefficient of the variable represented by the parent node
+in the regression model of the variable represented by the child node;
+\item the causal effect associated to a directed path is represented by
+the product of the causal effects associated to each edge in the path;
+\item the causal effect of a variable on another is represented
+by the sum of the causal effects associated to each
+directed path connecting the two variables.
 \end{itemize}
-As a consequence,
-an edge of the DAG is considered as statistically significant
-if there is at least one time lag where the estimate of the
-coefficient of the variable originating the edge in the regression
-model of the variable receiving the edge is statistically significant.
+Often, the causal effect of a variable on another is
+termed \textit{overall} causal effect,
+the causal effect associated to a directed path
+made by a single edge is called \textit{direct} effect,
+while the causal effects associated to the other directed
+paths are denoted as \textit{indirect} effects.
 
+In distributed-lag structural equation modelling (DLSEM),
+each regression model is enhanced by second-order polynomial
+lag shapes and the DAG does not explicitly include time lags, but,
+if an edge connects two variables, then there
+must be at least one time lag where the coefficient
+of the variable represented by the parent node
+in the regression model of the variable represented by the child node
+is non-zero.
 DLSEM can be employed to perform path analysis at different time lags
 by extending tracing rules for SEM: %reported in Subsection \ref{sub:sem}:
 \begin{itemize}
   %
   \item The causal effect associated to each edge in the DAG at lag $k$
-  is represented by the coefficient at lag $k$ of the variable originating
-  the edge in the regression model of the variable receiving the edge.
+  is represented by the coefficient at lag $k$ of the variable represented by the parent node
+  in the regression model of the variable represented by the child node.
   %
   \item The causal effect associated to a directed path at lag $k$ is
   computed as follows:
@@ -352,55 +250,15 @@ The \textit{cumulative} causal effect at a prespecified lag,
 say $k$, is obtained by summing all the instantaneous causal
 effects for each lag up to $k$.
 
-%Parameter estimation in DLSEM can be performed by applying the method proposed
-%in Subsection \ref{sub:dlaglm} to each regression model.
-%An edge of the DAG is considered as statistically significant
-%if there is at least one time lag where the estimate of the
-%coefficient of the variable originating the edge in the regression
-%model of the variable receiving the edge is statistically significant.
-
-
-%\subsection{Clustering and exogenous variables}
-%\label{sub:context}
-%
-%In econometric problems, data are often clustered into groups sharing
-%similar features (e.g., productive or territorial units) and a number of
-%exogenous variables (e.g., context variables and external drivers)
-%must be considered to avoid bias in the estimates (endogeneity).
-%
-%In DLSEM, clustering can be taken into account by using
-%the fixed effect or the random effect approach.
-%In the fixed effect approach, an intercept is estimated
-%for each cluster in each regression model, while
-%in the random effect approach intercepts are
-%Gaussian random variables sharing the same variance.
-%The convenience of using one approach rather than the
-%other depends on the case at hand: random effects
-%allow the generalization of the model to new clusters,
-%but their estimate tends to have high variance when the
-%number of clusters %and/or the sample size for each cluster
-%is small, and the omission of second-level covariates
-%(i.e., constant within clusters) may involve bias
-%in the estimate of regression coefficients
-%(second-level endogeneity).
-%See \cite[Chapter 14]{dougherty11} for a comparison.
-%
-%Similarly, exogenous variables can be included in DLSEM
-%as non-lagged cova\-riates in each regression model,
-%and they may be qualitative or quantitative.
-%Dummy variables identifying clusters and exogenous variables
-%are not shown in the DAG and they are not involved in path
-%analysis, but the results of path analysis are net of their
-%influence.
-
 
 \section{Distributed-lag structural equation modelling with dlsem}
 \label{sec:example}
 
 The practical use of package \texttt{dlsem} is illustrated
-by an application to a simplified impact assessment problem
-inspired by the empirical analysis in \cite{bartolini16}:
-to test whether the influence through time of the registration of
+through a simplified impact assessment problem
+inspired by the empirical analysis in \cite{bartolini16},
+aiming at testing
+whether the influence through time of the registration of
 agricultural patent applications
 (proxy of the technological innovation in Agriculture)
 on the benefits of farmers and consumers
@@ -427,7 +285,14 @@ summary(agres)
 \normalsize
 
 
-The DAG corresponding to the research question is shown in Figure \ref{fig:dag0}.
+\subsection{The model code}
+\label{sub:example1}
+
+The first step to perform DLSEM with \texttt{dlsem}
+is the specification of the model code containing
+the DAG addressing the research question, together with assumptions
+and constraints on the lag shape for each variable.
+The DAG for the proposed problem is shown in Figure \ref{fig:dag0}.
 
 
 \begin{figure}[ht]
@@ -443,11 +308,6 @@ inspired by the empirical analysis in \cite{bartolini16}.
 \end{figure}
 
 
-\subsection{The model code}
-\label{sub:example1}
-
-The first step is the specification of the model code containing
-the hypothesized DAG and the lag shapes.
 The model code must be a list of formulas, one for each regression model.
 In each formula, the response and the covariates must be quantitative variables
 and operators $\mathsf{quec}(~)$ and $\mathsf{qdec}(~)$
@@ -462,7 +322,7 @@ is assumed that the coefficient associated to
 that variable is $0$ for time lags greater than $0$ (no lag).
 The group factor and exogenous variables must not be specified
 in the model code (see Subsection \ref{sub:example3}).
-The regression model for variables with no parents
+The regression model for variables with no covariates
 besides the group factor and exogenous variables
 can be omitted from the model code.
 In this illustration, an endpoint-constrained quadratic
@@ -481,7 +341,8 @@ mycode <- list(
 \subsection{Control options}
 \label{sub:example2}
 
-The second step is the specification of control options.
+The second step to perform DLSEM with \texttt{dlsem}
+is the specification of control options.
 Control options must be a named list containing one or more among
 several components.
 %A first component useful to specify is $\mathsf{L}$, a named
@@ -584,7 +445,15 @@ mod0 <- dlsem(mycode,group="COUNTRY",exogenous=c("GDP","FARM_SIZE"),
 @
 
 After estimating the structural model, the user can display the DAG
-including only statistically significant edges.
+including only statistically significant edges\footnote{
+%
+An edge of the DAG is considered as statistically significant
+if there is at least one time lag where the estimate of the
+coefficient of the variable represented by the parent node
+in the regression model of the variable represented by the child node
+is statistically significant.
+%
+}.
 
 @
 <<echo=T,eval=F>>=
@@ -657,6 +526,11 @@ Also, the user can choose whether instantaneous
 (argument $\mathsf{cumul}$ set to $\mathsf{FALSE}$, the default)
 or cumulative (argument $\mathsf{cumul}$ set to $\mathsf{TRUE}$)
 causal effects must be returned.
+%A causal effect evaluated at a single lag is denoted as
+%\textit{instantaneous} causal effect.
+%The \textit{cumulative} causal effect at a prespecified lag,
+%say $k$, is obtained by summing all the instantaneous causal
+%effects for each lag up to $k$.
 Here, two path analysis tasks are performed: one from
 agricultural patent applications to
 the net entrepreneurial income index, and the other from
@@ -721,28 +595,6 @@ $95\%$ confidence intervals are shown in grey.}
 
 
 
-\section{Concluding remarks}
-\label{sec:conclu}
-
-Package \texttt{dlsem} is conceived to perform impact analysis,
-that is the quantitative assessment of the consequences on a
-system due to an internal or external impulse, using distributed-lag
-structural equation modelling with second-order polynomial lag shapes.
-
-Impact analysis is widely employed in econometrics, where
-temporal attribution is a debated problem.
-In particular, there is no consensus on the formal specification
-of lag relationships to be applied in a certain problem domain.
-Second-order polynomial lag shapes are a flexible solution, as
-they are simple to be estimated, and the interpretation of parameters is clear for
-domain experts, thus prior knowledge can be taken into account in
-statistical analyses by introducing simple mathematical constraints.
-
-%Future releases will include a graphical user interface
-%allowing the user to exploit all the functionalities included
-%in the package without writing R code.
-
-
 \begin{thebibliography}{99.}%
 
 \bibitem{baltagi08} B. H. Baltagi (2008).
@@ -767,9 +619,9 @@ Spurious Regressions in Econometrics.
 Principles and Practice of Structural Equation Modelling.
 Guilford Press, 3rd edition, New York, US-NY.
 
-\bibitem{lauritzen90} S. L. Lauritzen, A. P. Dawid, B. N. Larsen, and H. G. Leimer (1990).
-Independence Properties of Directed Markov Fields.
-\textit{Networks}, 20(5): 491-505.
+%\bibitem{lauritzen90} S. L. Lauritzen, A. P. Dawid, B. N. Larsen, and H. G. Leimer (1990).
+%Independence Properties of Directed Markov Fields.
+%\textit{Networks}, 20(5): 491-505.
 
 %\bibitem{newey78} W. K. Newey, and K. D. West (1978).
 %A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. %\emph{Econometrica}, 55(3), 703-708.
@@ -781,18 +633,6 @@ Distributed-Lag Structural Equation Modelling: An Application to Impact Assessme
 \bibitem{pearl12} J. Pearl (2012).
 The Causal Foundations of Structural Equation Modelling.
 In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY. 
-
-%\bibitem{pearl09} J. Pearl (2009).
-%Causal Inference in Statistics: An overview.
-%\textit{Statistics Surveys}, 3: 96-146.
-
-%\bibitem{renkow11} M. Renkow (2011)
-%Assessing the Environmental Impacts of CGIAR Research: Toward an Analytical Framework.
-%In: Measuring the Environmental Impacts of Agricultural Research: Theory and Applications to CGIAR Research. %Independent Science and Partnership Council Secretariat, Rome, IT.
-
-%\bibitem{walker08} T. Walker, M. Maredia, T. Kelley, R. La Rovere, D. Templeton, G. Thiele, and B. Douthwaite (2008).
-%Strategic Guidance for Ex Post Impact Assessment of Agricultural Research.
-%Report prepared for the Standing Panel on Impact Assessment, CGIAR Science Council. Science Council Secretariat: Rome, IT.
 
 \bibitem{wright34} S. Wright (1934). The Method of Path Coefficients.
 \textit{Annals of Mathematical Statistics}, 5(3): 161-215.

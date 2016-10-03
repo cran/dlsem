@@ -13,7 +13,7 @@ The third list contains the Bayesian Information Criterion (BIC) for each regres
 }
 %\note{}
 %\references{}
-\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{dlsem}}
 \examples{
 data(agres)
