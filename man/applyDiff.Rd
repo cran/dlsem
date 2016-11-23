@@ -18,6 +18,6 @@
 %\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{unirootTest}, \link{EM.imputation}}
 \examples{
-data(agres)
-applyDiff(c("NPATENT","GVA"),group="COUNTRY",data=agres,k=1)
+data(industry)
+applyDiff(c("Job","Population"),group="Region",data=industry,k=1)
 }

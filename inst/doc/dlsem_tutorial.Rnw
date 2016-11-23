@@ -2,7 +2,7 @@
 %\VignetteIndexEntry{Distributed-Lag Structural Equation Modelling with the R Package dlsem}
 %\VignettePackage{dlsem}
 %\VignetteKeyword{Directed acyclic graphs}
-%\VignetteKeyword{Dynamic path analysis}
+%\VignetteKeyword{Dynamic causal effects}
 %\VignetteKeyword{Lag modelling}
 
 \usepackage{boxedminipage,color,a4wide,url}
@@ -31,7 +31,7 @@
 Dep. Statistics, Computer Science, Applications\\
 University of Florence, Italy\\
 <magrini@disia.unifi.it>}
-\date{\texttt{dlsem} version 1.4 -- \today.}
+\date{\texttt{dlsem} version 1.5 -- 23 November 2016}
 
 
 
@@ -75,24 +75,22 @@ University of Florence, Italy\\
 
 \section{Introduction}
 
-Package \texttt{dlsem} implements estimation and path analysis functionalities
-for structural equation modelling with second-order polynomial lag shapes
+Package \texttt{dlsem} implements inference functionalities
+for structural equation modelling with second-order polynomial and gamma lag shapes
 (DLSEM, \cite{magrini16}).
 DLSEM is an extension of structural equation modelling (SEM)
-where each regression model is enhanced by second-order polynomial lag shapes,
-in order to account for temporal delays in the dependence relationships
-among the variables.
-Second-order polynomial lag shapes have several advantages, including
-simplicity of estimation, and a clear interpretation of parameters for
-domain experts, so that prior knowledge can be taken into account
-by applying simple mathematical constraints.
-
+where a second-order polynomial or a gamma lag shape is applied to each covariate in each regression model,
+in order to account for temporal delays in the dependence relationships among variables.
+%Second-order polynomial lag shapes have several advantages, including
+%simplicity of estimation, and a clear interpretation of parameters for
+%domain experts, so that prior knowledge can be taken into account
+%by applying simple mathematical constraints.
+%
 In this vignette, theory on structural equation modelling
-with second-order polynomial lag shapes is provided
+with second-order polynomial and gamma lag shapes is provided
 in Section \ref{sec:theory}, then
 the practical use of \texttt{dlsem} is illustrated in Section \ref{sec:example}
-through an empi\-rical analysis on EUROSTAT data aiming at assessing
-the impact of technological innovation on European Agriculture.
+through a fictitious impact assessment problem.
 
 
 \section{Theory}
@@ -116,7 +114,7 @@ ordinary least squares is inefficient because lagged instances
 of the same covariate are typically highly correlated.
 Also, the lag shape of a covariate is completely
 unrestricted, thus problems of interpretation may arise.
-Second-order polynomial lag shapes can be used
+Second-order polynomial and gamma lag shapes can be used
 to solve these drawbacks \cite[Chapter 6]{baltagi08}.
 Package \texttt{dlsem} includes the endpoint-constrained quadratic lag shape:
 \begin{equation}\label{eq:quec}
@@ -125,12 +123,19 @@ Package \texttt{dlsem} includes the endpoint-constrained quadratic lag shape:
   0 & \text{otherwise}
   \end{cases}
 \end{equation}
-and the quadratic decreasing lag shape:
+the quadratic decreasing lag shape:
 \begin{equation}\label{eq:qud}
 \beta_{j,l} = \begin{cases}
   \theta_j \frac{l^2-2 b_j l+b_j^2}{(b_j-a_j)^2} & a_j \leq l \leq b_j\\
   0 & \text{otherwise}
   \end{cases}
+\end{equation}
+and the gamma lag shape:
+\begin{equation}\label{eq:gamma}
+\begin{gathered}
+\beta_{j,l} = \theta_j (l+1)^\frac{\delta}{1-\delta}\lambda_j^l \left[\left(\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}\right)^\frac{\delta_j}{1-\delta_j}\lambda_j^{\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}-1}\right]^{-1}\\
+0<\delta_j<1 \hspace{1cm} 0<\lambda_j<1.
+\end{gathered}
 \end{equation}
 The endpoint-constrained quadratic lag shape
 is zero for a lag $l \leq a_j-1$ or $l \geq b_j+1$,
@@ -139,14 +144,19 @@ The quadratic decreasing lag shape
 decreases from value $\theta_j$ at lag $a_j$
 to value $0$ at lag $b_j$ according to
 a quadratic function.
+The gamma lag shape is positively skewed with mode equal to $\theta_j$
+at $\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}$.
 Value $a_j$ is denoted as the \textit{gestation lag},
 and value $b_j-a_j$ as the \textit{lag width}.
-A second-order polynomial lag shape is monotonic
+A static regression coefficient is obtained if $a_j=b_j=0$.
+Since it is not expressed as a function of $a_j$ and $b_j$,
+the gamma lag shape cannot reduce to a static regression
+coefficent, but values $a_j$ and $b_j$ can be computed through numerical approximation.
+A second-order polynomial or a gamma lag shape is monotonic
 in the sign, that is $\beta_{j,l}$ is either
 non-negative or non-positive for any $j$ and $l$.
 
-A linear regression model with
-second-order polynomial lag shapes is
+A linear regression model with second-order polynomial and gamma lag shapes is
 linear in parameters $\beta_0,\theta_1,\ldots,$ $\theta_J$, provided
 that the values of $a_1,\ldots,a_J,b_1,\ldots,b_J$ are known.
 Thus, one can use ordinary least squares to estimate
@@ -154,18 +164,15 @@ parameters $\beta_0,\theta_1,\ldots,\theta_J$ for several models
 with different values of $a_1,\ldots,a_J,b_1,\ldots,b_J$,
 and then select the one with the lowest Akaike Information Criterion\footnote{
 %
-Neither the response variable nor
-the covariates must contain a trend in order
+Neither the response variable nor the covariates must contain a trend in order
 to obtain unbiased estimates \cite{granger74}.
-A reasonable procedure is to sequentially
-apply differentiation to all variables until
-the Dickey-Fuller test rejects the hypothesis
-of unit root for all of them.
+A reasonable procedure is to sequentially apply differentiation to all variables until
+the Dickey-Fuller test rejects the hypothesis of unit root for all of them.
 %
 }.
 
 
-\begin{figure}[ht]
+\begin{figure}[!h]
 \centering
 \includegraphics[scale=1]{figures/sampledag.png}
 \caption{A directed acyclic graph for SEM.
@@ -189,8 +196,7 @@ the former is called child of the latter, and the latter is
 called parent of the former.
 A comprehensive review of SEM can be found in \cite{kline00}.
 If the DAG has a causal interpretation, a causal effect is associated
-to each edge, directed path or couple of variables
-(tracing rules: \cite{wright34}; see also \cite{pearl12}):
+to each edge, directed path or couple of variables \cite{pearl12}:
 \begin{itemize}
 \item the causal effect associated to each edge in the DAG
 is represented by the coefficient of the variable represented by the parent node
@@ -209,15 +215,16 @@ while the causal effects associated to the other directed
 paths are denoted as \textit{indirect} effects.
 
 In distributed-lag structural equation modelling (DLSEM),
-each regression model is enhanced by second-order polynomial
+each regression model is enhanced by second-order polynomial and gamma
 lag shapes and the DAG does not explicitly include time lags, but,
 if an edge connects two variables, then there
 must be at least one time lag where the coefficient
 of the variable represented by the parent node
 in the regression model of the variable represented by the child node
 is non-zero.
-DLSEM can be employed to perform path analysis at different time lags
-by extending tracing rules for SEM: %reported in Subsection \ref{sub:sem}:
+DLSEM can be employed to disentangle the causal effect of any variable
+to another at different time lags
+by extending the rules above: %reported in Subsection \ref{sub:sem}:
 \begin{itemize}
   %
   \item The causal effect associated to each edge in the DAG at lag $k$
@@ -255,21 +262,13 @@ effects for each lag up to $k$.
 \label{sec:example}
 
 The practical use of package \texttt{dlsem} is illustrated
-through a simplified impact assessment problem
-inspired by the empirical analysis in \cite{bartolini16},
-aiming at testing
-whether the influence through time of the registration of
-agricultural patent applications
-(proxy of the technological innovation in Agriculture)
-on the benefits of farmers and consumers
-(here measured by the net entrepreneurial income index
-and the price index of agricultural products, respectively)
-is direct and/or mediated by the gross value added of the agricultural sector.
-The analysis will be conducted on the dataset $\mathsf{agres}$,
-containing data for $10$ European countries (Austria, Germany, Spain, Finland,
-France, Ireland, Italy, Netherlands, Sweden, United Kingdom)
-in the period 1990-2010 from the EUROSTAT database
-(\url{http://ec.europa.eu/eurostat/data/database}).
+through a fictitious impact assessment problem, aiming at testing
+whether the influence through time of the number job positions in
+industry (proxy of the industrial development) on
+the amount of greenhouse gas emissions (proxy of pollution)
+is direct and/or mediated by the amount of private consumption.
+The analysis will be conducted on the dataset $\mathsf{industry}$,
+containing data for $10$ immaginary regions in the period 1983-2015.
 
 @
 <<echo=F>>=
@@ -279,8 +278,8 @@ require(dlsem)
 \small
 @
 <<echo=T>>=
-data(agres)
-summary(agres)
+data(industry)
+summary(industry)
 @
 \normalsize
 
@@ -289,34 +288,35 @@ summary(agres)
 \label{sub:example1}
 
 The first step to perform DLSEM with \texttt{dlsem}
-is the specification of the model code containing
-the DAG addressing the research question, together with assumptions
+is the specification of the model code encoding
+the DAG relating variables, together with assumptions
 and constraints on the lag shape for each variable.
 The DAG for the proposed problem is shown in Figure \ref{fig:dag0}.
 
 
-\begin{figure}[ht]
+\begin{figure}[!h]
 \centering
 \includegraphics[scale=1]{figures/dag0.pdf}
-\caption{The DAG addressing the research question
-inspired by the empirical analysis in \cite{bartolini16}.
-`NPATENT': number of agricultural patent applications.
-`GVA': gross value added of the agricultural sector.
-`ENTR\_INCOME': net entrepreneurial income index.
-`PPI': price index of agricultural products.}
+\caption{The DAG for the industrial development problem.
+`Job': number of job positions in industry.
+`Consum': private consumption index.
+`Pollution': amount of greenhouse gas emissions.}
 \label{fig:dag0}
 \end{figure}
 
 
 The model code must be a list of formulas, one for each regression model.
 In each formula, the response and the covariates must be quantitative variables
-and operators $\mathsf{quec}(~)$ and $\mathsf{qdec}(~)$
-can be employed to specify, respectively, an endpoint-constrained quadratic
-or a quadratic decreasing lag shape.
-Each of these operators has three arguments: the name of
-the variable to which the lag shape is applied,
+and operators $\mathsf{quec}(~)$, $\mathsf{qdec}(~)$ and $\mathsf{gamma}(~)$
+can be employed to specify, respectively, an endpoint-constrained quadratic,
+a quadratic decreasing or a gamma lag shape.
+Operators $\mathsf{quec}(~)$ and $\mathsf{qdec}(~)$ have three arguments:
+the name of the variable to which the lag shape is applied,
 the minimum lag with a non-zero coefficient ($a_j$), and
 the maximum lag with a non-zero coefficient ($b_j$).
+Operator $\mathsf{gamma}(~)$ has three arguments:
+the name of the variable to which the lag shape is applied,
+parameter $\delta_j$ and parameter $\lambda_j$.
 If none of these two operators is applied to a variable, it
 is assumed that the coefficient associated to
 that variable is $0$ for time lags greater than $0$ (no lag).
@@ -324,16 +324,17 @@ The group factor and exogenous variables must not be specified
 in the model code (see Subsection \ref{sub:example3}).
 The regression model for variables with no covariates
 besides the group factor and exogenous variables
-can be omitted from the model code.
+can be omitted from the model code (here, we could omit the
+regression model for the number of job positions).
 In this illustration, an endpoint-constrained quadratic
 lag shape between 0 and 15 time lags is assumed for all variables:
 
 @
 <<echo=T>>=
 mycode <- list(
-  GVA~quec(NPATENT,0,15),
-  PPI~quec(NPATENT,0,15)+quec(GVA,0,15),
-  ENTR_INCOME~quec(NPATENT,0,15)+quec(GVA,0,15)
+  Job ~ 1,
+  Consum~quec(Job,0,15),
+  Pollution~quec(Job,0,15)+quec(Consum,0,15)
   )
 @
 
@@ -360,12 +361,12 @@ must be selected on the basis of the best fit to data,
 instead of employing the ones specified in the model code.
 If adaption is requested for a regression model, three further
 components are taken into account:
-$\mathsf{max.gestation}$, $\mathsf{min.width}$ and $\mathsf{sign}$.
+$\mathsf{max.gestation}$, $\mathsf{min.width}$, $\mathsf{max.width}$ and $\mathsf{sign}$.
 Each of these three components is a named list, where each component of
 the list must refer to one response variable and must be a named vector
-including, respectively, the maximum gestation lag, the minimum lag width
-and the sign (either '+' for non-negative, or '-' for non-positive) of
-the coefficients of one or more covariates.
+including, respectively, the maximum gestation lag, the minimum lag width,
+the maximum lag width and the sign (either '+' for non-negative, or '-'
+for non-positive) of the coefficients of one or more covariates.
 %
 %Note that the first and the second numerical arguments of operators
 %$\mathsf{quec}(~)$ and $\mathsf{qdec}(~)$ in the model code are taken
@@ -380,20 +381,20 @@ adaptation of lag shapes is performed for all regression models
 with the following constraints:
 (i) maximum gestation lag of $3$ years,
 (ii) minimum lag width of $5$ years,
-(iii) all coefficients with non-negative sign, excepting the ones in the
-regression model of the price index of agricultural products,
-as benefits for consumers improve with the decreasing of prices:
+(iii) maximum lag width of $15$ years,
+(iv) all coefficients with non-negative sign
+%excepting the ones in the
+%regression model of the price index of agricultural products,
+%as benefits for consumers improve with the decreasing of prices:
 
 @
 <<echo=T>>=
 mycontrol <- list(
-  adapt=c(GVA=T,PPI=T,ENTR_INCOME=T),
-  max.gestation=list(GVA=c(NPATENT=3),PPI=c(NPATENT=3,GVA=3),
-    ENTR_INCOME=c(NPATENT=3,GVA=3)),
-  min.width=list(GVA=c(NPATENT=5),PPI=c(NPATENT=5,GVA=5),
-    ENTR_INCOME=c(NPATENT=5,GVA=5)),
-  sign=list(GVA=c(NPATENT="+"),PPI=c(NPATENT="-",GVA="-"),
-    ENTR_INCOME=c(NPATENT="+",GVA="+"))
+  adapt=c(Consum=T,Pollution=T),
+  max.gestation=list(Consum=c(Job=3),Pollution=c(Job=3,Consum=3)),
+  min.width=list(Consum=c(Job=5),Pollution=c(Job=5,Consum=5)),
+  max.width=list(Consum=c(Job=15),Pollution=c(Job=15,Consum=15)),
+  sign=list(Consum=c(Job="+"),Pollution=c(Job="+",Consum="+"))
   )
 @
 
@@ -420,11 +421,9 @@ operations:
 hypothesis of unit root is rejected by the Dickey-Fuller test
 for all the quantitative variables
 (by setting argument $\mathsf{uniroot.check}$ to $\mathsf{TRUE}$);
-\item imputation of missing values for quantitative variables
-%missing data are replaced with their conditional expected value
-%under a Multivariate Gaussian distribution, computed
-using the Expectation-Maximization algorithm \cite{dempster77}
-(by setting argument $\mathsf{imputation}$ to $\mathsf{TRUE}$);
+%\item imputation of missing values for quantitative variables
+%using the Expectation-Maximization algorithm \cite{dempster77}
+%(by setting argument $\mathsf{imputation}$ to $\mathsf{TRUE}$);
 \item apply the logarithmic transformation to all quantitative variables
 in order to interpret each coefficient as an elasticity
 (by setting argument $\mathsf{log}$ to $\mathsf{TRUE}$).
@@ -432,58 +431,56 @@ in order to interpret each coefficient as an elasticity
 %(approximatively) as the percentage increase in the value
 %of the response variable for $1\%$ increase in the value
 %of a covariate (elasticity)
-In this illustration, the country is indicated as the group factor,
-gross domestic product and average farm size as exogenous variables,
-differentiation until stationarity, imputation
-of missing values and logarithmic transformation is allowed for all
-quantitative variables:
+In this illustration, the region is indicated as the group factor,
+while population and gross domestic product are indicated as exogenous variables.
+Also, we request differentiation until stationarity
+%imputation of missing values
+and logarithmic transformation for all quantitative variables:
 
 @
 <<echo=T>>=
-mod0 <- dlsem(mycode,group="COUNTRY",exogenous=c("GDP","FARM_SIZE"),
-  data=agres,control=mycontrol,uniroot.check=T,imputation=T,log=T)
+mod0 <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
+  data=industry,control=mycontrol,uniroot.check=T,log=T)
 @
 
+Before estimating the structural model,
+missing values for quantitative variables are imputed
+using the Expectation-Maximization algorithm \cite{dempster77}.
 After estimating the structural model, the user can display the DAG
-including only statistically significant edges\footnote{
+%including only statistically significant edges\footnote{
+%%
+%An edge of the DAG is considered as statistically significant
+%if there is at least one time lag where the estimate of the
+%coefficient of the variable represented by the parent node
+%in the regression model of the variable represented by the child node
+%is statistically significant.
 %
-An edge of the DAG is considered as statistically significant
-if there is at least one time lag where the estimate of the
-coefficient of the variable represented by the parent node
-in the regression model of the variable represented by the child node
-is statistically significant.
+%}.
 %
-}.
+where each edge is coloured according to the sign of its causal effect
+(green for non-negative, red for non-positive).
+The result is shown in Figure \ref{fig:dag1}:
+the group factor and exogenous variables are omitted from the DAG.
 
 @
 <<echo=T,eval=F>>=
 plot(mod0)
 @
 
-The result is shown in Figure \ref{fig:dag1}:
-each edge is coloured according to the sign of its causal effect
-(green for non-negative, red for non-positive), while
-the group factor and exogenous variables are omitted from the DAG.
 
-
-\begin{figure}[ht]
+\begin{figure}[!h]
 \centering
 \includegraphics[scale=1]{figures/dag1.pdf}
-\caption{The DAG including only statistically significant edges.
-Green: non-negative causal effect. Red: non-positive causal effect.}
+\caption{The DAG where each edge is coloured with respect to the sign of its causal effect.
+Green: non-negative causal effect. Red: non-positive causal effect.
+Grey: not statistically significant causal effect (does not apply in this example.}
 \label{fig:dag1}
 \end{figure}
 
 
 All edges result statistically significant,
-excepting the one of the number of agricultural patent applications
-on the net entrepreneurial income index.
-This provides evidence that the effect of technological innovation
-on the benefits for consumers is both direct and mediated by
-the gross value added of Agriculture,
-and the effect of the effect of technological innovation on
-the benefits for farmers is only mediated by
-the gross value added of Agriculture.
+providing evidence that the influence of industrial development
+on pollution is both direct and mediated by private consumption.
 
 The user can also request the summary of estimation:
 
@@ -508,18 +505,18 @@ edgeCoeff(mod0)
 \normalsize
 
 
-Coefficients in the regression model of
-the price index of agricultural products are all of negative sign because
-benefits for consumers improve with the decreasing of prices.
+%Coefficients in the regression model of
+%the price index of agricultural products are all of negative sign because
+%benefits for consumers improve with the decreasing of prices.
 
 
-\subsection{Path analysis}
+\subsection{Disentanglement of causal effects}
 \label{sub:example4}
 
-Path analysis can be performed using the command $\mathsf{pathAnal}(~)$.
+Causal effects can be computed using the command $\mathsf{causalEff}(~)$.
 The user must specify one or more starting variables (argument $\mathsf{from}$)
 and the ending variable (argument $\mathsf{to}$).
-Optionally, specific time lags on which path analysis should be focused
+Optionally, specific time lags at which causal effects must be computed
 can be provided to argument $\mathsf{lag}$,
 otherwise all the relevant ones are considered.
 Also, the user can choose whether instantaneous 
@@ -531,28 +528,19 @@ causal effects must be returned.
 %The \textit{cumulative} causal effect at a prespecified lag,
 %say $k$, is obtained by summing all the instantaneous causal
 %effects for each lag up to $k$.
-Here, two path analysis tasks are performed: one from
-agricultural patent applications to
-the net entrepreneurial income index, and the other from
-agricultural patent applications to
-the price index of agricultural products.
-For both, time lags 5, 10, 15, 20 and 25 are considered, and
-cumulative causal effects are requested:
+Here, the cumulative causal effect of the number of job positions
+on the amount of greenhouse gas emissions
+is requested at time lags 0, 5, 10, 15 and 20:
 
 \small
 @
 <<echo=T>>=
-pathAnal(mod0,from="NPATENT",to="ENTR_INCOME",lag=c(5,10,15,20,25),cumul=T)
-@
-\vspace{.1cm}
-@
-<<echo=T>>=
-pathAnal(mod0,from="NPATENT",to="PPI",lag=c(5,10,15,20,25),cumul=T)
+causalEff(mod0,from="Job",to="Pollution",lag=seq(0,20,by=5),cumul=T)
 @
 \normalsize
 
 ~\\
-The output of path analysis is a list of matrices, each containing
+The output of command $\mathsf{causalEff}$ is a list of matrices, each containing
 estimates and confidence intervals of the causal effect associated to
 each path connecting the starting variables to the ending variable
 at the requested time lags.
@@ -561,34 +549,52 @@ is shown in the component named $\mathsf{overall}$.
 
 Since the logarithmic trasformation was applied to all quantitative
 variables, causal effects above are interpreted as elasticities,
-that is, for a $1\%$ of patent applications more,
-benefits for farmers and consumers are expected to grow
-by $6.7\%$ and $1.8\%$, respectively, after $30$ years.
+that is, for a $1\%$ of job positions more,
+greenhouse gas emissions are expected to grow by $0.47\%$ after $20$ years.
+Actually, the effect ends before $20$ years, as the cumulative causal
+effects after $15$ and$20$ years are equal.
+The time lag up to which the effect is non-zero can be found
+by running command $\mathsf{causalEff}$ without providing
+a value to argument $\mathsf{lag}$:
 
-The estimated lag shape associated to an overall causal
-effect can be displayed using the command $\mathsf{lagPlot}(~)$:
+\small
+@
+<<echo=T>>=
+causalEff(mod0,from="Job",to="Pollution",cumul=T)
+@
+\normalsize
+
+~\\
+The estimated lag shape associated to a path or to an overall causal
+effect can be displayed using the command $\mathsf{lagPlot}(~)$.
+For instance, we can display the lag shape associated to each path
+connecting the number of job positions to the amount of greenhouse gas emissions:
 
 @
 <<echo=T,eval=F>>=
-lagPlot(mod0,from="NPATENT",to="ENTR_INCOME")
+lagPlot(mod0,path="Job*Pollution")
+lagPlot(mod0,path="Job*Consum*Pollution")
 @
+
+or the lag shape associated to the overall causal effect of
+the number of job positions on the amount of greenhouse gas emissions:
 
 @
 <<echo=T,eval=F>>=
-lagPlot(mod0,from="NPATENT",to="PPI")
+lagPlot(mod0,from="Job",to="Pollution")
 @
 
-The result is shown in Figure \ref{fig:lagsh}.
+The resulting graphics are shown in Figure \ref{fig:lagsh}.
 
 
-\begin{figure}[ht]
+\begin{figure}[!h]
 \centering
 {\includegraphics[scale=1]{figures/lagsh1.pdf}}\quad
-{\includegraphics[scale=1]{figures/lagsh2.pdf}}
-\caption{The estimated lag shape associated to the
-overall causal effect of agricultural patent
-applications on the net entrepreneurial income index and the price
-index of agricultural products.
+{\includegraphics[scale=1]{figures/lagsh2.pdf}}\\
+{\includegraphics[scale=1]{figures/lagsh3.pdf}}
+\caption{The estimated lag shape associated to each path connecting
+the number of job positions to the amount of greenhouse gas emissions (upper panels)
+and to the overall causal effect (lower panel).
 $95\%$ confidence intervals are shown in grey.}
 \label{fig:lagsh}
 \end{figure}
@@ -597,25 +603,21 @@ $95\%$ confidence intervals are shown in grey.}
 
 \begin{thebibliography}{99.}%
 
-\bibitem{baltagi08} B. H. Baltagi (2008).
+\bibitem[Baltagi (2008)]{baltagi08} B. H. Baltagi (2008).
 Econometrics. Springer Verlag, 4th edition, Berlin, DE.
 
-\bibitem{bartolini16} F. Bartolini, G. Brunori, A. Coli, A. Magrini, and B. Pacini (2016).
-Assessment of Multiple Effects of Research at Country Level.
-Deliverable of FP7 Impresa project.
-
-\bibitem{dempster77} A. P. Dempster, N. M. Laird, and D. B. Rubin (1977).
+\bibitem[Dempster \textit{et al.} (1977)]{dempster77} A. P. Dempster, N. M. Laird, and D. B. Rubin (1977).
 Maximum Likelihood from Incomplete Data via the EM Algorithm.
 \textit{Journal of the Royal Statistical Society}, Series B, 39(1): 1-38.
 
 %\bibitem{dougherty11} C. Dougherty (2011). Introduction to Econometrics.
 %Oxford University Press, 4th edition, Oxford, UK.
 
-\bibitem{granger74} C. W. J. Granger, and P. Newbold (1974).
+\bibitem[Granger and Newbold (1974)]{granger74} C. W. J. Granger, and P. Newbold (1974).
 Spurious Regressions in Econometrics.
 \textit{Journal of Econometrics}, 2(2), 111-120.
 
-\bibitem{kline00} R. B. Kline (2010).
+\bibitem[Kline (2000)]{kline00} R. B. Kline (2010).
 Principles and Practice of Structural Equation Modelling.
 Guilford Press, 3rd edition, New York, US-NY.
 
@@ -626,16 +628,16 @@ Guilford Press, 3rd edition, New York, US-NY.
 %\bibitem{newey78} W. K. Newey, and K. D. West (1978).
 %A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. %\emph{Econometrica}, 55(3), 703-708.
 
-\bibitem{magrini16} A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016).
+\bibitem[Magrini \textit{et al.} (2016)]{magrini16} A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016).
 Distributed-Lag Structural Equation Modelling: An Application to Impact Assessment of Research Activity on European Agriculture.
 \emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.
 
-\bibitem{pearl12} J. Pearl (2012).
+\bibitem[Pearl (2012)]{pearl12} J. Pearl (2012).
 The Causal Foundations of Structural Equation Modelling.
 In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY. 
 
-\bibitem{wright34} S. Wright (1934). The Method of Path Coefficients.
-\textit{Annals of Mathematical Statistics}, 5(3): 161-215.
+%\bibitem{wright34} S. Wright (1934). The Method of Path Coefficients.
+%\textit{Annals of Mathematical Statistics}, 5(3): 161-215.
 
 \end{thebibliography}
 

@@ -16,13 +16,12 @@
 %\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{dlsem}}
 \examples{
-data(agres)
+data(industry)
 mycode <- list(
-  GVA~quec(NPATENT,1,15),
-  PPI~quec(NPATENT,0,13)+quec(GVA,0,14),
-  ENTR_INCOME~quec(NPATENT,0,14)+quec(GVA,1,14)
+  Consum~quec(Job,0,6),
+  Pollution~quec(Job,1,11)+quec(Consum,1,6)
   )
-myfit <- dlsem(mycode,group="COUNTRY",exogenous=c("GDP","FARM_SIZE"),
-  data=agres,uniroot.check=TRUE,imputation=FALSE,log=TRUE)
-isIndep(myfit,"NPATENT","ENTR_INCOME",given=c("GVA","PPI"))
+myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
+  data=industry,uniroot.check=TRUE,log=TRUE)
+isIndep(myfit,"Job","Pollution",given=c("Consum"))
 }

@@ -1,14 +1,14 @@
 \name{dlsem-package}
 \alias{dlsem-package}
 \docType{package}
-\title{Distributed-lag structural equation modelling with second-order polynomial lag shapes}
-\description{Estimation and path analysis functionalities for structural equation models with second-order polynomial lag shapes.}
+\title{Distributed-lag structural equation modelling}
+\description{Inference functionalities for structural equation models with second-order polynomial and gamma lag shapes.}
 \details{
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 1.4\cr
-  Date: \tab 2016-10-03\cr
+  Version: \tab 1.5\cr
+  Date: \tab 2016-11-23\cr
   License: \tab GPL-2
   }
 }

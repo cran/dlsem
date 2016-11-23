@@ -1,4 +1,4 @@
-export(applyDiff, unirootTest, EM.imputation, dlsem, lagPlot, isIndep, edgeCoeff, pathAnal, fitIndices)
+export(applyDiff, unirootTest, EM.imputation, dlsem, lagPlot, isIndep, edgeCoeff, causalEff, fitIndices)
 
 S3method(print, dlsem)
 S3method(summary, dlsem)
@@ -6,13 +6,12 @@ S3method(plot, dlsem)
 S3method(fitted, dlsem)
 S3method(residuals, dlsem)
 S3method(predict, dlsem)
-S3method(extractAIC, dlsem)
 
 import(Matrix, graph, gRbase, Rgraphviz)
 importFrom("grDevices", "dev.off", "pdf")
 importFrom("graphics", "abline", "axis", "box", "grid", "legend","mtext", "par", "points", "polygon")
 importFrom("methods", "new")
-importFrom("stats", "coefficients", "cov", "extractAIC", "formula","lm", "model.matrix", "na.omit",
-  "pnorm", "predict", "qnorm", "quantile", "residuals", "rnorm", "smooth.spline", "sd", "var", "vcov",
-  "anova", "deviance", "approx", "embed")
+importFrom("stats", "coefficients", "cov", "extractAIC", "formula","lm", "model.matrix",
+  "residuals", "fitted", "quantile", "predict", "pnorm", "qnorm", "qgamma", "rnorm", "rt", "rchisq",
+  "sd", "var", "anova", "deviance", "approx", "embed", "smooth.spline", "na.omit")
 importFrom("utils", "flush.console")

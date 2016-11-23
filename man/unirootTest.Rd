@@ -15,8 +15,8 @@
   or \code{"kpss"} (KPSS, see Kwiatkowski et al., 1992). Default is \code{"adf"}.}
   \item{combine}{The method to combine p-values of different groups, that can be either \code{"choi"} (Choi, 2001) or \code{"demetrescu"} (Demetrescu, 2006).
   Ignored if \code{group} is \code{NULL}. Default is \code{"choi"}.}
-  \item{k}{The lag order to calculate the test statistic. Ignored if \code{test}=\code{"kpss"}. Default is 0.}
-  \item{lshort}{Logical. If \code{TRUE}, the short version of the truncation lag parameter is used. Ignored if \code{test}=\code{"adf"}. Default is \code{TRUE}.}
+  \item{k}{The lag order to calculate the statistic of the Augmented Dickey-Fuller test. Ignored if \code{test}=\code{"kpss"}. Default is 0.}
+  \item{lshort}{Logical. If \code{TRUE}, the short version of the truncation lag parameter is used in the KPSS test. Ignored if \code{test}=\code{"adf"}. Default is \code{TRUE}.}
   }
 \value{A list containing the following components:
   \item{statistic}{The value of the test statistic.}
@@ -42,6 +42,6 @@
 %\author{Alessandro Magrini <magrini@disia.unifi.it>}
 \seealso{\link{applyDiff}, \link{EM.imputation}}
 \examples{
-data(agres)
-unirootTest("NPATENT",group="COUNTRY",data=agres,k=1)
+data(industry)
+unirootTest("Job",group="Region",data=industry,k=1)
 }
