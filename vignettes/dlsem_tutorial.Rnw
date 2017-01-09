@@ -2,10 +2,13 @@
 %\VignetteIndexEntry{Distributed-Lag Structural Equation Modelling with the R Package dlsem}
 %\VignettePackage{dlsem}
 %\VignetteKeyword{Directed acyclic graphs}
-%\VignetteKeyword{Dynamic causal effects}
+%\VignetteKeyword{Dynamic causal inference}
+%\VignetteKeyword{Impact analysis}
 %\VignetteKeyword{Lag modelling}
 
 \usepackage{boxedminipage,color,a4wide,url}
+\usepackage[english]{babel}
+\usepackage{natbib}
 \usepackage[latin1]{inputenc}
 \usepackage{amsmath}
 \usepackage{multirow}
@@ -31,7 +34,7 @@
 Dep. Statistics, Computer Science, Applications\\
 University of Florence, Italy\\
 <magrini@disia.unifi.it>}
-\date{\texttt{dlsem} version 1.5 -- 23 November 2016}
+\date{\texttt{dlsem} version 1.7 -- 10 January 2017}
 
 
 
@@ -76,27 +79,22 @@ University of Florence, Italy\\
 \section{Introduction}
 
 Package \texttt{dlsem} implements inference functionalities
-for structural equation modelling with second-order polynomial and gamma lag shapes
-(DLSEM, \cite{magrini16}).
-DLSEM is an extension of structural equation modelling (SEM)
-where a second-order polynomial or a gamma lag shape is applied to each covariate in each regression model,
-in order to account for temporal delays in the dependence relationships among variables.
-%Second-order polynomial lag shapes have several advantages, including
-%simplicity of estimation, and a clear interpretation of parameters for
-%domain experts, so that prior knowledge can be taken into account
-%by applying simple mathematical constraints.
-%
-In this vignette, theory on structural equation modelling
-with second-order polynomial and gamma lag shapes is provided
-in Section \ref{sec:theory}, then
-the practical use of \texttt{dlsem} is illustrated in Section \ref{sec:example}
-through a fictitious impact assessment problem.
+for structural equation modelling with constrained lag shapes (DLSEM: \citealp{magrini16}).
+DLSEM is suited to perform dynamic causal inference, that is to
+assess and disentangle causal effects at different time lags.
+The vignette is structured as follows.
+In Section \ref{sec:theory}, theory on structural equation modelling
+with constrained lag shapes is presented.
+In Section \ref{sec:install}, instructions for the installation
+of the \texttt{dlsem} packages are provided.
+In Section \ref{sec:example}, the practical use of \texttt{dlsem}
+is illustrated through a fictitious impact assessment problem.
 
 
 \section{Theory}
 \label{sec:theory}
 
-Lagged instances of one or more quantitative covariates
+Lagged instances of one or more covariates
 can be included in the classical linear regression model
 to to account for temporal delays in their influence on the response:
 \begin{equation}\label{eq:uncons_dllm}
@@ -109,28 +107,34 @@ The set $(\beta_{j,0},\beta_{j,1},\ldots,\beta_{j,L_j})$
 is denoted as the \textit{lag shape} of the $j$-th covariate and
 represents its effect on the response variable at different time lags.
 
-Parameter estimation using
-ordinary least squares is inefficient because lagged instances
+Parameter estimation is inefficient because lagged instances
 of the same covariate are typically highly correlated.
-Also, the lag shape of a covariate is completely
-unrestricted, thus problems of interpretation may arise.
-Second-order polynomial and gamma lag shapes can be used
-to solve these drawbacks \cite[Chapter 6]{baltagi08}.
-Package \texttt{dlsem} includes the endpoint-constrained quadratic lag shape:
+The Almon's polynomial lag shape \citep{almon65}
+is a well-known solution to this problem, where coefficients for
+lagged instances of a covariate are forced to follow
+a polynomial of order $P$:
+\begin{equation}\label{eq:almon}
+\beta_{j,l} = \sum_{p=0}^P \phi_p l^p
+\end{equation}
+Unfortunately, the Almon's polynomial lag shape may
+show multiple modes and coefficients with different signs,
+thus entailing problems of interpretation.
+Constrained lag shapes \citep[Chapters 9-10]{judge85} overcome this deficiency.
+Package \texttt{dlsem} includes the \textit{endpoint-constrained quadratic} lag shape:
 \begin{equation}\label{eq:quec}
 \beta_{j,l} = \begin{cases}
   \theta_j \left[-\frac{4}{(b_j-a_j+2)^2} l^2+\frac{4(a_j+b_j)}{(b_j-a_j+2)^2} l-\frac{4(a_j-1)(b_j+1)}{(b_j-a_j+2)^2} \right] & a_j \leq l \leq b_j\\
   0 & \text{otherwise}
   \end{cases}
 \end{equation}
-the quadratic decreasing lag shape:
+the \textit{quadratic decreasing} lag shape:
 \begin{equation}\label{eq:qud}
 \beta_{j,l} = \begin{cases}
   \theta_j \frac{l^2-2 b_j l+b_j^2}{(b_j-a_j)^2} & a_j \leq l \leq b_j\\
   0 & \text{otherwise}
   \end{cases}
 \end{equation}
-and the gamma lag shape:
+and the \textit{gamma} lag shape:
 \begin{equation}\label{eq:gamma}
 \begin{gathered}
 \beta_{j,l} = \theta_j (l+1)^\frac{\delta}{1-\delta}\lambda_j^l \left[\left(\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}\right)^\frac{\delta_j}{1-\delta_j}\lambda_j^{\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}-1}\right]^{-1}\\
@@ -147,27 +151,25 @@ a quadratic function.
 The gamma lag shape is positively skewed with mode equal to $\theta_j$
 at $\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}$.
 Value $a_j$ is denoted as the \textit{gestation lag},
-and value $b_j-a_j$ as the \textit{lag width}.
+value $b_j$ as the \textit{lead lag}, and value $b_j-a_j$ as the \textit{lag width}.
 A static regression coefficient is obtained if $a_j=b_j=0$.
 Since it is not expressed as a function of $a_j$ and $b_j$,
 the gamma lag shape cannot reduce to a static regression
 coefficent, but values $a_j$ and $b_j$ can be computed through numerical approximation.
-A second-order polynomial or a gamma lag shape is monotonic
-in the sign, that is $\beta_{j,l}$ is either
-non-negative or non-positive for any $j$ and $l$.
 
-A linear regression model with second-order polynomial and gamma lag shapes is
-linear in parameters $\beta_0,\theta_1,\ldots,$ $\theta_J$, provided
-that the values of $a_1,\ldots,a_J,b_1,\ldots,b_J$ are known.
-Thus, one can use ordinary least squares to estimate
-parameters $\beta_0,\theta_1,\ldots,\theta_J$ for several models
+A linear regression model with constrained lag shapes is linear
+in parameters $\beta_0,\theta_1,\ldots,$ $\theta_J$,
+provided that the values of $a_1,\ldots,a_J,b_1,\ldots,b_J$ are known.
+Thus, one can use ordinary least squares to
+estimate parameters $\beta_0,\theta_1,\ldots,\theta_J$ for several models
 with different values of $a_1,\ldots,a_J,b_1,\ldots,b_J$,
-and then select the one with the lowest Akaike Information Criterion\footnote{
+and then select the one with the lowest Akaike Information Criterion \citep{akaike74}\footnote{
 %
-Neither the response variable nor the covariates must contain a trend in order
-to obtain unbiased estimates \cite{granger74}.
-A reasonable procedure is to sequentially apply differentiation to all variables until
-the Dickey-Fuller test rejects the hypothesis of unit root for all of them.
+Neither the response variable nor the covariates must contain a trend
+in order to obtain unbiased estimates \citep{granger74}.
+A reasonable procedure is to sequentially apply differentiation to all
+variables until the Augmented Dickey-Fuller test \citep{dickey81}
+rejects the hypothesis of unit root for all of them.
 %
 }.
 
@@ -183,10 +185,10 @@ the regression model applied to variable $V_4$ has $V_2$ and $V_3$ as covariates
 \end{figure}
 
 
-In structural equation modelling (SEM), a linear regression model
-is applied to each variable and all linear regression models
-define an acyclic directed graph (DAG).
-In such DAG, variables are represented by nodes, a node
+In the Pearl's framework \citep{pearl00}, structural equation modelling (SEM)
+consists of applying a linear regression model to each variable, and
+all linear regression models define an acyclic directed graph (DAG).
+In the DAG, variables are represented by nodes, a node
 receives a directed edge from another node
 if the variable represented by the latter is a covariate
 in the regression model of the variable represented by the former,
@@ -194,35 +196,39 @@ and no directed cycles are present (see Figure \ref{fig:dagsam}).
 If a node receives a directed edge from another node in the DAG,
 the former is called child of the latter, and the latter is
 called parent of the former.
-A comprehensive review of SEM can be found in \cite{kline00}.
-If the DAG has a causal interpretation, a causal effect is associated
-to each edge, directed path or couple of variables \cite{pearl12}:
+Also, the DAG has a causal interpretation, and a causal effect is associated
+to each edge, directed path or couple of nodes to represent expected
+changes induced by an intervention (\citealp[Chapter 5.3]{pearl00}; \citealp{pearl12}):
 \begin{itemize}
-\item the causal effect associated to each edge in the DAG
-is represented by the coefficient of the variable represented by the parent node
-in the regression model of the variable represented by the child node;
-\item the causal effect associated to a directed path is represented by
+\item the causal effect associated to each edge in the DAG is
+the coefficient of the variable represented by the node originating
+the edge in the regression model of the variable represented
+by the node receiving the edge;
+\item the causal effect associated to a directed path is
 the product of the causal effects associated to each edge in the path;
-\item the causal effect of a variable on another is represented
-by the sum of the causal effects associated to each
-directed path connecting the two variables.
+\item the causal effect of a variable on another is
+the sum of the causal effects associated to each
+directed path connecting the nodes representing the two variables.
 \end{itemize}
-Often, the causal effect of a variable on another is
+Thus, SEM can be employed to assess and decompose the average change
+in the value of any variable induced by an intervention provoking a
+unit variation in the value of any other variable.
+The causal effect of a variable on another is
 termed \textit{overall} causal effect,
 the causal effect associated to a directed path
 made by a single edge is called \textit{direct} effect,
 while the causal effects associated to the other directed
 paths are denoted as \textit{indirect} effects.
 
-In distributed-lag structural equation modelling (DLSEM),
-each regression model is enhanced by second-order polynomial and gamma
-lag shapes and the DAG does not explicitly include time lags, but,
-if an edge connects two variables, then there
-must be at least one time lag where the coefficient
-of the variable represented by the parent node
-in the regression model of the variable represented by the child node
-is non-zero.
-DLSEM can be employed to disentangle the causal effect of any variable
+Distributed-lag structural equation modelling (DLSEM) is
+an extension of SEM, where a constrained lag shape
+is applied to each covariate in each regression model.
+For DLSEM, the DAG does not explicitly include time lags, and
+an edge connecting two nodes implies that there is
+at least one time lag where the coefficient
+of the variable represented by the parent node in the regression model
+of the variable represented by the child node is non-zero.
+DLSEM can be employed to assess and decompose the causal effect of any variable
 to another at different time lags
 by extending the rules above: %reported in Subsection \ref{sub:sem}:
 \begin{itemize}
@@ -258,7 +264,35 @@ say $k$, is obtained by summing all the instantaneous causal
 effects for each lag up to $k$.
 
 
-\section{Distributed-lag structural equation modelling with dlsem}
+\section{Installation}
+\label{sec:install}
+
+Before installing \texttt{dlsem}, you must have installed
+$\mathsf{R}$ version 2.1.0 or higher, which is freely available at
+\url{http://www.r-project.org/}.
+
+To install the \texttt{dlsem} package, type the following
+in the $\mathsf{R}$ command prompt:
+
+@
+<<eval=F>>=
+install.packages("dlsem")
+@
+
+and \texttt{R} will automatically install the package to
+your system from CRAN.
+In order to keep your copy of \texttt{dlsem} up to date,
+use the command:
+
+@
+<<eval=F>>=
+update.packages("dlsem")
+@
+
+The latest version of \texttt{dlsem} is 1.7.
+
+
+\section{Illustrative example}
 \label{sec:example}
 
 The practical use of package \texttt{dlsem} is illustrated
@@ -268,7 +302,7 @@ industry (proxy of the industrial development) on
 the amount of greenhouse gas emissions (proxy of pollution)
 is direct and/or mediated by the amount of private consumption.
 The analysis will be conducted on the dataset $\mathsf{industry}$,
-containing data for $10$ immaginary regions in the period 1983-2015.
+containing data for $10$ imaginary regions in the period 1983-2015.
 
 @
 <<echo=F>>=
@@ -284,7 +318,7 @@ summary(industry)
 \normalsize
 
 
-\subsection{The model code}
+\subsection{Specification of the model code}
 \label{sub:example1}
 
 The first step to perform DLSEM with \texttt{dlsem}
@@ -306,8 +340,12 @@ The DAG for the proposed problem is shown in Figure \ref{fig:dag0}.
 
 
 The model code must be a list of formulas, one for each regression model.
-In each formula, the response and the covariates must be quantitative variables
-and operators $\mathsf{quec}(~)$, $\mathsf{qdec}(~)$ and $\mathsf{gamma}(~)$
+In each formula, the response and the covariates must be quantitative variables\footnote{
+%
+Qualitative variables can be included only as exogenous variables,
+as described in Subsection \ref{sub:example3}.
+%
+}, and operators $\mathsf{quec}(~)$, $\mathsf{qdec}(~)$ and $\mathsf{gamma}(~)$
 can be employed to specify, respectively, an endpoint-constrained quadratic,
 a quadratic decreasing or a gamma lag shape.
 Operators $\mathsf{quec}(~)$ and $\mathsf{qdec}(~)$ have three arguments:
@@ -326,7 +364,7 @@ The regression model for variables with no covariates
 besides the group factor and exogenous variables
 can be omitted from the model code (here, we could omit the
 regression model for the number of job positions).
-In this illustration, an endpoint-constrained quadratic
+In this problem, an endpoint-constrained quadratic
 lag shape between 0 and 15 time lags is assumed for all variables:
 
 @
@@ -339,7 +377,7 @@ mycode <- list(
 @
 
 
-\subsection{Control options}
+\subsection{Specification of control options}
 \label{sub:example2}
 
 The second step to perform DLSEM with \texttt{dlsem}
@@ -351,7 +389,7 @@ several components.
 %lag with non-zero autocorrelation for one or more response variables.
 %If a value greater than 0 (the default) is indicated
 %for a response variable, the Newey-West correction
-%of the covariance matrix of estimates \cite{newey78} is applied.
+%of the covariance matrix of estimates \citep{newey78} is applied.
 The key component is $\mathsf{adapt}$,
 a named vector of logical values where each value must refer to one
 response variable and indicates whether values $a_j$ and $b_j$
@@ -361,27 +399,19 @@ must be selected on the basis of the best fit to data,
 instead of employing the ones specified in the model code.
 If adaption is requested for a regression model, three further
 components are taken into account:
-$\mathsf{max.gestation}$, $\mathsf{min.width}$, $\mathsf{max.width}$ and $\mathsf{sign}$.
+$\mathsf{max.gestation}$, $\mathsf{max.lead}$, $\mathsf{min.width}$ and $\mathsf{sign}$.
 Each of these three components is a named list, where each component of
 the list must refer to one response variable and must be a named vector
-including, respectively, the maximum gestation lag, the minimum lag width,
-the maximum lag width and the sign (either '+' for non-negative, or '-'
+including, respectively, the maximum gestation lag, the maximum lead lag,
+the minimum lag width and the sign (either '+' for non-negative, or '-'
 for non-positive) of the coefficients of one or more covariates.
-%
-%Note that the first and the second numerical arguments of operators
-%$\mathsf{quec}(~)$ and $\mathsf{qdec}(~)$ in the model code are taken
-%as the minimum gestation lag and the maximum lag width, respectively.
-%As an example, if the lag shape of a covariate is specified as
-%$\mathsf{quec}(X1,2,10)$ in the model code, gestation lags of
-%0 and 1, as well as lag width greater than 8 will not be considered in the selection.
-%
-In this illustration, 
+In this problem, 
 %not apply the Newey-West correction and to
 adaptation of lag shapes is performed for all regression models
 with the following constraints:
 (i) maximum gestation lag of $3$ years,
-(ii) minimum lag width of $5$ years,
-(iii) maximum lag width of $15$ years,
+(ii) maximum lead lag of $15$ years,
+(iii) minimum lag width of $5$ years,
 (iv) all coefficients with non-negative sign
 %excepting the ones in the
 %regression model of the price index of agricultural products,
@@ -392,8 +422,8 @@ with the following constraints:
 mycontrol <- list(
   adapt=c(Consum=T,Pollution=T),
   max.gestation=list(Consum=c(Job=3),Pollution=c(Job=3,Consum=3)),
+  max.lead=list(Consum=c(Job=15),Pollution=c(Job=15,Consum=15)),
   min.width=list(Consum=c(Job=5),Pollution=c(Job=5,Consum=5)),
-  max.width=list(Consum=c(Job=15),Pollution=c(Job=15,Consum=15)),
   sign=list(Consum=c(Job="+"),Pollution=c(Job="+",Consum="+"))
   )
 @
@@ -414,38 +444,34 @@ effects due to differences between the levels of the group factor.
 Each exogenous variable can be either qualitative or quantitative
 and its coefficient in each regression
 model is $0$ for time lags greater than $0$ (no lag).
-Furthermore, the user can decide to perform any number of the following
-operations:
-\begin{itemize}
-\item differentiation until the
-hypothesis of unit root is rejected by the Dickey-Fuller test
-for all the quantitative variables
-(by setting argument $\mathsf{uniroot.check}$ to $\mathsf{TRUE}$);
-%\item imputation of missing values for quantitative variables
-%using the Expectation-Maximization algorithm \cite{dempster77}
-%(by setting argument $\mathsf{imputation}$ to $\mathsf{TRUE}$);
-\item apply the logarithmic transformation to all quantitative variables
-in order to interpret each coefficient as an elasticity
-(by setting argument $\mathsf{log}$ to $\mathsf{TRUE}$).
-\end{itemize}
+The user can decide to apply the logarithmic transformation to all
+strictly positive quantitative variables by setting argument
+$\mathsf{log}$ to $\mathsf{TRUE}$,
+in order to interpret each coefficient as an elasticity.
+Before estimation, differentiation is performed until the
+hypothesis of unit root is rejected by the Augmented Dickey-Fuller test
+for all quantitative variables\footnote{
+%
+If a group factor is specified, the panel version of the
+Augmented Dickey-Fuller test proposed by \cite{levin02} is used insead.
+%
+}, and missing values are imputed
+using the Expectation-Maximization algorithm \citep{dempster77}.
 %(approximatively) as the percentage increase in the value
 %of the response variable for $1\%$ increase in the value
 %of a covariate (elasticity)
-In this illustration, the region is indicated as the group factor,
-while population and gross domestic product are indicated as exogenous variables.
-Also, we request differentiation until stationarity
-%imputation of missing values
-and logarithmic transformation for all quantitative variables:
+In this problem, the region is indicated as the group factor,
+while population and gross domestic product are indicated as
+exogenous variables.
+Also, we request the logarithmic transformation and provide
+control options to argument $\mathsf{control}$:
 
 @
 <<echo=T>>=
 mod0 <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
-  data=industry,control=mycontrol,uniroot.check=T,log=T)
+  data=industry,control=mycontrol,log=T)
 @
 
-Before estimating the structural model,
-missing values for quantitative variables are imputed
-using the Expectation-Maximization algorithm \cite{dempster77}.
 After estimating the structural model, the user can display the DAG
 %including only statistically significant edges\footnote{
 %%
@@ -473,7 +499,7 @@ plot(mod0)
 \includegraphics[scale=1]{figures/dag1.pdf}
 \caption{The DAG where each edge is coloured with respect to the sign of its causal effect.
 Green: non-negative causal effect. Red: non-positive causal effect.
-Grey: not statistically significant causal effect (does not apply in this example.}
+Grey: not statistically significant causal effect (no such edges here).}
 \label{fig:dag1}
 \end{figure}
 
@@ -510,7 +536,7 @@ edgeCoeff(mod0)
 %benefits for consumers improve with the decreasing of prices.
 
 
-\subsection{Disentanglement of causal effects}
+\subsection{Assessment and decomposition of causal effects}
 \label{sub:example4}
 
 Causal effects can be computed using the command $\mathsf{causalEff}(~)$.
@@ -550,9 +576,9 @@ is shown in the component named $\mathsf{overall}$.
 Since the logarithmic trasformation was applied to all quantitative
 variables, causal effects above are interpreted as elasticities,
 that is, for a $1\%$ of job positions more,
-greenhouse gas emissions are expected to grow by $0.47\%$ after $20$ years.
-Actually, the effect ends before $20$ years, as the cumulative causal
-effects after $15$ and$20$ years are equal.
+greenhouse gas emissions are expected to grow by $1.31\%$ after $20$ years.
+Actually, the effect ends before $15$ years, as the cumulative causal
+effects after $15$ and $20$ years are equal.
 The time lag up to which the effect is non-zero can be found
 by running command $\mathsf{causalEff}$ without providing
 a value to argument $\mathsf{lag}$:
@@ -560,7 +586,7 @@ a value to argument $\mathsf{lag}$:
 \small
 @
 <<echo=T>>=
-causalEff(mod0,from="Job",to="Pollution",cumul=T)
+causalEff(mod0,from="Job",to="Pollution",cumul=T)$overall
 @
 \normalsize
 
@@ -603,41 +629,48 @@ $95\%$ confidence intervals are shown in grey.}
 
 \begin{thebibliography}{99.}%
 
-\bibitem[Baltagi (2008)]{baltagi08} B. H. Baltagi (2008).
-Econometrics. Springer Verlag, 4th edition, Berlin, DE.
+\bibitem[Akaike(1974)]{akaike74} H. Akaike (1974). A New Look at the Statistical Identification Model.
+\textit{IEEE Transactions on Automatic Control}, 19: 716-723.
 
-\bibitem[Dempster \textit{et al.} (1977)]{dempster77} A. P. Dempster, N. M. Laird, and D. B. Rubin (1977).
+\bibitem[Almon(1965)]{almon65} S. Almon (1965).
+The Distributed Lag between Capital Appropriations and Net Expenditures.
+\textit{Econometrica}, 33, 178-196.
+
+\bibitem[Dempster \textit{et al.}(1977)]{dempster77} A. P. Dempster, N. M. Laird, and D. B. Rubin (1977).
 Maximum Likelihood from Incomplete Data via the EM Algorithm.
 \textit{Journal of the Royal Statistical Society}, Series B, 39(1): 1-38.
 
-%\bibitem{dougherty11} C. Dougherty (2011). Introduction to Econometrics.
-%Oxford University Press, 4th edition, Oxford, UK.
+\bibitem[Dickey and Fuller(1981)]{dickey81} D. A. Dickey, and W. A. Fuller (1981). Likelihood Ratio Statistics for Autoregressive Time Series with a Unit Root.
+\textit{Econometrica},49: 1057-1072.
 
-\bibitem[Granger and Newbold (1974)]{granger74} C. W. J. Granger, and P. Newbold (1974).
+\bibitem[Granger and Newbold(1974)]{granger74} C. W. J. Granger, and P. Newbold (1974).
 Spurious Regressions in Econometrics.
 \textit{Journal of Econometrics}, 2(2), 111-120.
 
-\bibitem[Kline (2000)]{kline00} R. B. Kline (2010).
-Principles and Practice of Structural Equation Modelling.
-Guilford Press, 3rd edition, New York, US-NY.
+\bibitem[Judge \textit{et al.}(1985)]{judge85} G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985).
+The Theory and Practice of Econometrics. John Wiley \& Sons, 2nd ed., New York, US-NY.
 
-%\bibitem{lauritzen90} S. L. Lauritzen, A. P. Dawid, B. N. Larsen, and H. G. Leimer (1990).
-%Independence Properties of Directed Markov Fields.
-%\textit{Networks}, 20(5): 491-505.
+\bibitem[Lauritzen(1996)]{lauritzen96} S. L. Lauritzen (1996). Graphical Models.
+Oxford University Press, Oxford, UK.
 
-%\bibitem{newey78} W. K. Newey, and K. D. West (1978).
+\bibitem[Levin \textit{et al.}(2002)]{levin02} A. Levin, C. Lin, and C. J. Chub (2002).
+Unit Root Tests in Panel Data: Asymptotic and Finite-Sample Properties.
+\textit{Journal of Econometrics}, 108: 1-24.
+
+%\bibitem[Newey and West(1978)]{newey78} W. K. Newey, and K. D. West (1978).
 %A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. %\emph{Econometrica}, 55(3), 703-708.
 
-\bibitem[Magrini \textit{et al.} (2016)]{magrini16} A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016).
+\bibitem[Magrini \textit{et al.}(2016)]{magrini16} A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016).
 Distributed-Lag Structural Equation Modelling: An Application to Impact Assessment of Research Activity on European Agriculture.
 \emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.
 
-\bibitem[Pearl (2012)]{pearl12} J. Pearl (2012).
+\bibitem[Pearl(2012)]{pearl12} J. Pearl (2012).
 The Causal Foundations of Structural Equation Modelling.
 In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY. 
 
-%\bibitem{wright34} S. Wright (1934). The Method of Path Coefficients.
-%\textit{Annals of Mathematical Statistics}, 5(3): 161-215.
+\bibitem[Pearl(2000)]{pearl00} J. Pearl (2000).
+Causality: Models, Reasoning, and Inference.
+Cambridge University Press. Cambridge, UK.
 
 \end{thebibliography}
 

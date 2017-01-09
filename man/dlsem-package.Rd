@@ -2,13 +2,20 @@
 \alias{dlsem-package}
 \docType{package}
 \title{Distributed-lag structural equation modelling}
-\description{Inference functionalities for structural equation models with second-order polynomial and gamma lag shapes.}
+\description{Inference functionalities for structural equation models with constrained lag shapes (Magrini et al., 2016).
+The main functions of the package are:
+\itemize{
+  \item{\link{dlsem}, }{to perform parameter estimation;}
+  \item{\link{causalEff}, }{to assess and disentangle causal effects at different time lags;}
+  \item{\link{lagPlot}, }{to plot the lag shape associated to a path or to an overall causal effect.} 
+  }
+}
 \details{
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 1.5\cr
-  Date: \tab 2016-11-23\cr
+  Version: \tab 1.7\cr
+  Date: \tab 2017-01-10\cr
   License: \tab GPL-2
   }
 }

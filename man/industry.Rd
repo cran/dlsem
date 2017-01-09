@@ -11,8 +11,8 @@
     \item{\code{Year}}{Year.}
     \item{\code{Population}}{Population (number of inhabitants).}
     \item{\code{GDP}}{Gross domestic product (1000 international dollars).}
-    \item{\code{Job}}{New job roles in industry (thousands of roles).}
-    \item{\code{Consum}}{Private consumption index (Index, 1980=100).}
+    \item{\code{Job}}{Employment in industry (Index, 1980=100).}
+    \item{\code{Consum}}{Private consumption (Index, 1980=100).}
     \item{\code{Pollution}}{Greenhouse gas emissions (tonnes of CO2 equivalent).}
   }
 }

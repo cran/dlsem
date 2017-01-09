@@ -1,76 +1,55 @@
-# lag function (internal use only)
-lagFun <- function(x,maxlag,addNA=T) {
-  out <- x
-  if(maxlag>0) {
-    for(w in 1:maxlag) {
-      if(addNA==T) {
-        z <- rep(NA,length(x))
-        } else {
-        z <- rep(0,length(x))        
-        }
-      if(w<length(x)) {
-        for(i in (1+w):length(x)) {
-          z[i] <- x[i-w]
-          }
-        }
-      out <- cbind(out,z)        
-      }
-    }
-  colnames(out) <- NULL
-  out
-  }
-
 # Z matrix (internal use only)
 Zmat <- function(x,type,theta) {
+  #####
+  lagFun <- function(x,maxlag) {
+    out <- x
+    if(maxlag>0) {
+      for(w in 1:maxlag) {
+        z <- rep(NA,length(x))
+        if(w<length(x)) {
+          for(i in (1+w):length(x)) {
+            z[i] <- x[i-w]
+            }
+          }
+        out <- cbind(out,z)        
+        }
+      }
+    colnames(out) <- NULL
+    out
+    }
+  #####
   if(type=="quec") {
     minlag <- theta[1]
     maxlag <- theta[2]
+    laglim <- min(maxlag,length(x)-3)
     H <- c()
-    for(i in 0:maxlag) {
+    for(i in 0:laglim) {
       if(i<minlag | i>maxlag) {
         H[i+1] <- 0
         } else {
         H[i+1] <- -4/(maxlag-minlag+2)^2*(i^2-(minlag+maxlag)*i+(minlag-1)*(maxlag+1))
         }
       }
-    lagFun(x,maxlag)%*%matrix(H,ncol=1)
     } else if(type=="qdec") {
     minlag <- theta[1]
     maxlag <- theta[2]
+    laglim <- min(maxlag,length(x)-3)
     H <- c()
-    for(i in 0:maxlag) {
+    for(i in 0:laglim) {
       if(i<minlag | i>maxlag) {
         H[i+1] <- 0
         } else {
         H[i+1] <- (i^2-2*maxlag*i+maxlag^2)/(maxlag-minlag)^2
         }
       }
-    lagFun(x,maxlag)%*%matrix(H,ncol=1)
-    #} else if(type=="trap") {
-    #xa <- theta[1]
-    #xb <- theta[2]
-    #xc <- theta[3]
-    #xd <- theta[4]
-    #H <- c()
-    #for(i in 0:xd) {
-    #  if(i>=xa & i<=xb) {
-    #    H[i+1] <- (i-xa+1)/(xb-xa+1)
-    #    } else if(i>xb & i<=xc) {
-    #    H[i+1] <- 1
-    #    } else if(i>=xc & i<=xd) {
-    #    H[i+1] <- (i-xd-1)/(xc-xd-1)
-    #    } else {
-    #    H[i+1] <- 0
-    #    }
-    #  }
-    #lagFun(x,xd)%*%matrix(H,ncol=1)    
     } else if(type=="gamma") {
     delta <- theta[1]
     lambda <- theta[2]
-    xa <- 0
+    xa <- 0  #####
     xb <- qgamma(0.99,1/(1-delta),-log(lambda))+xa
+    laglim <- min(xb,length(x)-3)
     H <- c()
-    for(i in 0:xb) {
+    for(i in 0:laglim) {
       if(i>=xa) {
         bnum <- (i-xa+1)^(delta/(1-delta))*lambda^(i-xa)
         xM <- (delta/(delta-1))/log(lambda)+xa-1
@@ -80,55 +59,84 @@ Zmat <- function(x,type,theta) {
         H[i+1] <- 0     
         }
       }                             
-    lagFun(x,xb)%*%matrix(H,ncol=1)
+    }
+  lagFun(x,laglim)%*%matrix(H,ncol=1)
+  }
+
+# check if a variable is quantitative (internal use only)
+isQuant <- function(x) {
+  if(is.numeric(x)) {
+    T
+    } else {
+    if(!is.factor(x) && sum(!is.na(x))==0) {
+      T
+      } else {
+      F
+      }
     }
   }
 
-# compute aic (internal use only)
-modFit <- function(x,method="aic") {
+# compute the lag limit (internal use only)
+findLagLim <- function(data,group=NULL) {
+  if(is.null(group)) {
+    max(0,nrow(na.omit(data))-3)
+    } else {
+    auxlaglim <- c()
+    gruppi <- unique(data[,group])
+    for(i in 1:length(gruppi)) {
+      auxlaglim[i] <- nrow(na.omit(data[which(data[,group]==gruppi[i]),]))
+      }
+    max(0,min(auxlaglim,na.rm=T)-3)
+    }
+  }
+
+# adjust qualitative variables with less than two states (internal use only)
+adjX <- function(X) {
+  Xdel <- na.omit(X)
+  for(i in 1:ncol(X)) {
+    if(isQuant(X[,i])==F && length(unique(Xdel[,i]))<2) {    
+      X[,i] <- rep(0,nrow(X))
+      }
+    }
+  X
+  }
+
+# compute model score (internal use only)
+modscore <- function(x,method) {
   res <- residuals(x)
   yfit <- fitted(x)
   n <- length(res)
   s2 <- summary(x)$sigma^2
   ll <- -0.5*n*log(2*pi*s2)-0.5/s2*sum(res^2)
   npar <- 2*(length(x$coefficients)+1)
-  if(method=="aic") {
+  if(method=="ll") {
+    ll
+    } else if(method=="aic") {
     -2*ll+2*npar
     } else if(method=="bic") {
     -2*ll+log(n)
     } else if(method=="mdl") {
     (n-npar)*log(sum(res^2)/npar)+npar*log(sum(yfit^2))+(n-npar-1)*log(n/(n-npar))-(npar+1)*log(npar)
     } else {
-    stop("Invalid method. Chose one among 'aic', 'bic' and 'mdl'",call.=F) ####
+    stop("Invalid method. Chose one among 'll', 'aic', 'bic' and 'mdl'",call.=F)
     }
   }
 
 # least squares estimate (internal use only)
 dlagLS <- function(y,X,group,data,type,theta,L) {
-  panelList <- list()
   if(is.null(group)) {
-    xtime <- panelList[[1]] <- 1:nrow(data)
+    xtime <- 1:nrow(data)
     Z <- data.frame(rep(NA,nrow(data)))
     auxcall <- c()
     Znam <- y
     if(length(X)>0) {
       for(i in 1:length(X)) {
-        if(type[i]=="quec") {
-          iZ <- Zmat(data[,X[i]],type[i],theta[[i]])
-          Znam <- c(Znam,paste("theta0_quec.",X[i],sep=""))
-          } else if(type[i]=="qdec") {
-          iZ <- Zmat(data[,X[i]],type[i],theta[[i]])
-          Znam <- c(Znam,paste("theta0_qdec.",X[i],sep=""))          
-          #} else if(type[i]=="trap") {
-          #iZ <- Zmat(data[,X[i]],type[i],theta[[i]])
-          #Znam <- c(Znam,paste("theta0_trap.",X[i],sep=""))
-          } else if(type[i]=="gamma") {
-          iZ <- Zmat(data[,X[i]],type[i],theta[[i]])
-          Znam <- c(Znam,paste("theta0_gamma.",X[i],sep=""))
-          } else {
+        if(type[i]=="none") {
           iZ <- data[,X[i]]
-          Znam <- c(Znam,X[i])
+          } else {
+          iZ <- Zmat(data[,X[i]],type[i],theta[[i]])
           }
+        Znam <- c(Znam,X[i])
         Z <- cbind(Z,iZ)
         }
       colnames(Z) <- Znam
@@ -139,7 +147,8 @@ dlagLS <- function(y,X,group,data,type,theta,L) {
       colnames(Z) <- y
       form0 <- paste(y," ~ 1",sep="")
       }
-    if(nrow(na.omit(Z))==0) stop("Insufficient number of observations",call.=F)
+    #if(nrow(na.omit(Z))==0) stop("Insufficient number of observations",call.=F)
+    Z <- adjX(Z)
     mod0 <- lm(formula(form0),data=Z)
     } else {
     allZ <- xtime <- c()
@@ -147,28 +156,17 @@ dlagLS <- function(y,X,group,data,type,theta,L) {
     for(w in 1:length(gruppi)) {
       auxind <- which(data[,group]==gruppi[w])
       xtime[auxind] <- 1:length(auxind)
-      panelList[[w]] <- auxind
       Z <- data.frame(rep(NA,length(auxind)))
       auxcall <- c()
       Znam <- y
       if(length(X)>0) {
         for(i in 1:length(X)) {
-          if(type[i]=="quec") {
-            iZ <- Zmat(data[auxind,X[i]],type[i],theta[[i]])
-            Znam <- c(Znam,paste("theta0_quec.",X[i],sep=""))
-            } else if(type[i]=="qdec") {
-            iZ <- Zmat(data[auxind,X[i]],type[i],theta[[i]])
-            Znam <- c(Znam,paste("theta0_qdec.",X[i],sep=""))
-            #} else if(type[i]=="trap") {
-            #iZ <- Zmat(data[auxind,X[i]],type[i],theta[[i]])
-            #Znam <- c(Znam,paste("theta0_trap.",X[i],sep=""))
-            } else if(type[i]=="gamma") {
-            iZ <- Zmat(data[auxind,X[i]],type[i],theta[[i]])
-            Znam <- c(Znam,paste("theta0_gamma.",X[i],sep=""))
-            } else {
+          if(type[i]=="none") {
             iZ <- data[auxind,X[i]]
-            Znam <- c(Znam,X[i])
+            } else {
+            iZ <- Zmat(data[auxind,X[i]],type[i],theta[[i]])
             }
+          Znam <- c(Znam,X[i])
           Z <- cbind(Z,iZ)
           }
         }
@@ -178,13 +176,13 @@ dlagLS <- function(y,X,group,data,type,theta,L) {
       }
     allZ <- cbind(data[,group],allZ)
     colnames(allZ)[1] <- group
-    if(nrow(na.omit(allZ))==0) stop("Insufficient number of observations",call.=F)                                        
-    names(panelList) <- gruppi
+    #if(nrow(na.omit(allZ))==0) stop("Insufficient number of observations",call.=F)
     if(length(X)>0) {
-      form0 <- paste(y," ~ -1+factor(",group,")+",paste(colnames(allZ)[-c(1:2)],collapse="+"),sep="")
+      form0 <- paste(y," ~ -1+",group,"+",paste(colnames(allZ)[-c(1:2)],collapse="+"),sep="")
       } else {
-      form0 <- paste(y," ~ -1+factor(",group,")",sep="")
-      }
+      form0 <- paste(y," ~ -1+",group,sep="")
+      }                               
+    allZ <- adjX(allZ)
     mod0 <- lm(formula(form0),data=allZ)
     }
   bhat <- coefficients(mod0)
@@ -197,22 +195,22 @@ dlagLS <- function(y,X,group,data,type,theta,L) {
     colnames(bvar)[(auxdim+1):ncol(bvar)] <- rownames(bvar)[(auxdim+1):nrow(bvar)] <- bNA
     bvar <- bvar[names(bhat),names(bhat)]
     }
-  if(L>0) {
-    res0 <- residuals(mod0)
-    W <- matrix(nrow=length(res0),ncol=length(res0))
-    for(i in 1:length(res0)) {
-      for(j in 1:length(res0)) {
-        ijlag <- abs(xtime[as.numeric(names(res0)[i])]-xtime[as.numeric(names(res0)[j])])
-        W[i,j] <- max(0,(1-ijlag/(1+L)))*res0[i]*res0[j]
-        }
-      }
-    Xmat <- model.matrix(mod0)
-    Imat <- solve(t(Xmat)%*%Xmat)
-    mod0$vcov <- Imat%*%t(Xmat)%*%W%*%Xmat%*%Imat
-    } else {
-    mod0$vcov <- bvar*summary(mod0)$sigma^2
-    }
-  mod0$panel <- panelList
+  #if(L>0) {
+  #  res0 <- residuals(mod0)
+  #  W <- matrix(nrow=length(res0),ncol=length(res0))
+  #  for(i in 1:length(res0)) {
+  #    for(j in 1:length(res0)) {
+  #      ijlag <- abs(xtime[as.numeric(names(res0)[i])]-xtime[as.numeric(names(res0)[j])])
+  #      W[i,j] <- max(0,(1-ijlag/(1+L)))*res0[i]*res0[j]
+  #      }
+  #    }
+  #  Xmat <- model.matrix(mod0)
+  #  Imat <- solve(t(Xmat)%*%Xmat)
+  #  mod0$vcov <- Imat%*%t(Xmat)%*%W%*%Xmat%*%Imat
+  #  } else {
+  #  mod0$vcov <- bvar*summary(mod0)$sigma^2
+  #  }
+  #mod0$panel <- panelList
   mod0
   }
 
@@ -226,24 +224,19 @@ scanForm <- function(x) {
   if(length(auX)>0) {
     lnames <- ltype <- rep(NA,length(auX))
     lpar <- list()
-    for(i in 1:length(auX)) {                    
+    for(i in 1:length(auX)) {        
       if(nchar(auX[i])>0) {
-        if(grepl("quec\\(",auX[i])) {                           
+        if(identical("quec(",substr(auX[i],1,5))) {                           
           istr <- gsub("\\)","",gsub("quec\\(","",strsplit(auX[i],",")[[1]]))
           lnames[i] <- istr[1]
           ltype[i] <- "quec"
           lpar[[i]] <- as.numeric(istr[-1])
-          } else if(grepl("qdec\\(",auX[i])) {                           
+          } else if(identical("qdec(",substr(auX[i],1,5))) {                            
           istr <- gsub("\\)","",gsub("qdec\\(","",strsplit(auX[i],",")[[1]]))
           lnames[i] <- istr[1]
           ltype[i] <- "qdec"
-          lpar[[i]] <- as.numeric(istr[-1])   
-          #} else if(grepl("trap\\(",auX[i])) {
-          #istr <- gsub("\\)","",gsub("trap\\(","",strsplit(auX[i],",")[[1]]))
-          #lnames[i] <- istr[1]
-          #ltype[i] <- "trap"
-          #lpar[[i]] <- as.numeric(istr[-1])            
-          } else if(grepl("gamma\\(",auX[i])) {
+          lpar[[i]] <- as.numeric(istr[-1])             
+          } else if(identical("gamma(",substr(auX[i],1,6))) {
           istr <- gsub("\\)","",gsub("gamma\\(","",strsplit(auX[i],",")[[1]]))
           lnames[i] <- istr[1]
           ltype[i] <- "gamma"
@@ -252,7 +245,7 @@ scanForm <- function(x) {
           lnames[i] <- auX[i]
           ltype[i] <- "none"
           lpar[[i]] <- NA
-         }                        
+          }                        
         if(grepl("\\(",lnames[i])) {
           stop("Unknown lag shape: ",strsplit(lnames[i],"\\(")[[1]][1],call.=F)
           }
@@ -265,7 +258,7 @@ scanForm <- function(x) {
   list(y=ynam,X=auX,ltype=ltype,lpar=lpar)
   }
 
-# gamma constrains (internal use only)
+# gamma constraints (internal use only)
 gammaCons <- list()
 gamseq <- seq(0.01,0.99,by=0.01)
 gammaCons[[1]] <- gammaCons[[2]] <- matrix(nrow=length(gamseq),ncol=length(gamseq))
@@ -279,9 +272,9 @@ for(j in 1:length(gamseq)) {
   }
 
 # generate search grid (internal use only)
-searchGrid <- function(maxgs,minwd,maxwd,laglim,lag.type) {
+searchGrid <- function(maxgs,minwd,maxld,lag.type) {
   if(lag.type=="gamma") {
-    auxind <- which(gammaCons$sx<=maxgs & gammaCons$dx<=laglim & gammaCons$dx-gammaCons$sx>=minwd & gammaCons$dx-gammaCons$sx<=maxwd,arr.ind=T)
+    auxind <- which(gammaCons$sx<=maxgs & gammaCons$dx<=maxld & gammaCons$dx-gammaCons$sx>=minwd,arr.ind=T)
     n <- nrow(auxind)
     if(n>0) {
       res <- c()
@@ -291,38 +284,26 @@ searchGrid <- function(maxgs,minwd,maxwd,laglim,lag.type) {
       outind <- seq(1,nrow(auxind),by=ceiling(n/500))
       res[outind,]
       }
-    #} else if(lag.type=="trap") {
-    #####
     } else {
     auxmat <- c()
-    for(i in 0:laglim) {
-      for(j in i:laglim) { 
+    for(i in 0:maxld) {
+      for(j in i:maxld) { 
+        if(i<=maxgs & j-i>=minwd)
         auxmat <- rbind(auxmat,c(i,j))
         }   
       }
-    auxind <- which(auxmat[,1]<=maxgs & auxmat[,2]<=laglim & auxmat[,2]-auxmat[,1]>=minwd & auxmat[,2]-auxmat[,1]<=maxwd)
-    n <- length(auxind)
-    if(n>0) {
-      auxmat[auxind,]
-      }
+    auxmat
     }
   }
   
 # fit a distributed-lag regression model (internal use only)
-dlaglm <- function(formula,group=NULL,data,log=FALSE,L=0,adapt=FALSE,max.gestation=NULL,min.width=NULL,max.width=NULL,sign=NULL,selection="aic") {
+dlaglm <- function(formula,group=NULL,data,L=0,adapt=FALSE,max.gestation=NULL,min.width=NULL,max.lead=NULL,sign=NULL,selection="aic") {
   auxscan <- scanForm(formula)
   y <- auxscan$y
   lagPar <- auxscan$lpar
   lagType <- auxscan$ltype
   lagNam <- names(lagPar)  
   if(length(lagNam)>0) {
-    if(!is.null(group) && (group %in% lagNam)) stop("Variable ",group," is defined as both a group factor and a covariate",call.=F) 
-    auxcheck <- setdiff(lagNam,colnames(data))
-    if(length(auxcheck)>0) stop("Unknown variable: ",auxcheck[1],call.=F)    
-    auxdupl <- duplicated(lagNam)
-    if(sum(auxdupl)>0) {
-      stop("Duplicated covariates: ",paste(lagNam[auxdupl],collapse=", "),call.=F)
-      }
     if(is.null(group)) {
       maxlag <- nrow(na.omit(data[,c(y,lagNam)]))-2
       } else {
@@ -336,46 +317,26 @@ dlaglm <- function(formula,group=NULL,data,log=FALSE,L=0,adapt=FALSE,max.gestati
       }
     } else {
     adapt <- F
-    }   
-  if(log==T) {
-    nodenam <- c(y,lagNam)
-    nolog <- c()
-    for(i in 1:length(nodenam)) {
-      if(sum(data[,nodenam[i]]<=0,na.rm=T)==0) {
-        data[,nodenam[i]] <- log(data[,nodenam[i]])
-        } else {
-        nolog <- c(nolog,nodenam[i])
-        }
-      }                                                                                             
-    if(length(nolog)>0) warning("Log not applied to variables: ",paste(nolog,collapse=", "),call.=F)
     }
   if(adapt==F) {
     modOK <- dlagLS(y=y,X=lagNam,group=group,data=data,type=lagType,theta=lagPar,L=L)
     if(length(c(group,auxscan$X))>0) {
-      modOK$call <- paste(y," ~ ",paste(c(group,auxscan$X),collapse="+"),sep="")
+      modOK$call$formula <- formula(paste(y," ~ ",paste(c(group,auxscan$X),collapse="+"),sep=""))
       } else {
-      modOK$call <- paste(y," ~ 1",sep="")
+      modOK$call$formula <- formula(paste(y," ~ 1",sep=""))
       }
     } else {
-    if(is.null(group)) {
-      laglimit <- max(0,nrow(na.omit(data))-3)
-      } else {
-      auxlaglim <- c()
-      for(i in 1:length(gruppi)) {
-        auxlaglim <- nrow(na.omit(data[which(data[,group]==gruppi[i]),]))
-        }
-      laglimit <- max(0,min(auxlaglim,na.rm=T)-3)
-      }
+    laglimit <- findLagLim(data[,c(y,lagNam,group)],group=group)    
     bestPar <- vector("list",length=length(lagNam))
     names(bestPar) <- lagNam
     xOK <- c()
     fine <- 0
     while(fine==0) {
-      xtest <- setdiff(lagNam,xOK)                 
+      xtest <- setdiff(lagNam,xOK)
       if(length(xtest)>0) {
         currentAIC <- currentP <- rep(NA,length(xtest))
         names(currentAIC) <- names(currentP) <- xtest
-        for(i in 1:length(xtest)) {                         
+        for(i in 1:length(xtest)) {
           if(xtest[i] %in% names(sign)) {
             isign <- sign[xtest[i]]
             } else {
@@ -392,27 +353,27 @@ dlaglm <- function(formula,group=NULL,data,log=FALSE,L=0,adapt=FALSE,max.gestati
               } else {
               minwd <- 0
               }
-            if(xtest[i] %in% names(max.width)) {
-              maxwd <- max.width[xtest[i]]
+            if(xtest[i] %in% names(max.lead)) {
+              maxld <- max.lead[xtest[i]]
               } else {
-              maxwd <- laglimit
+              maxld <- laglimit
               }
-            auxcons <- searchGrid(maxgs,minwd,maxwd,laglimit,lagType[xtest[i]])
+            auxcons <- searchGrid(maxgs,minwd,maxld,lagType[xtest[i]])
             aic0 <- bhat0 <- pval0 <- c()               
             for(j in 1:nrow(auxcons)) {
               testType <- lagType[c(xOK,xtest[i])]     
               testPar <- lagPar[c(xOK,xtest[i])]                       
-              testPar[[xtest[i]]] <- auxcons[j,]      
+              testPar[[xtest[i]]] <- auxcons[j,]
               mod0 <- dlagLS(y=y,X=names(testPar),group=group,data=data,type=testType,theta=testPar,L=0)
               summ0 <- summary(mod0)$coefficients
-              ixstr <- paste("theta0_",lagType[xtest[i]],".",xtest[i],sep="")                                                        
+              ixstr <- paste(xtest[i],".",lagType[xtest[i]],sep="")                                                        
               if(ixstr %in% rownames(summ0)) {
                 bhat0[j] <- summ0[ixstr,1]
                 pval0[j] <- summ0[ixstr,4]  
                 } else {
                 bhat0[j] <- pval0[j] <- NA
                 }                        
-              aic0[j] <- modFit(mod0,selection)
+              aic0[j] <- modscore(mod0,selection)
               }        
             if(!is.null(isign)) {
               if(isign=="+") {
@@ -438,7 +399,7 @@ dlaglm <- function(formula,group=NULL,data,log=FALSE,L=0,adapt=FALSE,max.gestati
             auxsumm <- summary(mod0)$coefficients
             if(xtest[i] %in% rownames(auxsumm)) {
               currentP[xtest[i]] <- auxsumm[xtest[i],4]                             
-              currentAIC[xtest[i]] <- modFit(mod0,selection)
+              currentAIC[xtest[i]] <- modscore(mod0,selection)
               } else {
               currentP[xtest[i]] <- 1          
               currentAIC[xtest[i]] <- Inf            
@@ -460,25 +421,36 @@ dlaglm <- function(formula,group=NULL,data,log=FALSE,L=0,adapt=FALSE,max.gestati
     for(i in 1:length(lagNam)) {
       if(lagType[i]!="none") auxcall <- gsub(lagNam[i],paste(lagType[i],"\\(",lagNam[i],",",paste(bestPar[[i]],collapse=","),"\\)",sep=""),auxcall)
       }
-    modOK$call <- auxcall
+    modOK$call$formula <- formula(auxcall)
+    }
+  if(!is.null(group)) {
+    grounam <- paste(group,sort(unique(data[,group])),sep="")
+    auxcheck <- setdiff(grounam,names(modOK$coefficients)) 
+    if(length(auxcheck)>0) {
+      modOK$xlevels[[group]] <- gruppi
+      modOK$coefficients <- c(rep(0,length(auxcheck)),modOK$coefficients)
+      modOK$effects <- c(rep(0,length(auxcheck)),modOK$effects)
+      names(modOK$coefficients)[1:length(auxcheck)] <- names(modOK$effects)[1:length(auxcheck)] <- auxcheck
+      ##### modOK$qr
+      }
     }
   modOK
   }
 
 # compute lag effects of a covariate (internal use only)
-lagEff <- function(model,x=NULL,cumul=F,conf=0.95) {
-  #if(class(model)!="lm") stop("Argument 'model' must be an object of class 'lm'",call.=F)
-  if(is.null(x)) stop('The name of the covariate is missing',call.=F)
-  formstr <- strsplit(strsplit(model$call,"~")[[1]][2],"\\+")[[1]]
-  #####
-  if(grepl(paste("quec\\(",x,",",sep=""),model$call)) {
-    xstr <- formstr[which(grepl(paste("quec\\(",x,",",sep=""),formstr))]
-    sx <- as.numeric(strsplit(xstr,",")[[1]][2])
-    dx <- as.numeric(strsplit(strsplit(xstr,",")[[1]][3],")")[[1]][1])
-    xgrid <- seq(0,dx)
-    xtheta <- paste("theta0_quec.",x,sep="")
-    imu <- model$coefficients[xtheta]
-    icov <- model$vcov[xtheta,xtheta]
+lagEff <- function(model,x,cumul=F,conf=0.95,lag=NULL) {
+  formstr <- strsplit(gsub(" ","",as.character(model$call$formula)[3]),"\\+")[[1]]
+  auxscan <- scanForm(model$call)
+  if(auxscan$ltype[x]=="quec") {
+    sx <- auxscan$lpar[[x]][1]
+    dx <- auxscan$lpar[[x]][2]
+    imu <- model$coefficients[x]
+    icov <- vcov(model)[x,x]
+    if(is.null(lag)) {
+      xgrid <- 0:dx
+      } else {
+      xgrid <- lag
+      }
     iH <- c()
     for(i in 1:length(xgrid)) {
       if(xgrid[i]<sx-1 | xgrid[i]>dx+1) {
@@ -488,15 +460,16 @@ lagEff <- function(model,x=NULL,cumul=F,conf=0.95) {
         }
       }
     iH <- matrix(iH,ncol=1)
-    #####
-    } else if(grepl(paste("qdec\\(",x,",",sep=""),model$call)) {
-    xstr <- formstr[which(grepl(paste("qdec\\(",x,",",sep=""),formstr))]
-    sx <- as.numeric(strsplit(xstr,",")[[1]][2])
-    dx <- as.numeric(strsplit(strsplit(xstr,",")[[1]][3],")")[[1]][1])
-    xgrid <- seq(0,dx)
-    xtheta <- paste("theta0_qdec.",x,sep="")
-    imu <- model$coefficients[xtheta]
-    icov <- model$vcov[xtheta,xtheta]
+    } else if(auxscan$ltype[x]=="qdec") {
+    sx <- auxscan$lpar[[x]][1]
+    dx <- auxscan$lpar[[x]][2]
+    imu <- model$coefficients[x]
+    icov <- vcov(model)[x,x]
+    if(is.null(lag)) {
+      xgrid <- 0:dx
+      } else {
+      xgrid <- lag
+      }
     iH <- c()
     for(i in 1:length(xgrid)) {
       if(xgrid[i]<sx | xgrid[i]>dx) {
@@ -506,40 +479,19 @@ lagEff <- function(model,x=NULL,cumul=F,conf=0.95) {
         }
       }
     iH <- matrix(iH,ncol=1)
-    #} else if(grepl(paste("trap\\(",x,",",sep=""),model$call)) {
-    #xstr <- formstr[which(grepl(paste("trap\\(",x,",",sep=""),formstr))]
-    #sx <- as.numeric(strsplit(xstr,",")[[1]][2])
-    #isxlag <- as.numeric(strsplit(xstr,",")[[1]][3])
-    #idxlag <- as.numeric(strsplit(xstr,",")[[1]][4])
-    #dx <- as.numeric(strsplit(strsplit(xstr,",")[[1]][5],")")[[1]][1])
-    #xgrid <- seq(0,dx)
-    #xtheta <- paste("theta0_trap.",x,sep="")
-    #imu <- model$coefficients[xtheta]
-    #icov <- model$vcov[xtheta,xtheta]
-    #iH <- c()
-    #for(i in 1:length(xgrid)) {
-    #  if(xgrid[i]>sx-1 & xgrid[i]<isxlag) {
-    #    iH[i] <- (xgrid[i]-sx+1)/(isxlag-sx+1)
-    #    } else if(xgrid[i]>=isxlag & xgrid[i]<idxlag) {
-    #    iH[i] <- 1
-    #    } else if(xgrid[i]>=idxlag & xgrid[i]<dx+1) {
-    #    iH[i] <- (xgrid[i]-dx-1)/(idxlag-dx-1)
-    #    } else {
-    #    iH[i] <- 0
-    #    }
-    #  }
-    #iH <- matrix(iH,ncol=1)
-    } else if(grepl(paste("gamma\\(",x,",",sep=""),model$call)) {
-    xstr <- formstr[which(grepl(paste("gamma\\(",x,",",sep=""),formstr))]
-    delta <- as.numeric(strsplit(xstr,",")[[1]][2])
-    lambda <- as.numeric(strsplit(strsplit(xstr,",")[[1]][3],")")[[1]][1])
-    sx <- 0
+    } else if(auxscan$ltype[x]=="gamma") {
+    delta <- auxscan$lpar[[x]][1]
+    lambda <- auxscan$lpar[[x]][2]
+    sx <- 0  #####
     mingam <- qgamma(0.01,1/(1-delta),-log(lambda))+sx
     maxgam <- qgamma(0.99,1/(1-delta),-log(lambda))+sx
-    xtheta <- paste("theta0_gamma.",x,sep="")
-    xgrid <- seq(0,maxgam)
-    imu <- model$coefficients[xtheta]
-    icov <- model$vcov[xtheta,xtheta]
+    imu <- model$coefficients[x]
+    icov <- vcov(model)[x,x]
+    if(is.null(lag)) {
+      xgrid <- 0:maxgam
+      } else {
+      xgrid <- lag
+      }
     iH <- c()
     for(i in 1:length(xgrid)) {
       if(xgrid[i]<mingam | xgrid[i]>maxgam) {
@@ -553,19 +505,19 @@ lagEff <- function(model,x=NULL,cumul=F,conf=0.95) {
       }
     iH <- matrix(iH,ncol=1)
     } else {  
-    if(grepl(x,model$call)==F) stop("Unknown covariate ",x,call.=F)
+    #if((x %in% names(auxscan$ltype))==F) stop("Unknown covariate ",x,call.=F)
     xgrid <- 0  
     imu <- model$coefficients[x]
-    iH <- matrix(1,nrow=1,ncol=1)
     icov <- matrix(diag(rep(1,length(imu))),nrow=length(imu),ncol=length(imu))
+    iH <- matrix(1,nrow=1,ncol=1)
     }                                    
   ibhat <- iH%*%imu
   ibse <- sqrt(diag(iH%*%icov%*%t(iH)))
   quan <- -qnorm((1-conf)/2)
-  out <- cbind(ibhat-quan*ibse,ibhat,ibhat+quan*ibse)
+  out <- cbind(ibhat,ibhat-quan*ibse,ibhat+quan*ibse)
   if(cumul==F) {
     rownames(out) <- xgrid
-    colnames(out) <- c(paste(100*(1-conf)/2,"%",sep=""),"50%",paste(100*(1+conf)/2,"%",sep=""))
+    colnames(out) <- c("estimate",paste(c("lower ","upper "),conf*100,"%",sep=""))
     out
     } else {
     outC <- out
@@ -575,13 +527,13 @@ lagEff <- function(model,x=NULL,cumul=F,conf=0.95) {
         }
       }
     rownames(outC) <- xgrid
-    colnames(outC) <- c(paste(100*(1-conf)/2,"%",sep=""),"50%",paste(100*(1+conf)/2,"%",sep=""))
+    colnames(outC) <- c("estimate",paste(c("lower ","upper "),conf*100,"%",sep=""))
     outC
     }
   }
 
 # adf test (internal use only)
-adft <- function(x,k=trunc((length(x)-1)^(1/3))) {
+adft <- function(x,k=0) {
   k <- k + 1
   x <- as.vector(x,mode="double")
   y <- diff(x)
@@ -590,20 +542,20 @@ adft <- function(x,k=trunc((length(x)-1)^(1/3))) {
   yt <- z[,1]
   xt1 <- x[k:n]
   tt <- k:n
-  if (k > 1) {
+  if(k>1) {
     yt1 <- z[,2:k]
     res <- lm(yt ~ xt1 + 1 + tt + yt1)
+    } else {
+    res <- lm(yt ~ xt1 + 1 + tt)
     }
-  else res <- lm(yt ~ xt1 + 1 + tt)
   res.sum <- summary(res)
   STAT <- res.sum$coefficients[2,1]/res.sum$coefficients[2,2]
-  table <- cbind(c(4.38, 4.15, 4.04, 3.99, 3.98, 3.96), c(3.95, 
+  table <- -1*cbind(c(4.38, 4.15, 4.04, 3.99, 3.98, 3.96), c(3.95, 
       3.8, 3.73, 3.69, 3.68, 3.66), c(3.6, 3.5, 3.45, 3.43, 
       3.42, 3.41), c(3.24, 3.18, 3.15, 3.13, 3.13, 3.12), c(1.14, 
       1.19, 1.22, 1.23, 1.24, 1.25), c(0.8, 0.87, 0.9, 0.92, 
       0.93, 0.94), c(0.5, 0.58, 0.62, 0.64, 0.65, 0.66), c(0.15, 
       0.24, 0.28, 0.31, 0.32, 0.33))
-  table <- -table
   tablen <- dim(table)[2]
   tableT <- c(25, 50, 100, 250, 500, 1e+05)
   tablep <- c(0.01, 0.025, 0.05, 0.1, 0.9, 0.95, 0.975, 0.99)
@@ -635,598 +587,25 @@ kpsst <- function(x,lshort=T) {
   PVAL <- approx(table,tablep,STAT,rule=2)$y
   list(statistic=STAT,'trunc.lag'=l,p.value=PVAL)
   }
- 
-# function to plot a lag shape (internal use only)
-makeShape <- function(bmat,tipo,maxlag=NULL,cumul=F,conf=0.95,ylim=NULL,title=NULL) {    
-  if(!is.null(maxlag)) {
-    if(length(maxlag)!=1 || !is.numeric(maxlag) || maxlag<0 || maxlag!=round(maxlag)) stop("Argument 'maxlag' must be a non-negative integer number",call.=F)
-    ymlag <- max(as.numeric(rownames(bmat)))   
-    if(maxlag>=ymlag) {
-      if(cumul==F) {
-        addmat <- matrix(0,nrow=maxlag-ymlag+1,ncol=3)
-        } else {
-        addmat <- matrix(bmat[nrow(bmat),],nrow=maxlag-ymlag+1,ncol=3,byrow=T)          
-        }
-      bmat <- rbind(bmat,addmat)
-      rownames(bmat) <- -1:(maxlag+1)
-      } else {                
-      bmat <- bmat[1:(which(rownames(bmat)==as.character(maxlag))+1),]
-      }
-    } else {
-    if(cumul==F) {
-      bmat <- rbind(bmat,rep(0,ncol(bmat)))
-      } else {
-      bmat <- rbind(bmat,bmat[nrow(bmat),])
-      }
-    }                          
-  xaux <- (1:nrow(bmat))-2
-  upLim <- 1.05*max(bmat)
-  if(is.null(ylim)) {
-    lowLim <- 1.05*min(bmat)
-    upLim <- max(abs(c(upLim,lowLim)))
-    lowLim <- -max(abs(c(upLim,lowLim)))
-    } else {
-    if(length(ylim)!=2) stop("Invalid 'ylim'",call.=F)
-    lowLim <- ylim[1]
-    upLim <- ylim[2]
-    }
-  plot(0,type="n",xlim=c(xaux[1],rev(xaux)[1]),ylim=c(lowLim,upLim),yaxs="i",xaxs="i",cex.lab=1.2,
-    lwd=2,xaxt="n",yaxt="n",xlab="Lag",ylab="Coefficient",main=title,cex.main=1.2)
-  if(cumul==T) {
-    mtext("cumulative lag shape",cex=0.9)
-    } else {
-    mtext("instantaneous lag shape",cex=0.9)    
-    }
-  usesplin <- 0
-  auxsplin <- bmat[which(bmat[,2]!=0),2]
-  if(length(auxsplin)>=3) usesplin <- 1
-  if(usesplin==0) {
-    xgrid <- xaux
-    ygrid <- bmat
-    } else {
-    xgrid <- seq(min(xaux[which(bmat[,2]!=0)])-1,max(xaux[which(bmat[,2]!=0)])+1,length=1000)
-    ygrid <- matrix(nrow=length(xgrid),ncol=ncol(bmat))
-    splind <- max(1,(min(which(bmat[,2]!=0))-1)):min(length(xaux),(max(which(bmat[,2]!=0))+1))
-    for(i in 1:ncol(bmat)) {
-      auxspl <- smooth.spline(xaux[splind],bmat[splind,i])
-      ygrid[,i] <- predict(auxspl,xgrid)$y
-      }
-    }
-  polygon(c(xgrid,rev(xgrid)),c(ygrid[,1],rev(ygrid[,3])),border=NA,col="grey83")
-  yaxaux <- seq(lowLim,upLim,length=21)
-  ylabaux <- signif(yaxaux,3)
-  ylabaux[11] <- 0
-  xaxaux <- seq(min(xaux),max(xaux))
-  auxby <- max(1,round((max(xaux)-min(xaux)+1)/30))
-  xlabaux1 <- xlabaux2 <- seq(min(xaux),max(xaux),by=auxby)
-  xlabaux2[c(1,length(xlabaux1))] <- NA
-  abline(h=yaxaux,v=seq(min(xaux),max(xaux),by=auxby),col="grey75",lty=2)
-  abline(h=0,lty=2,col="grey35")
-  lines(ygrid[,2]~xgrid,col="grey35",lty=2)
-  auxpoi1 <- which(bmat[,2]!=0)
-  auxpoi2 <- max(1,min(auxpoi1)-1):min(length(xaux),max(auxpoi1)+1)
-  points(bmat[auxpoi2,2]~xaux[auxpoi2],col="grey35",lty=2,cex=0.5)
-  axis(1,at=xlabaux1,labels=xlabaux2,cex.axis=1.1)
-  axis(2,at=yaxaux,labels=ylabaux,cex.axis=1.1)       
-  if(cumul==F) {
-    tcaVal <- signif(apply(bmat,2,sum),5)
-    } else {
-    tcaVal <- signif(bmat[nrow(bmat),],5)
-    }
-  confLeg <- paste("   ",conf*100,"% CI: (",tcaVal[1],", ",tcaVal[3],")",sep="")
-  if(max(bmat[,2])>0) {
-    legpos <- "bottomright"
-    } else {
-    legpos <- "topright"
-    }                                       
-  est <- bmat[,2]
-  if(cumul==T) {
-    newest <- est[1]
-    for(i in 2:length(est)) {
-      newest[i] <- est[i]-est[i-1]
-      } 
-    est <- newest
-    }
-  minlag <- min(as.numeric(rownames(bmat)[which(est!=0)]))
-  maxlag <- max(as.numeric(rownames(bmat)[which(est!=0)]))
-  legend(legpos,legend=c(paste("Effective lags: ",minlag," to ",maxlag,sep=""),paste("Cumulative coefficient: ",tcaVal[2],sep=""),confLeg),bty="n",cex=1.1)
-  box()
-  }    
 
-# check if a vector is named (internal use only)
-hasname <- function(x) {
-  sum(sapply(names(x),function(z){nchar(z)>0}))==length(x)
-  }
-  
-# check control options (internal use only)
-controlCheck <- function(parstr,control,parSets,is.sign=F) {
-  if(parstr %in% names(control)) {
-    if(is.sign==F) {
-      if(!is.list(control[[parstr]]) || hasname(control[[parstr]])==F || sum(sapply(control[[parstr]],class)!="numeric")>0 || sum(sapply(control[[parstr]],function(x){x!=round(x)||x<0}))>0 ) {
-        stop("Component '",parstr,"' of argument 'control' must be a named list of non-negative integers",call.=F)
-        }
-      } else {
-      if(!is.list(control[[parstr]]) || hasname(control[[parstr]])==F || sum(sapply(control[[parstr]],function(x){sum(x %in% c("+","-"))<length(x)})>0)) {
-        stop("Component '",parstr,"' of argument 'control' must be a named list of characters '+' or '-'",call.=F)
-        }
-      }
-    }
-  auxch <- setdiff(names(control[[parstr]]),names(parSets))
-  if(length(auxch)>0) stop("Unknown variables in component '",parstr,"' of argument 'control': ",paste(auxch,collapse=", "),call.=F)
-  auxG <- lapply(control[[parstr]],names)
-  gnam <- names(auxG)
-  for(i in 1:length(gnam)) {
-    auxch <- setdiff(auxG[[gnam[i]]],parSets[[gnam[i]]])
-    if(length(auxch)>0) stop("Unknown covariates of variable ",gnam[i]," in component '",parstr,"' of argument 'control': ",paste(auxch,collapse=", "),call.=F)
-    }
-  
-  }
-
-# fit a distributed-lag SEM
-dlsem <- function(model.code,group=NULL,exogenous=NULL,data,log=FALSE,control=NULL,imputation=TRUE,uniroot.check=TRUE,test="adf",combine="choi",k=0,lshort=TRUE,maxdiff=5,tol=0.0001,maxit=500,selection="aic",plotDir=NULL) {
-  if(sum(sapply(model.code,class)!="formula")>0) stop("Argument 'model code' must be a list of formulas",call.=F)
-  if(!is.null(control) && !is.list(control)) stop("Argument 'control' must be a list",call.=F) 
-  if(imputation==T) {  
-    if(length(maxit)!=1 || maxit<=0 || maxit!=round(maxit)) stop("Argument 'maxit' must be a non-negative integer number",call.=F)
-    if(length(tol)!=1 || tol<=0) stop("Argument 'tol' must be a positive real number",call.=F) 
-    }
-  if(uniroot.check==T) {
-    if(length(test)!=1 || (test %in% c("adf","kpss"))==F) stop("Argument 'test' can be either 'adf' or 'kpss'",call.=F)
-    if(length(combine)!=1 || (combine %in% c("choi","demetrescu"))==F) stop("Argument 'combine' can be either 'choi' or 'demetrescu'",call.=F)
-    if(length(maxdiff)!=1 || maxdiff<0 || maxdiff!=round(maxdiff)) stop("Argument 'maxdiff' must be a non-negative integer number",call.=F)
-    }
-  if((selection %in% c("aic","bic","mdl"))==F) stop("Argument selection must be one among 'aic', 'bic' and 'mdl'",call.=F)
-  res <- list()
-  messlen <- 0
-  pset <- list()
-  for(i in 1:length(model.code)) {
-    icheck <- scanForm(model.code[[i]])
-    if(length(icheck$lpar)>0) {
-      for(j in 1:length(icheck$lpar)) {
-        if(icheck$ltype[j]=="quec") {
-          if(length(icheck$lpar[[j]])!=2 || !identical(icheck$lpar[[j]],round(icheck$lpar[[j]])) || sum(icheck$lpar[[j]]<0)>0 || icheck$lpar[[j]][1]>=icheck$lpar[[j]][2]) {
-            stop("Invalid parameter values for lag shape 'quec' in '",paste(icheck$y," ~ ",paste(icheck$X,collapse="+"),sep=""),"'",call.=F)
-            }
-          } else if(icheck$ltype[j]=="qdec") {
-          if(length(icheck$lpar[[j]])!=2 || !identical(icheck$lpar[[j]],round(icheck$lpar[[j]])) || sum(icheck$lpar[[j]]<0)>0 || icheck$lpar[[j]][1]>=icheck$lpar[[j]][2]) {
-            stop("Invalid parameter values for lag shape 'qdec' in '",paste(icheck$y," ~ ",paste(icheck$X,collapse="+"),sep=""),"'",call.=F)
-            }
-          } else if(icheck$ltype[j]=="gamma") {
-          if(length(icheck$lpar[[j]])!=2 || sum(icheck$lpar[[j]]<=0)>0 || sum(icheck$lpar[[j]]>=1)>0) {
-            stop("Invalid parameter values for lag shape 'gamma' in '",paste(icheck$y," ~ ",paste(icheck$X,collapse="+"),sep=""),"'",call.=F)
-            }
-          #} else if(icheck$ltype[j]=="trap") {
-          #if(length(icheck$lpar[[j]])!=4 || !identical(icheck$lpar[[j]],round(icheck$lpar[[j]])) || sum(icheck$lpar[[j]]<0)>0 ||
-          #  icheck$lpar[[j]][1]>icheck$lpar[[j]][2] || icheck$lpar[[j]][2]>icheck$lpar[[j]][3] || icheck$lpar[[j]][3]>icheck$lpar[[j]][4] || icheck$lpar[[j]][4]-icheck$lpar[[j]][1]<=0) {
-          #  stop("Invalid parameter values for lag shape 'trap' in '",paste(icheck$y," ~ ",paste(icheck$X,collapse="+"),sep=""),"'",call.=F)
-          #  }
-          }
-        }
-      }
-    if(sum(grepl("\\-",model.code[[i]]))>0) stop("Invalid character '-' in 'model.code'",call.=F)
-    if(sum(grepl("\\:",model.code[[i]]))>0) stop("Invalid character ':' in 'model.code'",call.=F) #####
-    if(sum(grepl("\\*",model.code[[i]]))>0) stop("Invalid character '*' in 'model.code'",call.=F) #####
-    auxstr <- as.character(model.code[[i]])[-1]
-    ynam <- gsub(" ","",auxstr[1])
-    names(model.code)[i] <- ynam
-    xnam <- gsub(" ","",strsplit(auxstr[2],"\\+")[[1]])  
-    xnam <- xnam[which(nchar(xnam)>0)]
-    for(j in 1:length(xnam)) {
-      if(grepl("\\(",xnam[j])) xnam[j] <- strsplit(strsplit(xnam[j],",")[[1]][1],"\\(")[[1]][2]
-      }
-    auxdupl <- duplicated(xnam)
-    if(sum(auxdupl)>0) {
-      stop("Duplicated covariate for ",ynam,": ",xnam[auxdupl][1],call.=F)
-      }
-    if(identical(xnam,"1") | length(xnam)==0) {
-      pset[[i]] <- character(0)
-      } else {
-      pset[[i]] <- xnam
-      }
-    names(pset)[i] <- ynam 
-    }   
-  codnam <- c()
-  for(i in 1:length(model.code)) {
-    codnam[i] <- as.character(model.code[[i]])[2]
-    }
-  nodenam <- unique(c(names(pset),unlist(pset)))
-  auxadd <- setdiff(nodenam,codnam)
-  if(length(auxadd)>0) {
-    for(i in length(auxadd):1) {
-      model.code <- c(formula(paste(auxadd[i],"~1",sep="")),model.code)
-      names(model.code)[1] <- auxadd[i]
-      pset[[length(pset)+1]] <- character(0) 
-      names(pset)[length(pset)] <- auxadd[i]
-      }
-    }
-  auxvar <- setdiff(c(nodenam,exogenous),colnames(data))
-  if(length(auxvar)>0) {
-    data[,auxvar] <- as.numeric(rep(NA,nrow(data)))
-    cat(paste("Unobserved variables: ",paste(auxvar,collapse=", "),sep=""),"\n")
-    imputation <- T
-    }
-  G <- new("graphNEL",nodes=names(pset),edgemode="directed")    
-  for(i in 1:length(pset)) {
-    if(length(pset[[i]])>0) {
-      for(j in 1:length(pset[[i]])) {    
-        G <- addEdge(pset[[i]][j],names(pset)[i],G,1) 
-        }
-      }
-    }                   
-  topG <- topOrder(G)
-  if(is.null(topG)) stop("The model code implies directed cycles",call.=F)
-  auxch <- setdiff(names(control),c("L","adapt","max.gestation","min.width","max.width","sign"))
-  if(length(auxch)>0) stop("Unknown component '",auxch[1],"' in argument 'control'",call.=F)
-  if("L" %in% names(control)) {
-    if(!is.numeric(control[["L"]]) | hasname(control[["L"]])==F) stop("Component 'L' of argument 'control' must be a named numeric vector",call.=F)   
-    auxch <- setdiff(names(control[["L"]]),topG)
-    if(length(auxch)>0) stop("Unknown variables in component 'L' of argument 'control': ",paste(auxch,collapse=", "),call.=F)
-    }
-  if("adapt" %in% names(control)) {
-    if(!is.logical(control[["adapt"]]) | hasname(control[["adapt"]])==F) stop("Component 'adapt' of argument 'control' must be a named logical vector",call.=F)
-    auxch <- setdiff(names(control[["adapt"]]),topG)
-    if(length(auxch)>0) stop("Unknown variables in component 'adapt' of argument 'control': ",paste(auxch,collapse=", "),call.=F)
-    }
-  if("max.gestation" %in% names(control)) controlCheck("max.gestation",control,pset)
-  if("min.width" %in% names(control)) controlCheck("min.width",control,pset)
-  if("max.width" %in% names(control)) controlCheck("max.width",control,pset)
-  if("sign" %in% names(control)) controlCheck("sign",control,pset,is.sign=T)
-  auxch <- intersect(names(control[["min.width"]]),names(control[["max.width"]]))  
-  if(length(auxch)>0) {
-    for(i in 1:length(auxch)) {
-      iminw <- control[["min.width"]][[auxch[i]]]
-      imaxw <- control[["max.width"]][[auxch[i]]]
-      ich <- intersect(names(iminw),names(imaxw))
-      if(length(ich)>0) {
-        for(j in 1:length(ich)) {
-          if(iminw[ich[j]]>imaxw[ich[j]]) stop("Incoherent components 'min.width' and 'max.width' in argument 'control': ",auxch[i],"~",ich[j],call.=F)
-          }
-        }
-      }
-    }
-  nodenam <- c(exogenous,topG)
-  origdat <- data
-  if(log==T) {
-    nolog <- c()
-    for(i in 1:length(nodenam)) {
-      if(sum(data[,nodenam[i]]<=0,na.rm=T)==0) {
-        data[,nodenam[i]] <- log(data[,nodenam[i]])
-        } else {
-        nolog <- c(nolog,nodenam[i])
-        }
-      }                                                                                             
-    if(length(nolog)>0) warning("Logarithmic transformation not applied to variables: ",paste(nolog,collapse=", "),call.=F)
-    }
-  if(uniroot.check==T) {
-    fine <- ndiff <- 0
-    cat("Checking stationarity...")
-    flush.console()
-    while(fine==0) {
-      auxp <- c()
-      for(i in 1:length(nodenam)) {
-        auxdat <- na.omit(data[,nodenam[i]])
-        ipvl <- unirootTest(nodenam[i],group=group,data=data,test=test,combine=combine,k=k,lshort=lshort)$p.value
-        ifelse(is.null(ipvl), auxp[i] <- 0, auxp[i] <- ipvl)
-        }   
-      if(sum(auxp>0.05)>0) {
-        if(ndiff<maxdiff) {
-          data <- applyDiff(nodenam,group=group,data=data,k=1)                                        
-          ndiff <- ndiff+1
-          } else {
-          fine <- 1
-          }
-        } else {
-        fine <- 1
-        }
-      }
-    if(ndiff==0) {
-      cat('\r',"No differentiation performed")
-      } else {
-      cat('\r',"Order",ndiff,"differentiation performed")    
-      }
-    cat("\n")
-    }
-  if(imputation==T) {                   
-    auxna <- apply(data[,nodenam],1,function(x){sum(is.na(x))})
-    if(sum(auxna)>0) {
-      auxOK <- unname(which(auxna<length(nodenam))) 
-      if(uniroot.check==T) {
-        if(ndiff>0) {
-          if(is.null(group)) {
-            auxind <- 1:ndiff
-            } else {
-            gruppi <- unique(data[,group])
-            auxind <- c()
-            for(i in 1:length(gruppi)) {
-              auxind <- c(auxind,which(data[,group]==gruppi[i])[1:ndiff])          
-              }
-            }                              
-          auxOK <- setdiff(auxOK,auxind)                    
-          }
-        }
-      if(sum(is.na(data[auxOK,]))>0) data[auxOK,] <- EM.imputation(x=nodenam,group=group,data=data[auxOK,],tol=tol,maxit=maxit)
-      }
-    }
-  nomi <- c()
-  cat("Start estimation...")
-  flush.console()
-  for(i in 1:length(model.code)) {
-    nomi[i] <- as.character(model.code[[i]])[2]
-    auxmess <- paste("Estimating regression model ",i,"/",length(model.code)," (",nomi[i],")",sep="")
-    auxdel <- messlen-nchar(auxmess)+1
-    if(auxdel>0) {
-      cat('\r',auxmess,rep(" ",auxdel))
-      } else {
-      cat('\r',auxmess)
-      }
-    flush.console()
-    if(is.null(exogenous)) {
-      iform <- model.code[[i]]
-      } else {
-      iform <- formula(paste(paste(as.character(model.code[[i]])[c(2,1,3)],collapse=""),"+",paste(exogenous,collapse="+"),sep=""))
-      }                           
-    if("L" %in% names(control)) {
-      if(nomi[i] %in% names(control[["L"]])) {
-        iL <- control[["L"]][nomi[i]]
-        } else {
-        iL <- 0
-        }
-      } else {
-      iL <- 0
-      }
-    if("adapt" %in% names(control)) {
-      if(nomi[i] %in% names(control[["adapt"]])) {
-        iad <- control[["adapt"]][nomi[i]]
-        } else {
-        iad <- F
-        }
-      } else {
-      iad <- F
-      }
-    if("max.gestation" %in% names(control)) {
-      if(nomi[i] %in% names(control[["max.gestation"]])) {
-        iges <- control[["max.gestation"]][[nomi[i]]]
-        } else {
-        iges <- NULL
-        }
-      } else {
-      iges <- NULL
-      }
-    if("min.width" %in% names(control)) {
-      if(nomi[i] %in% names(control[["min.width"]])) {
-        ilen <- control[["min.width"]][[nomi[i]]]
-        } else {
-        ilen <- NULL
-        }
-      } else {
-      ilen <- NULL
-      }
-    if("sign" %in% names(control)) {
-      if(nomi[i] %in% names(control[["sign"]])) {
-        isg <- control[["sign"]][[nomi[i]]]
-        } else {
-        isg <- NULL
-        }
-      } else {
-      isg <- NULL
-      }
-    mod0 <- dlaglm(iform,group=group,data=data,log=F,L=iL,adapt=iad,max.gestation=iges,min.width=ilen,sign=isg,selection=selection)
-    res[[i]] <- mod0
-    messlen <- nchar(auxmess)
-    if(!is.null(plotDir)) {
-      formstr <- strsplit(strsplit(mod0$call,"~")[[1]][2],"\\+")[[1]]
-      wh1 <- which(grepl("quec\\(",formstr))
-      wh2 <- which(grepl("qdec\\(",formstr))
-      #wh3 <- which(grepl("trap\\(",formstr))
-      wh4 <- which(grepl("gamma\\(",formstr))
-      ilagged <- c()
-      if(length(wh1)>0) {
-        for(w in 1:length(wh1)) ilagged <- c(ilagged,strsplit(strsplit(formstr[wh1[w]],"quec\\(")[[1]][2],",")[[1]][1])
-        }
-      if(length(wh2)>0) {
-        for(w in 1:length(wh2)) ilagged <- c(ilagged,strsplit(strsplit(formstr[wh2[w]],"qdec\\(")[[1]][2],",")[[1]][1])
-        }
-      #if(length(wh3)>0) {
-      #  for(w in 1:length(wh3)) ilagged <- c(ilagged,strsplit(strsplit(formstr[wh3[w]],"trap\\(")[[1]][2],",")[[1]][1])
-      #  }
-      if(length(wh4)>0) {
-        for(w in 1:length(wh4)) ilagged <- c(ilagged,strsplit(strsplit(formstr[wh4[w]],"gamma\\(")[[1]][2],",")[[1]][1])
-        }
-      if(length(ilagged)>0) {
-        for(j in 1:length(ilagged)) {
-          yaux <- rbind(rep(0,3),lagEff(mod0,ilagged[j],cumul=F,conf=0.95))    
-          rownames(yaux)[1] <- "-1"
-          if(!is.null(yaux)) {
-            pdf(file.path(plotDir,paste(nomi[i],"~",ilagged[j],".pdf",sep="")))
-            makeShape(yaux,tipo=0,cumul=F,conf=0.95,title=paste(nomi[i]," ~ ",ilagged[j],sep=""))
-            dev.off()
-            }
-          }
-        }
-      }
-    }
-  auxmess <- "Estimation completed"
-  auxdel <- messlen-nchar(auxmess)+1
-  if(auxdel>0) {
-    cat('\r',auxmess,rep(" ",auxdel),sep="")
-    } else {
-    cat('\r',auxmess)
-    }
-  cat("\n")
-  names(res) <- nomi
-  finalcode <- list()
-  for(i in 1:length(topG)) {
-    iscan <- scanForm(res[[topG[i]]]$call)
-    icov <- setdiff(iscan$X,c(group,exogenous))
-    if(length(icov)==0) icov <- "1"
-    finalcode[[i]] <- formula(paste(iscan$y," ~ ",paste(icov,collapse="+"),sep=""))
-    }
-  names(finalcode) <- topG
-  out <- list(estimate=res[topG],model.code=finalcode,exogenous=exogenous,group=group,log=log,ndiff=ndiff,data.orig=origdat[,c(group,nodenam)],data.used=data[,c(group,nodenam)])
-  class(out) <- "dlsem"
-  out
-  }
-
-# print method for class dlsem
-print.dlsem <- function(x,...) {
-  cat("A distributed-lag structural equation model","\n")
-  n.e <- sum(sapply(edges(makeGraph(x)$graph),length))
-  N.e <- sum(sapply(edges(makeGraph(x)$full.graph),length))
-  if(!is.null(x$group)) {
-    cat(" Group factor: ",x$group,"\n",sep="")
-    } else {
-    cat(" No group factor","\n")
-    }
-  if(!is.null(x$exogenous)) {
-    cat(" Exogenous variables: ",paste(x$exogenous,collapse=", "),"\n",sep="")
-    } else {
-    cat(" No exogenous variables","\n")
-    }
-  if(n.e>0) {
-    cat(" ",n.e,"/",N.e," significant edges at 95% level","\n",sep="")
-    } else {
-    cat(" No significant edges at 95% level","\n")  
-    }
-  }
-
-# summary method for class dlsem
-summary.dlsem <- function(object,...) {
-  lapply(object$estimate,summary)
-  }
-
-# fitted method for class dlsem
-fitted.dlsem <- function(object,...) {
-  pred <- list()
-  for(i in 1:length(object$estimate)) {
-    pred[[i]] <- object$estimate[[i]]$fitted.values
-    }
-  names(pred) <- names(object$estimate)
-  ind <- lapply(pred,names)
-  maxind <- max(as.numeric(unlist(ind)))
-  res <- matrix(nrow=maxind,ncol=length(pred))
-  colnames(res) <- names(pred)
-  rownames(res) <- 1:maxind
-  for(i in 1:length(pred)) {
-    inam <- names(pred[[i]])
-    for(j in 1:length(inam)) {      
-      res[as.numeric(inam[j]),i] <- pred[[i]][inam[j]]
-      }
-    }
-  res
-  }
-
-# residuals method for class dlsem
-residuals.dlsem <- function(object,...) {
-  pred <- list()
-  for(i in 1:length(object$estimate)) {
-    pred[[i]] <- object$estimate[[i]]$residuals
-    }
-  names(pred) <- names(object$estimate)
-  ind <- lapply(pred,names)
-  maxind <- max(as.numeric(unlist(ind)))
-  res <- matrix(nrow=maxind,ncol=length(pred))
-  colnames(res) <- names(pred)
-  rownames(res) <- 1:maxind
-  for(i in 1:length(pred)) {
-    inam <- names(pred[[i]])
-    for(j in 1:length(inam)) {      
-      res[as.numeric(inam[j]),i] <- pred[[i]][inam[j]]
-      }
-    }
-  res
-  }
-
-# predict method for class dlsem
-predict.dlsem <- function(object,...) {
-  pred <- lapply(object$estimate,predict,...)
-  ind <- lapply(pred,names)
-  maxind <- max(as.numeric(unlist(ind)))
-  res <- matrix(nrow=maxind,ncol=length(pred))
-  colnames(res) <- names(pred)
-  rownames(res) <- 1:maxind
-  for(i in 1:length(pred)) {
-    inam <- names(pred[[i]])
-    for(j in 1:length(inam)) {      
-      res[as.numeric(inam[j]),i] <- pred[[i]][inam[j]]
-      }
-    }
-  ##### check argument 'newdata'
-  res
-  }
-
-# plot the lag shape associated to an overall causal effect or a path
-lagPlot <- function(model,from=NULL,to=NULL,path=NULL,maxlag=NULL,cumul=FALSE,conf=0.95,ylim=NULL,title=NULL) {
-if(class(model)!="dlsem") stop("Argument 'model' must be an object of class 'dlsem'",call.=F)     
-  if(is.null(path)) {                                         
-    if(is.null(from)) stop("Argument 'from' is missing",call.=F)
-    if(is.null(to)) stop("Argument 'to' is missing",call.=F)
-    auxpa <- causalEff(model,from=from,to=to,lag=NULL,cumul=cumul,conf=conf)$overall  
-    if(!is.null(auxpa)) {
-      auxind <- max(which(auxpa[,2]!=0))
-      auxpa <- auxpa[1:auxind,]
-      }
-    } else {
-    auxstr <- strsplit(path,"\\*")[[1]]
-    if(!is.null(from) && !identical(from,auxstr[1])) stop("Arguments 'from' and 'path' are in conflict",call.=F)
-    if(!is.null(to) && !identical(to,rev(auxstr)[1])) stop("Arguments 'to' and 'path' are in conflict",call.=F)
-    from <- auxstr[1]
-    to <- rev(auxstr)[1]                                                                                              
-    auxpa <- causalEff(model,from=from,to=to,cumul=cumul,conf=conf)       
-    if((path %in% names(auxpa))==F) stop("Non significant path. Try to reduce the confidence level",call.=F)
-    auxpa <- auxpa[[path]]  
-    }                                                
-  if(!is.null(auxpa)) {
-    yaux <- rbind(rep(0,3),auxpa)
-    rownames(yaux)[1] <- "-1"
-    } else {
-    yaux <- NULL
-    }                
-  if(is.null(title)) {
-    if(is.null(path)) {
-      title <- paste(to," ~ ",from,sep="")
-      } else {
-      title <- paste(auxstr,collapse=" * ")
-      }
-    }
-  if(is.null(yaux)) {
-    stop("No significant paths found between the selected variables. Try to reduce the confidence level",call.=F)
-    } else {
-    makeShape(bmat=yaux,tipo=1,maxlag=maxlag,cumul=cumul,conf=conf,ylim=ylim,title=title)
-    }
-  }
-
-# differentiation
+# apply differentiation (internal use only)
 applyDiff <- function(x=NULL,group=NULL,time=NULL,data,k=0) {
-  if(class(data)!="data.frame") stop("Argument 'data' must be a data.frame",call.=F)
-  auxvar <- setdiff(c(x,group,time),colnames(data))
-  if(length(auxvar)>0) stop(paste("Unknown variable: ",paste(auxvar,collapse=", "),sep=""),call.=F)
   if(is.null(x)) x <- setdiff(colnames(data),c(group,time))
-  if(!is.null(time) && !is.numeric(data[,time])) stop("'time' must be a numerical variable",call.=F)  
-  if(length(k)==1) {
-    if(k<0 | k!=round(k)) stop("Invalid difference order",call.=F)
-    k <- rep(k,length(x))
-    } else {
-    if(length(k)!=length(x) || sum(k<0)>0 | sum(k!=round(k))>0) stop("Invalid difference order",call.=F) 
-    }                            
-  if(!is.null(time)) data <- data[order(data[,time]),]
-  #####
   deltaFun <- function(z,k) {
-    if(k>0) {
-      auxz <- z
-      z[1:k] <- NA
-      for(i in (k+1):length(z)) {
-        z[i] <- auxz[i]-auxz[i-k]
-        }
+    if(k>0 & k<length(z)) {
+      zd <- c(rep(NA,k),z[1:(length(z)-k)])
+      z-zd
+      } else if(k<=0) {
+      z
+      } else {
+      rep(NA,length(z))
       }
-    z
     }
-  #####
   diffdat <- data
   if(is.null(group)) {
     for(w in 1:length(x)) {
-      if(is.numeric(data[,x[w]])) {
-        if(k[w]>=nrow(data)) stop("Too large difference order for variable ",x[w],call.=F)
-        diffdat[,x[w]] <- deltaFun(data[,x[w]],k[w])
+      if(isQuant(data[,x[w]])) {
+        diffdat[,x[w]] <- deltaFun(data[,x[w]],k[w])      
         }
       }
     } else {
@@ -1235,8 +614,7 @@ applyDiff <- function(x=NULL,group=NULL,time=NULL,data,k=0) {
     for(i in 1:length(gruppi)) {
       auxind <- which(data[,group]==gruppi[i])
       for(w in 1:length(x)) {
-        if(is.numeric(data[,x[w]])) {
-          if(k[w]>=length(auxind)) stop("Too large difference order for variable ",x[w],call.=F)
+        if(isQuant(data[,x[w]])) {
           diffdat[auxind,x[w]] <- deltaFun(data[auxind,x[w]],k[w])
           }
         }
@@ -1246,15 +624,22 @@ applyDiff <- function(x=NULL,group=NULL,time=NULL,data,k=0) {
   diffdat
   }
 
-# ADF panel test
+# unit root test
 unirootTest <- function(x,group=NULL,time=NULL,data,test="adf",combine="choi",k=0,lshort=TRUE) {
-  if(length(test)!=1 || (test %in% c("adf","kpss"))==F) stop("Argument 'test' can be either 'adf' or 'kpss'",call.=F)
-  if(length(combine)!=1 || (combine %in% c("choi","demetrescu"))==F) stop("Argument 'combine' can be either 'choi' or 'demetrescu'",call.=F)
+  if(length(test)!=1 || (test %in% c("adf","kpss"))==F) stop("Argument 'test' must be either 'adf' or 'kpss'",call.=F)
   if(class(data)!="data.frame") stop("Argument 'data' must be a data.frame",call.=F)
+  if(!is.null(group) && is.na(group)) group <- NULL
+  if(!is.null(group) && length(group)!=1) stop("Argument 'group' must contain a single variable name",call.=F)
   auxvar <- setdiff(c(x,group,time),colnames(data))
-  if(length(auxvar)>0) stop(paste("Unknown variable: ",paste(auxvar,collapse=", "),sep=""),call.=F)
-  if(length(x)!=1) stop("Argument 'x' must contain a signle variable name",call.=F)
-  if(!is.null(time) && !is.numeric(data[,time])) stop("'time' must be a numerical variable",call.=F)
+  if(length(auxvar)>0) stop("Unknown variable: '",auxvar[1],"'",sep="",call.=F)
+  if(length(x)!=1) stop("Argument 'x' must contain a single variable name",call.=F)
+  if(isQuant(data[,x])==F) stop("'x' must be a numerical variable",call.=F)
+  if(!is.null(time) && is.na(time)) time <- NULL
+  if(!is.null(time) && length(time)!=1) stop("Argument 'time' must contain a single variable name",call.=F)
+  if(!is.null(time) && isQuant(data[,time])==F) stop("'time' must be a numerical variable",call.=F)
+  if(length(combine)!=1 || (combine %in% c("choi","demetrescu"))==F) stop("Argument 'combine' must be either 'choi' or 'demetrescu'",call.=F)
+  if(length(k)!=1 || !is.numeric(k) || k<0 || k!=round(k)) stop("Argument 'k' must be an non-negative integer",call.=F)
+  if(length(lshort)!=1 || !is.logical(lshort)) stop("Argument 'lshort' must be a logical value",call.=F)  
   ifelse(test=="adf", auxalt <- "stationary", auxalt <- "unit root")
   data[which(abs(data[,x])==Inf),x] <- NA
   options(warn=-1)
@@ -1321,175 +706,740 @@ unirootTest <- function(x,group=NULL,time=NULL,data,test="adf",combine="choi",k=
   res
   }
 
-# missing imputation using EM
-EM.imputation <- function(x=NULL,group=NULL,data,plotDir=NULL,tol=0.0001,maxit=500,quiet=FALSE) {
-  if(class(data)!="data.frame") stop("Argument 'data' must be a data.frame",call.=F)
-  if(is.null(colnames(data))) stop("Data must have column names",call.=F)
-  if(length(tol)!=1 || tol<=0) stop("Argument 'tol' must be a positive real number",call.=F) 
-  if(length(maxit)!=1 || maxit<=0 || maxit!=round(maxit)) stop("Argument 'maxit' must be a non-negative integer number",call.=F)
-  if(is.null(x)) x <- setdiff(colnames(data),group)
-  auxcheck <- setdiff(c(x,group),colnames(data))
-  if(length(auxcheck)>0) stop("Unknown variable: ",paste(auxcheck,collapse=", "),call.=F)           
+# fit the imputation model (internal use only)
+impuFit <- function(data,group=NULL,isLat) {
+  xall <- setdiff(colnames(data),group)
+  if(!is.null(group)) data[,group] <- factor(data[,group])
+  xfact <- c()
+  for(j in 1:length(xall)) {
+    if(isQuant(data[,xall[j]])==F) xfact <- c(xfact,xall[j])
+    }
+  xcont <- setdiff(xall,xfact)
+  res <- vector("list",length=length(xall))
+  names(res) <- xall  
+  for(i in 1:length(xall)) {
+    ipar <- c(group,setdiff(xall,xall[i]))
+    if(length(ipar)>0) {
+      iparstr <- paste(ipar,collapse="+")
+      } else {
+      iparstr <- "1"
+      }
+    if(xall[i] %in% xcont) {
+      res[[xall[i]]] <- lm(formula(paste(xall[i],"~",iparstr,sep="")),data=data)  
+      if(isLat[xall[i]]==1) {
+        res[[xall[i]]]$residuals <- res[[xall[i]]]$residuals/sd(res[[xall[i]]]$residuals)
+        }
+      } else {
+      res[[xall[i]]] <- multinom(formula(paste(xall[i],"~",iparstr,sep="")),data=data,trace=F)       
+      }
+    }
+  logL <- sum(unlist(lapply(res,logLik)))
+  list(estimate=res,logL=logL)
+  }
+
+# missing imputation using EM (internal use only)
+EM.imputation <- function(x,group=NULL,data,tol=0.0001,maxiter=500,quiet=FALSE) {
+  xlev <- vector("list",length=ncol(data))
+  for(i in 1:ncol(data)) {
+    if(isQuant(data[,i])==F) {     
+      data[,i] <- factor(data[,i])
+      xlev[[i]] <- levels(data[,i])
+      }
+    }
+  names(xlev) <- colnames(data)
+  isLat <- rep(0,ncol(data))
+  isNA <- matrix(0,nrow=nrow(data),ncol=ncol(data))
+  colnames(isNA) <- names(isLat) <- colnames(data)
+  n <- nrow(data)
+  auxdat <- data
   for(i in 1:length(x)) {
-    if(!is.numeric(data[,x[i]])) stop("Variable ",x[i]," is not numeric",call.=F)
-    }
-  if(length(x)>1) {                     
-    startMu <- apply(data[,x],2,mean,na.rm=T)
-    isna <- which(is.nan(startMu))
-    if(length(isna)>0) startMu[isna] <- 0
-    startS <- matrix(nrow=length(x),ncol=length(x))
-    for(i in 1:length(x)) {
-      for(j in i:length(x)) {
-        auxcov <- na.omit(data[,c(x[i],x[j])]) 
-        if(nrow(auxcov)>0) {
-          startS[i,j] <- startS[j,i] <- cov(auxcov)[1,2]
+    ina <- which(is.na(auxdat[,x[i]]))
+    if(length(ina)>0){
+      if(isQuant(auxdat[,x[i]])) {
+        imu <- mean(data[,x[i]],na.rm=T)
+        if(!is.na(imu)) {
+          auxdat[ina,x[i]] <- rep(imu,length(ina))
           } else {
-          startS[i,j] <- startS[j,i] <- 1  #####         
+          auxdat[ina,x[i]] <- rnorm(length(ina))          
+          isLat[x[i]] <- 1
           }
-        }    
-      }
-    startS <- as.matrix(nearPD(startS)$mat)
-    if(is.null(group)) {
-      old.mu <- startMu
-      names(old.mu) <- x
-      } else {
-      data[,group] <- factor(data[,group])
-      gruppi <- unique(data[,group])
-      old.mu <- matrix(NA,nrow=length(gruppi),ncol=length(x))  
-      for(i in 1:nrow(old.mu)) {
-        old.mu[i,] <- startMu
-        }
-      rownames(old.mu) <- gruppi
-      colnames(old.mu) <- x 
-      }
-    old.S <- startS              
-    colnames(old.S) <- rownames(old.S) <- x             
-    old.lik <- -Inf
-    fine <- 0
-    count <- 1                            
-    if(quiet==F) cat("Starting EM...")
-    flush.console()
-    while(fine==0) {
-      auxdat <- data
-      for(i in 1:nrow(data)) {
-        for(j in 1:length(x)) {
-          if(is.na(data[i,x[j]])) {                 
-            xaux <- x[which(!is.na(data[i,x]))]                   
-            if(is.null(group)) {
-              jmu <- old.mu
-              } else {
-              jmu <- old.mu[as.character(data[i,group]),]
-              }
-            if(length(xaux)>0) {                                      
-              xval <- unlist(data[i,xaux]) 
-              auxdat[i,x[j]] <- c(jmu[x[j]]+old.S[x[j],xaux]%*%solve(old.S[xaux,xaux])%*%(xval-jmu[xaux]))   
-              } else {                    
-              auxdat[i,x[j]] <- jmu[x[j]]
-              }                                       
-            }                 
-          }                        
-        }
-      if(is.null(group)) {
-        new.mu <- colMeans(auxdat[,x])
-        } else {                        
-        new.mu <- matrix(nrow=length(gruppi),ncol=length(x))  
-        rownames(new.mu) <- gruppi
-        colnames(new.mu) <- x 
-        for(i in 1:length(gruppi)) {                          
-          new.mu[i,] <- colMeans(auxdat[which(data[,group]==gruppi[i]),x])
-          }
-        } 
-      new.S <- as.matrix(nearPD(cov(auxdat[,x]))$mat)
-      new.lik <- 0                           
-      iS <- solve(new.S)
-      for(i in 1:nrow(data)) {              
-        if(is.null(group)) {
-          idel <- unlist(auxdat[i,x])-new.mu
-          } else {
-          idel <- unlist(auxdat[i,x])-new.mu[as.character(data[i,group]),]           
-          }                                                                                  
-        new.lik <- new.lik-0.5*length(x)*log(2*pi)-0.5*log(det(new.S))-0.5*t(idel)%*%iS%*%idel
-        }
-      auxmess <- paste("EM iteration ",count,". Log-likelihood: ",round(new.lik,4),sep="")
-      if(quiet==F) cat('\r',auxmess,sep="")       
-      flush.console()                                   
-      if(new.lik-old.lik<tol | count>maxit) {
-        fine <- 1
-        if(count<maxit) {
-          auxfinal <- paste("EM converged after ",count-1," iterations. Log-likelihood: ",round(new.lik,4),sep="")
-          } else {
-          auxfinal <- paste("Maximum number of iterations exceeded. Log-likelihood: ",round(new.lik,4),sep="")      
-          }
-        nchardiff <- nchar(auxmess)-nchar(auxfinal)
-        if(nchardiff>0) {
-          delta <- rep(" ",nchardiff)
-          } else {
-          delta <- ""
-          }
-        if(quiet==F) cat('\r',auxfinal,delta,sep="","\n")
         } else {
-        old.lik <- new.lik
-        old.mu <- new.mu
-        old.S <- new.S
-        count <- count+1
+        iauxM <- table(data[,x[i]])
+        if(length(iauxM)<2) stop("Variable '",x[i],"' has less than two unique values and cannot be imputed",sep="",call.=F)
+        imu <- names(iauxM)[which.max(iauxM)]
+        auxdat[ina,x[i]] <- rep(imu,length(ina))               
         }
-      }                                         
-    } else {
-    auxdat <- data
-    if(is.null(group)) {
-      if(sum(!is.na(data[,x]))>=2) auxdat[which(is.na(data[,x])),x] <- mean(data[,x],na.rm=T)
-      } else {
-      data[,group] <- factor(data[,group])
-      gruppi <- unique(data[,group])
-      for(i in 1:length(gruppi)) {
-        coudat <- data[which(data[,group]==gruppi[i]),x]
-        if(sum(!is.na(coudat))>=2) {
-          coudat[which(is.na(coudat))] <- mean(coudat,na.rm=T)
-          auxdat[which(data[,group]==gruppi[i]),x] <- coudat
+      isNA[ina,x[i]] <- 1
+      }
+    }
+  fit0 <- impuFit(auxdat,group=group,isLat)
+  currentMod <- fit0$estimate
+  currentLik <- fit0$logL
+  fine <- forcend <- 0
+  count <- 1
+  if(quiet==F) {
+    cat("Starting EM...")
+    flush.console() 
+    }
+  while(fine==0) {
+    if(quiet==F) {
+      cat('\r',"EM iteration ",count,". Log-likelihood: ",currentLik,sep="")
+      flush.console() 
+      }
+    for(i in 1:length(x)) {
+      if(sum(isNA[,x[i]])>0) {
+        if(is.null(xlev[[x[i]]])) {
+          auxdat[which(isNA[,x[i]]==1),x[i]] <- predict(currentMod[[x[i]]])[which(isNA[,x[i]]==1)]
+          } else {
+          ipred <- predict(currentMod[[x[i]]])[which(isNA[,x[i]]==1)]
+          auxdat[which(isNA[,x[i]]==1),x[i]] <- xlev[[x[i]]][ipred]
           }
         }
       }
+    newFit <- impuFit(auxdat,group=group,isLat)
+    newMod <- newFit$estimate
+    newLik <- newFit$logL
+    if(newLik-currentLik>tol & count<maxiter) {
+      currentMod <- newMod
+      currentLik <- newLik
+      count <- count+1
+      } else {
+      fine <- 1
+      if(count>=maxiter) forcend <- 1
+      }
     }
-  if(!is.null(plotDir)) {
-    if(!is.null(group)) {
-      gruppi <- unique(data[,group])
-      for(j in 1:length(x)) {
-        for(w in 1:length(gruppi)) {
-          auxind <- which(auxdat[,group]==gruppi[w])
-          xvaljw <- cbind(auxdat[auxind,x[j]],data[auxind,x[j]],1:length(auxind))                                 
-          timelab <- "ID"
-          if(sum(!is.na(xvaljw[,1])>0)) {
-            pdf(file.path(plotDir,paste(x[j],"_(",gruppi[w],").pdf",sep="")))
-            plot(xvaljw[,1]~xvaljw[,3],xlab=timelab,ylab=x[j],type="n",main=paste(x[j]," (",gruppi[w],")",sep=""),cex.main=1.4) 
-            grid(col="grey85",lty=2)
-            points(xvaljw[,1]~xvaljw[,3],cex=0.8)
-            lines(xvaljw[,1]~xvaljw[,3],cex=0.8,lty=2)
-            auxna <- which(is.na(xvaljw[,2]))
-            if(length(auxna)>0) points(xvaljw[auxna,1]~xvaljw[auxna,3],cex=0.8,col="red")
-            box()
-            dev.off()
+  if(quiet==F) {
+    if(forcend==0) {
+      cat('\r',"EM converged after ",count," iterations. Log-likelihood: ",newLik,sep="","\n")
+      } else {
+      cat('\r',"EM stopped after ",maxiter," iterations. Log-likelihood: ",newLik,sep="","\n")      
+      }
+    }
+  auxdat
+  }
+ 
+# function to plot a lag shape (internal use only)
+makeShape <- function(bmat,maxlag,cumul,conf,ylim,title) {
+  if(!is.null(maxlag)) {
+    ymlag <- max(as.numeric(rownames(bmat)))
+    if(maxlag>=ymlag) {
+      if(cumul==F) {
+        addmat <- matrix(0,nrow=maxlag-ymlag+1,ncol=3)
+        } else {
+        addmat <- matrix(bmat[nrow(bmat),],nrow=maxlag-ymlag+1,ncol=3,byrow=T)          
+        }
+      bmat <- rbind(bmat,addmat)
+      rownames(bmat) <- -1:(maxlag+1)
+      } else {                
+      bmat <- bmat[1:(which(rownames(bmat)==as.character(maxlag))+1),]
+      }
+    auxNZ <- which(bmat[,1]!=0)
+    } else {
+    auxNZ <- which(bmat[,1]!=0)
+    if(cumul==F) {
+      if(nrow(bmat)>max(auxNZ)+1) {
+        bmat <- bmat[1:(max(auxNZ)+1),]
+        }
+      } else {                          
+      auxCm <- min(intersect(which(diff(bmat[,1])==0)+1,auxNZ))
+      if(nrow(bmat)>auxCm) {
+        bmat <- bmat[1:auxCm,]
+        }
+      auxNZ <- which(bmat[,1]!=0)
+      }
+    }
+  xaux <- (1:nrow(bmat))-2
+  upLim <- 1.05*max(bmat)
+  if(is.null(ylim)) {
+    lowLim <- 1.05*min(bmat)
+    upLim <- max(abs(c(upLim,lowLim)))
+    lowLim <- -max(abs(c(upLim,lowLim)))
+    } else {
+    lowLim <- ylim[1]
+    upLim <- ylim[2]
+    }
+  plot(0,type="n",xlim=c(min(xaux),max(xaux)),ylim=c(lowLim,upLim),yaxs="i",xaxs="i",cex.lab=1.2,
+    lwd=2,xaxt="n",yaxt="n",xlab="Lag",ylab="Coefficient",main=title,cex.main=1.2) 
+  if(cumul==T) {
+    mtext("cumulative lag shape",cex=0.9)
+    } else {
+    mtext("instantaneous lag shape",cex=0.9)    
+    }
+  #####
+  #yaxaux <- seq(lowLim,upLim,length=21)
+  #ylabaux <- signif(yaxaux,3)
+  #ylabaux[11] <- 0
+  #xaxaux <- seq(min(xaux),max(xaux))
+  #auxby <- max(1,round((max(xaux)-min(xaux)+1)/30))
+  #xlabaux1 <- xlabaux2 <- seq(min(xaux),max(xaux),by=auxby)
+  #xlabaux2[c(1,length(xlabaux1))] <- NA                                  
+  #for(i in 1:length(auxNZ)) {
+  #  ix <- xaux[auxNZ[i]]+c(-0.3,0.3)            
+  #  iysx <- rep(bmat[auxNZ[i],2],2)      
+  #  iydx <- rep(bmat[auxNZ[i],3],2)
+  #  polygon(c(ix,rev(ix)),c(iysx,rev(iydx)),border=NA,col="grey80")
+  #  }
+  ##segments(xaux[auxNZ],bmat[auxNZ,2],xaux[auxNZ],bmat[auxNZ,3],col="grey35")
+  ##segments(xaux[auxNZ]-0.1,bmat[auxNZ,2],xaux[auxNZ]+0.1,bmat[auxNZ,2],col="grey35")
+  ##segments(xaux[auxNZ]-0.1,bmat[auxNZ,3],xaux[auxNZ]+0.1,bmat[auxNZ,3],col="grey35")
+  #abline(h=yaxaux,v=seq(min(xaux),max(xaux),by=auxby),col="grey75",lty=2)
+  #abline(h=0,lty=2,col="grey35")
+  #lines(bmat[,1]~xaux,col="grey35",lty=2)
+  #auxpoi <- max(1,min(auxNZ)-1):min(length(xaux),max(auxNZ)+1)
+  #points(bmat[auxpoi,1]~xaux[auxpoi],col="grey35",lty=2,cex=0.6)
+  #axis(1,at=xlabaux1,labels=xlabaux2,cex.axis=1.1)
+  #axis(2,at=yaxaux,labels=ylabaux,cex.axis=1.1) 
+  #####
+  usesplin <- 0
+  auxsplin <- bmat[auxNZ,1]
+  if(length(auxsplin)>=3) usesplin <- 1 
+  isTrunc <- 0
+  auxM <- which.max(abs(bmat[,1]))
+  lM <- as.numeric(rownames(bmat)[auxM])  
+  if(auxM==1 || sum(bmat[1:(auxM-1),1])==0) isTrunc <- 1                                                                                                               
+  if(usesplin==0) {
+    xgrid <- xaux
+    ygrid <- bmat
+    } else {
+    if(isTrunc==1) {
+      xgrid <- seq(lM,max(xaux[auxNZ])+1,length=1000)
+      splind <- auxM:min(length(xaux),(max(auxNZ)+1)) 
+      } else {
+      xgrid <- seq(min(xaux[auxNZ])-1,max(xaux[auxNZ])+1,length=1000)
+      splind <- max(1,(min(auxNZ)-1)):min(length(xaux),(max(auxNZ)+1))
+      }
+    ygrid <- matrix(nrow=length(xgrid),ncol=ncol(bmat))
+    for(i in 1:ncol(bmat)) {
+      auxspl <- interpSpline(xaux[splind],bmat[splind,i])
+      ygrid[,i] <- predict(auxspl,xgrid)$y
+      }
+    }
+  if(isTrunc==1) {
+    xgrid <- c(lM-1,xgrid)
+    ygrid <- rbind(rep(0,3),ygrid)
+    }
+  #for(i in 1:length(auxNZ)) {
+  #  ix <- xaux[auxNZ[i]]+c(-0.25,0.25)            
+  #  iysx <- rep(bmat[auxNZ[i],2],2)      
+  #  iydx <- rep(bmat[auxNZ[i],3],2)
+  #  polygon(c(ix,rev(ix)),c(iysx,rev(iydx)),border=NA,col="grey80")
+  #  }
+  polygon(c(xgrid,rev(xgrid)),c(ygrid[,2],rev(ygrid[,3])),border=NA,col="grey80")
+  yaxaux <- seq(lowLim,upLim,length=21)
+  ylabaux <- signif(yaxaux,3)
+  ylabaux[11] <- 0
+  xaxaux <- seq(min(xaux),max(xaux))
+  auxby <- max(1,round((max(xaux)-min(xaux)+1)/30))
+  xlabaux1 <- xlabaux2 <- seq(min(xaux),max(xaux),by=auxby)
+  xlabaux2[c(1,length(xlabaux1))] <- NA
+  abline(h=yaxaux,v=seq(min(xaux),max(xaux),by=auxby),col="grey75",lty=2)
+  abline(h=0,lty=2,col="grey35")                                        
+  lines(ygrid[,1]~xgrid,col="grey40",lty=2)
+  auxpoi <- max(1,min(auxNZ)-1):min(length(xaux),max(auxNZ)+1) ###
+  points(bmat[auxpoi,1]~xaux[auxpoi],col="grey35",lty=2,cex=0.6)
+  axis(1,at=xlabaux1,labels=xlabaux2,cex.axis=1.1)
+  axis(2,at=yaxaux,labels=ylabaux,cex.axis=1.1)  
+  #####
+  if(cumul==F) {
+    tcaVal <- signif(apply(bmat,2,sum),5)
+    } else {
+    tcaVal <- signif(bmat[nrow(bmat),],5)
+    }
+  confLeg <- paste("   ",conf*100,"% CI: (",tcaVal[2],", ",tcaVal[3],")",sep="")      
+  if(max(bmat[,1])>0) {
+    legpos <- "bottomright"
+    } else {
+    legpos <- "topright"
+    }                                       
+  est <- bmat[,1]
+  if(cumul==T) {
+    newest <- est[1]
+    for(i in 2:length(est)) {
+      newest[i] <- est[i]-est[i-1]
+      } 
+    est <- newest
+    }                                       
+  minlag <- min(as.numeric(rownames(bmat)[which(est!=0)]))
+  maxlag <- max(as.numeric(rownames(bmat)[which(est!=0)]))                                                                             
+  legend(legpos,legend=c(paste("Effective lags: ",minlag," to ",maxlag,sep=""),paste("Cumulative coefficient: ",tcaVal[1],sep=""),confLeg),bty="n",cex=1.1)
+  box()
+  }    
+
+# plot the lag shape associated to an overall causal effect or a path
+lagPlot <- function(x,from=NULL,to=NULL,path=NULL,maxlag=NULL,cumul=FALSE,conf=0.95,use.ns=FALSE,ylim=NULL,title=NULL) {
+  if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'",call.=F)
+  if(!is.null(maxlag) && (length(maxlag)!=1 || !is.numeric(maxlag) || maxlag<=0 || maxlag!=round(maxlag))) stop("Argument 'maxlag' must be a positive integer number",call.=F)
+  if(length(cumul)!=1 || !is.logical(cumul)) stop("Arguent 'cumul' must be a logical value",call.=F)
+  if(length(use.ns)!=1 || !is.logical(use.ns)) stop("Argument 'use.ns' must be a logical value",call.=F)
+  if(!is.null(ylim) && (length(ylim)!=2 || ylim[1]>=ylim[2])) stop("Invalid argument 'ylim'",call.=F)
+  if(!is.null(from) && !is.na(from) && (is.null(to) & is.null(path))) {
+    path <- from
+    auxstr <- strsplit(path,"\\*")[[1]]
+    if(length(auxstr)<2) {
+      stop("Argument 'to' is missing",call.=F)
+      } else {  
+      from <- NULL
+      }
+    }
+  if(is.null(path) && (is.null(from) || is.na(from))) stop("Argument 'from' is missing",call.=F)
+  if(is.null(path) && (is.null(to) || is.na(to))) stop("Argument 'to' is missing",call.=F)
+  xedgF <- edgeMat(x,conf=conf,full=T)
+  xedg <- edgeMat(x,conf=conf,full=F)
+  if(is.null(path)) {                                         
+    auxpa <- causalEff(x,from=from,to=to,lag=NULL,cumul=cumul,conf=conf,use.ns=use.ns)$overall
+    } else {
+    auxstr <- strsplit(path,"\\*")[[1]]
+    from <- auxstr[1]
+    to <- rev(auxstr)[1] 
+    isIn <- isInF <- 1
+    for(i in 2:length(auxstr)) {
+      isIn <- isIn*length(which(xedg[,1]==auxstr[i-1] & xedg[,2]==auxstr[i]))
+      isInF <- isInF*length(which(xedgF[,1]==auxstr[i-1] & xedgF[,2]==auxstr[i]))
+      } 
+    if((use.ns==T & isInF>0) | isIn>0) {
+      auxpa <- causalEff(x,from=from,to=to,cumul=cumul,conf=conf,use.ns=use.ns)     
+      auxpa <- auxpa[[path]] 
+      } else {
+      if(isInF>0) {
+        stop("Path not found. Try to reduce 'conf' or to set 'use.ns' to TRUE",call.=F)
+        } else {
+        stop("Inexistent path",call.=F)
+        }
+      }
+    }               
+  yaux <- rbind(rep(0,3),auxpa)
+  rownames(yaux) <- c(-1:(nrow(yaux)-2))
+  if(is.null(title)) {
+    if(is.null(path)) {
+      title <- paste(to," ~ ",from,sep="")
+      } else {
+      title <- paste(auxstr,collapse=" * ")
+      }
+    }
+  makeShape(yaux,maxlag=maxlag,cumul=cumul,conf=conf,ylim=ylim,title=title)
+  }
+
+# check if a vector is named (internal use only)
+hasname <- function(x) {
+  sum(sapply(names(x),function(z){nchar(z)>0}))==length(x)
+  }
+  
+# check control options (internal use only)
+controlCheck <- function(parstr,control,parSets,is.sign=F) {
+  if(parstr %in% names(control)) {
+    if(is.sign==F) {
+      if(!is.list(control[[parstr]]) || hasname(control[[parstr]])==F || sum(sapply(control[[parstr]],class)!="numeric")>0 || sum(sapply(control[[parstr]],function(x){x!=round(x)||x<0}))>0 ) {
+        stop("Component '",parstr,"' of argument 'control' must be a named list of non-negative integers",call.=F)
+        }
+      } else {
+      if(!is.list(control[[parstr]]) || hasname(control[[parstr]])==F || sum(sapply(control[[parstr]],function(x){sum(x %in% c("+","-"))<length(x)})>0)) {
+        stop("Component '",parstr,"' of argument 'control' must be a named list of characters '+' or '-'",call.=F)
+        }
+      }
+    }
+  auxch <- setdiff(names(control[[parstr]]),names(parSets))
+  if(length(auxch)>0) stop("Unknown variables in component '",parstr,"' of argument 'control': ",paste(auxch,collapse=", "),call.=F)
+  auxG <- lapply(control[[parstr]],names)
+  gnam <- names(auxG)
+  for(i in 1:length(gnam)) {
+    auxch <- setdiff(auxG[[gnam[i]]],parSets[[gnam[i]]])
+    if(length(auxch)>0) stop("Unknown covariates of variable '",gnam[i],"' in component '",parstr,"' of argument 'control': ",paste(auxch,collapse=", "),call.=F)
+    }
+  }
+
+# fit a distributed-lag SEM
+dlsem <- function(model.code,group=NULL,exogenous=NULL,data,log=FALSE,control=NULL,test="adf",combine="choi",k=0,lshort=TRUE,maxdiff=3,tol=0.0001,maxiter=500,selection="aic") {
+  if(sum(sapply(model.code,class)!="formula")>0) stop("Argument 'model code' must be a list of formulas",call.=F)
+  if(!is.null(group) && is.na(group)) group <- NULL
+  if(!is.null(exogenous) && is.na(exogenous)) exogenous <- NULL
+  if(!is.null(group) && length(group)!=1) stop("Argument 'group' must contain a single variable name",call.=F)
+  if(length(log)!=1 || !is.logical(log)) stop("Argument 'log' must be a logical value",call.=F)
+  if(!is.null(control) && !is.list(control)) stop("Argument 'control' must be a list",call.=F)
+  if(length(maxiter)!=1 || maxiter<10 || maxiter!=round(maxiter)) stop("Argument 'maxiter' must be an integer number no less than 10",call.=F)
+  if(length(tol)!=1 || tol<=0) stop("Argument 'tol' must be a positive real number",call.=F) 
+  if(length(test)!=1 || (test %in% c("adf","kpss"))==F) stop("Argument 'test' must be either 'adf' or 'kpss'",call.=F)
+  if(length(combine)!=1 || (combine %in% c("choi","demetrescu"))==F) stop("Argument 'combine' must be either 'choi' or 'demetrescu'",call.=F)
+  if(length(maxdiff)!=1 || !is.numeric(maxdiff) || maxdiff<0 || maxdiff!=round(maxdiff)) stop("Argument 'maxdiff' must be a non-negative integer number",call.=F)
+  if(length(k)!=1 || !is.numeric(k) || k<0 || k!=round(k)) stop("Argument 'k' must be an non-negative integer",call.=F)
+  if(length(lshort)!=1 || !is.logical(lshort)) stop("Argument 'lshort' must be a logical value",call.=F)  
+  if((selection %in% c("aic","bic","mdl"))==F) stop("Argument selection must be one among 'aic', 'bic' and 'mdl'",call.=F)
+  nameOfData <- deparse(substitute(data))
+  res <- pset <- list()
+  messlen <- 0
+  for(i in 1:length(model.code)) {
+    icheck <- scanForm(model.code[[i]])
+    ipar <- names(icheck$lpar)
+    if(length(ipar)>0) {
+      if(!is.null(group)) {
+        if(group %in% ipar) stop("Variable '",group,"' is defined as a group factor and appears in 'model.code'",call.=F) 
+        }
+      auxexo <- intersect(ipar,exogenous)
+      if(length(auxexo)>0) stop("Variable '",auxexo[1],"' appear both in 'model.code' and in 'exogenous'",call.=F)
+      auxdupl <- duplicated(ipar)
+      if(sum(auxdupl)>0) stop("Duplicated covariate for ",icheck$y,": ",ipar[auxdupl][1],call.=F)
+      for(j in 1:length(icheck$lpar)) {
+        if(icheck$ltype[j]=="quec") {
+          if(length(icheck$lpar[[j]])!=2 || !identical(icheck$lpar[[j]],round(icheck$lpar[[j]])) || sum(icheck$lpar[[j]]<0)>0 || icheck$lpar[[j]][1]>icheck$lpar[[j]][2]) {
+            stop("Invalid settings for lag shape 'quec' in '",paste(icheck$y," ~ ",paste(icheck$X,collapse="+"),sep=""),"'",call.=F)
+            }
+          } else if(icheck$ltype[j]=="qdec") {
+          if(length(icheck$lpar[[j]])!=2 || !identical(icheck$lpar[[j]],round(icheck$lpar[[j]])) || sum(icheck$lpar[[j]]<0)>0 || icheck$lpar[[j]][1]>icheck$lpar[[j]][2]) {
+            stop("Invalid settings for lag shape 'qdec' in '",paste(icheck$y," ~ ",paste(icheck$X,collapse="+"),sep=""),"'",call.=F)
+            }
+          } else if(icheck$ltype[j]=="gamma") {
+          if(length(icheck$lpar[[j]])!=2 || sum(icheck$lpar[[j]]<=0)>0 || sum(icheck$lpar[[j]]>=1)>0) {
+            stop("Invalid settings for lag shape 'gamma' in '",paste(icheck$y," ~ ",paste(icheck$X,collapse="+"),sep=""),"'",call.=F)
             }
           }
         }
+      }
+    if(sum(grepl("\\-",model.code[[i]]))>0) stop("Invalid character '-' in 'model.code'",call.=F)
+    if(sum(grepl("\\:",model.code[[i]]))>0) stop("Invalid character ':' in 'model.code'",call.=F) #####
+    if(sum(grepl("\\*",model.code[[i]]))>0) stop("Invalid character '*' in 'model.code'",call.=F) #####
+    auxstr <- as.character(model.code[[i]])[-1]
+    ynam <- gsub(" ","",auxstr[1])
+    names(model.code)[i] <- ynam
+    xnam <- gsub(" ","",strsplit(auxstr[2],"\\+")[[1]])  
+    xnam <- xnam[which(nchar(xnam)>0)]
+    for(j in 1:length(xnam)) {
+      if(grepl("\\(",xnam[j])) xnam[j] <- strsplit(strsplit(xnam[j],",")[[1]][1],"\\(")[[1]][2]
+      }
+    if(identical(xnam,"1") | length(xnam)==0) {
+      pset[[i]] <- character(0)
       } else {
-      for(j in 1:length(x)) {
-        xvalj <- cbind(auxdat[,x[j]],data[,x[j]],1:nrow(data))                                 
-        timelab <- "ID"
-        if(sum(!is.na(xvalj[,1])>0)) {
-          pdf(file.path(plotDir,paste(x[j],".pdf",sep="")))
-          plot(xvalj[,1]~xvalj[,3],xlab=timelab,ylab=x[j],type="n",main=paste(x[j],sep=""),cex.main=1.4) 
-          grid(col="grey80",lty=2)
-          points(xvalj[,1]~xvalj[,3],cex=0.8)
-          lines(xvalj[,1]~xvalj[,3],cex=0.8,lty=2)
-          auxna <- which(is.na(xvalj[,2]))
-          if(length(auxna)>0) points(xvalj[auxna,1]~xvalj[auxna,3],cex=0.8,col="red")
-          box()
+      pset[[i]] <- xnam
+      }
+    names(pset)[i] <- ynam 
+    }   
+  codnam <- c()
+  for(i in 1:length(model.code)) {
+    codnam[i] <- as.character(model.code[[i]])[2]
+    }
+  nodenam <- unique(c(names(pset),unlist(pset)))
+  auxadd <- setdiff(nodenam,codnam)
+  if(length(auxadd)>0) {
+    for(i in length(auxadd):1) {
+      model.code <- c(formula(paste(auxadd[i],"~1",sep="")),model.code)
+      names(model.code)[1] <- auxadd[i]
+      pset[[length(pset)+1]] <- character(0) 
+      names(pset)[length(pset)] <- auxadd[i]
+      }
+    }
+  auxvar <- setdiff(c(nodenam,exogenous),colnames(data))
+  if(length(auxvar)>0) {
+    stop("Variable '",auxvar[1],"' not found in data",sep="",call.=F)
+    #data[,auxvar] <- as.numeric(rep(NA,nrow(data)))
+    #cat(paste("Unobserved variables: ",paste(auxvar,collapse=", "),sep=""),"\n")
+    }
+  for(i in 1:length(nodenam)) {
+    if(length(na.omit(data[,nodenam[i]]))==0)  stop("Variable '",nodenam[i],"' has no observed values in data",sep="",call.=F)
+    }
+  if(!is.null(exogenous)) {
+    for(i in 1:length(exogenous)) {
+      if(length(na.omit(data[,exogenous[i]]))==0)  stop("Variable '",exogenous[i],"' has no observed in data",sep="",call.=F)
+      }                                                                                                                                                                          
+    }
+  for(i in 1:length(pset)) {
+    if(isQuant(data[,names(pset)[i]])==F) stop("Variable '",names(pset)[i],"' is qualitative and appears in 'model.code'",sep="",call.=F)
+    }
+  #for(i in 1:length(model.code)) {
+  #  icheck <- scanForm(model.code[[i]])
+  #  ilimit <- findLagLim(data[,c(icheck$y,names(icheck$lpar),group)],group=group)
+  #  }
+  G <- new("graphNEL",nodes=names(pset),edgemode="directed")    
+  for(i in 1:length(pset)) {
+    if(length(pset[[i]])>0) {
+      for(j in 1:length(pset[[i]])) {    
+        G <- addEdge(pset[[i]][j],names(pset)[i],G,1) 
+        }
+      }
+    }                   
+  topG <- topOrder(G)
+  if(is.null(topG)) stop("The model code implies directed cycles",call.=F)  
+  auxch <- setdiff(names(control),c("adapt","max.gestation","min.width","max.lead","sign"))  #,"L"
+  if(length(auxch)>0) stop("Unknown component '",auxch[1],"' in argument 'control'",call.=F)
+  #if("L" %in% names(control)) {
+  #  if(!is.numeric(control[["L"]]) | hasname(control[["L"]])==F) stop("Component 'L' of argument 'control' must be a named numeric vector",call.=F)   
+  #  auxch <- setdiff(names(control[["L"]]),topG)
+  #  if(length(auxch)>0) stop("Unknown variables in component 'L' of argument 'control': ",paste(auxch,collapse=", "),call.=F)
+  #  }
+  if("adapt" %in% names(control)) {
+    if(!is.logical(control[["adapt"]]) | hasname(control[["adapt"]])==F) stop("Component 'adapt' of argument 'control' must be a named logical vector",call.=F)
+    auxch <- setdiff(names(control[["adapt"]]),topG)
+    if(length(auxch)>0) stop("Unknown variables in component 'adapt' of argument 'control': ",paste(auxch,collapse=", "),call.=F)
+    }
+  if("max.gestation" %in% names(control)) controlCheck("max.gestation",control,pset)
+  if("min.width" %in% names(control)) controlCheck("min.width",control,pset)
+  if("max.lead" %in% names(control)) controlCheck("max.lead",control,pset)
+  if("sign" %in% names(control)) controlCheck("sign",control,pset,is.sign=T)
+  auxch <- intersect(names(control[["min.width"]]),names(control[["max.lead"]]))  
+  if(length(auxch)>0) {
+    for(i in 1:length(auxch)) {
+      iminw <- control[["min.width"]][[auxch[i]]]
+      imaxw <- control[["max.lead"]][[auxch[i]]]
+      ich <- intersect(names(iminw),names(imaxw))
+      if(length(ich)>0) {
+        for(j in 1:length(ich)) {
+          if(iminw[ich[j]]>imaxw[ich[j]]) stop("Component 'min.width' greater than component 'max.lead' in argument 'control': ",auxch[i],"~",ich[j],call.=F)
+          }
+        }
+      }
+    }
+  nodenam <- c(exogenous,topG)
+  if(!is.null(group)) data[,group] <- factor(data[,group])
+  xfact <- c()
+  for(i in 1:length(nodenam)) {
+    if(isQuant(data[,nodenam[i]])==F) {
+      xfact <- c(xfact,nodenam[i])
+      data[,nodenam[i]] <- factor(data[,nodenam[i]])
+      if(length(levels(data[,nodenam[i]]))<2) stop("Variable '",nodenam[i],"' has less than two unique values",sep="",call.=F)
+      }
+    }
+  origdat <- data
+  if(log==T) {
+    nolog <- xfact
+    logtest <- setdiff(nodenam,nolog)            
+    for(i in 1:length(logtest)) {
+      if(sum(data[,logtest[i]]<=0,na.rm=T)>0) {
+        nolog <- c(nolog,logtest[i])        
+        } else {
+        data[,logtest[i]] <- log(data[,logtest[i]])
+        }
+      }    
+    if(length(nolog)>0) cat("Logarithm not applied to variables: ",paste(nolog,collapse=", "),sep="","\n")
+    }
+  difftest <- setdiff(nodenam,xfact)
+  if(length(difftest)>0) {
+    fine <- ndiff <- 0
+    cat("Checking stationarity...")
+    flush.console()
+    while(fine==0) {
+      auxp <- c()
+      for(i in 1:length(difftest)) {
+       auxdat <- na.omit(data[,difftest[i]])
+        ipvl <- unirootTest(difftest[i],group=group,data=data,test=test,combine=combine,k=k,lshort=lshort)$p.value
+        ifelse(is.null(ipvl), auxp[i] <- 0, auxp[i] <- ipvl)
+        }   
+      if(sum(auxp>0.05)>0) {
+        if(ndiff<maxdiff) {
+          data <- applyDiff(difftest,group=group,data=data,k=rep(1,length(difftest)))                                        
+          ndiff <- ndiff+1
+          } else {
+          fine <- 1
+          }
+        } else {
+        fine <- 1
+        }
+      }
+    if(ndiff==0) {
+      cat('\r',"No differentiation performed")
+      } else {
+      cat('\r',"Order",ndiff,"differentiation performed")    
+      }
+    cat("\n")
+    } else {
+    cat('\r',"No differentiation performed")      
+    }
+  if(is.null(group)) {
+    nK <- length(nodenam)+1
+    } else {
+    nK <- length(nodenam)+length(unique(data[,group]))    
+    }
+  if(nrow(na.omit(data[,nodenam]))<nK+1) stop("Data contain too much missing values, thus they cannot be imputed",call.=F)  #####
+  auxna <- apply(data[,nodenam],1,function(x){sum(is.na(x))})
+  if(sum(auxna)>0) {
+    auxOK <- unname(which(auxna<length(nodenam))) 
+    if(ndiff>0) {
+      if(is.null(group)) {
+        auxind <- 1:ndiff
+        } else {
+        gruppi <- unique(data[,group])
+        auxind <- c()
+        for(i in 1:length(gruppi)) {
+          auxind <- c(auxind,which(data[,group]==gruppi[i])[1:ndiff])          
+          }
+        }                              
+      auxOK <- setdiff(auxOK,auxind)                    
+      }
+    if(sum(is.na(data[auxOK,]))>0) {
+      data[auxOK,] <- EM.imputation(x=nodenam,group=group,data=data[auxOK,],tol=tol,maxiter=maxiter)
+      }
+    }
+  nomi <- c()
+  cat("Start estimation...")
+  flush.console()
+  for(i in 1:length(model.code)) {
+    nomi[i] <- as.character(model.code[[i]])[2]
+    auxmess <- paste("Estimating regression model ",i,"/",length(model.code)," (",nomi[i],")",sep="")
+    auxdel <- messlen-nchar(auxmess)+1
+    if(auxdel>0) {
+      cat('\r',auxmess,rep(" ",auxdel))
+      } else {
+      cat('\r',auxmess)
+      }
+    flush.console()
+    if(is.null(exogenous)) {
+      iform <- model.code[[i]]
+      } else {
+      iform <- formula(paste(paste(as.character(model.code[[i]])[c(2,1,3)],collapse=""),"+",paste(exogenous,collapse="+"),sep=""))
+      }                           
+    #if("L" %in% names(control)) {
+    #  if(nomi[i] %in% names(control[["L"]])) {
+    #    iL <- control[["L"]][nomi[i]]
+    #    } else {
+    #    iL <- 0
+    #    }
+    #  } else {
+    #  iL <- 0
+    #  }
+    if("adapt" %in% names(control)) {
+      if(nomi[i] %in% names(control[["adapt"]])) {
+        iad <- control[["adapt"]][nomi[i]]
+        } else {
+        iad <- F
+        }
+      } else {
+      iad <- F
+      }
+    if("max.gestation" %in% names(control)) {
+      if(nomi[i] %in% names(control[["max.gestation"]])) {
+        iges <- control[["max.gestation"]][[nomi[i]]]
+        } else {
+        iges <- NULL
+        }
+      } else {
+      iges <- NULL
+      }
+    if("min.width" %in% names(control)) {
+      if(nomi[i] %in% names(control[["min.width"]])) {
+        iwd <- control[["min.width"]][[nomi[i]]]
+        } else {
+        iwd <- NULL
+        }
+      } else {
+      iwd <- NULL
+      }
+    if("max.lead" %in% names(control)) {
+      if(nomi[i] %in% names(control[["max.lead"]])) {
+        ilead <- control[["max.lead"]][[nomi[i]]]
+        } else {
+        ilead <- NULL
+        }
+      } else {
+      ilead <- NULL
+      }
+    if("sign" %in% names(control)) {
+      if(nomi[i] %in% names(control[["sign"]])) {
+        isg <- control[["sign"]][[nomi[i]]]
+        } else {
+        isg <- NULL
+        }
+      } else {
+      isg <- NULL
+      }
+    mod0 <- dlaglm(iform,group=group,data=data,adapt=iad,max.gestation=iges,min.width=iwd,max.lead=ilead,sign=isg,selection=selection)  ### L=iL,
+    res[[i]] <- mod0
+    messlen <- nchar(auxmess)
+    }
+  auxmess <- "Estimation completed"
+  auxdel <- messlen-nchar(auxmess)+1
+  if(auxdel>0) {
+    cat('\r',auxmess,rep(" ",auxdel),sep="")
+    } else {
+    cat('\r',auxmess)
+    }
+  cat("\n")
+  names(res) <- nomi
+  finalcode <- list()
+  for(i in 1:length(topG)) {
+    iscan <- scanForm(res[[topG[i]]]$call$formula)
+    icov <- setdiff(iscan$X,c(group,exogenous))
+    if(length(icov)==0) icov <- "1"
+    finalcode[[i]] <- formula(paste(iscan$y," ~ ",paste(icov,collapse="+"),sep=""))
+    res[[topG[i]]]$call$data <- as.name(nameOfData)
+    }
+  names(finalcode) <- topG
+  out <- list(estimate=res[topG],model.code=finalcode,exogenous=exogenous,group=group,log=log,ndiff=ndiff,data.orig=origdat[,c(group,nodenam)],data.used=data[,c(group,nodenam)])
+  class(out) <- "dlsem"
+  out
+  }
+
+# automated plots of lag shapes
+auto.lagPlot <- function(x,cumul=FALSE,conf=0.95,plotDir=NULL) {
+  if(class(x)!="dlsem") stop("Argument 'model' must be an object of class 'dlsem'",call.=F)
+  if(length(cumul)!=1 || !is.logical(cumul)) stop("Arguent 'cumul' must be a logical value",call.=F)
+  if(length(conf)!=1 || !is.numeric(conf) || conf<=0 || conf>=1) stop("Arguent 'conf' must be a real number greater than 0 and less than 1",call.=F)
+  if(is.null(plotDir)) plotDir <- getwd()
+  for(i in 1:length(x$model.code)) {  
+    scan0 <- scanForm(x$model.code[[i]])
+    ilagged <- names(scan0$ltype)[which(scan0$ltype!="none")]
+    if(length(ilagged)>0) {                                  
+      for(j in 1:length(ilagged)) {
+        yaux <- rbind(rep(0,3),lagEff(x$estimate[[scan0$y]],ilagged[j],cumul=F,conf=0.95,lag=NULL))
+        rownames(yaux)[1] <- "-1"                          
+        if(!is.null(yaux)) {
+          pdf(file.path(plotDir,paste(scan0$y,"~",ilagged[j],".pdf",sep="")))
+          makeShape(yaux,maxlag=NULL,cumul=cumul,conf=conf,ylim=NULL,title=paste(scan0$y," ~ ",ilagged[j],sep=""))
           dev.off()
           }
         }
       }
     }
-  auxdat  
+  cat("Plots saved in ",plotDir,"\n",sep="")
+  }
+
+# print method for class dlsem
+print.dlsem <- function(x,...) {
+  cat("A distributed-lag structural equation model","\n")
+  n.e <- sum(sapply(edges(makeGraph(x)$graph),length))
+  N.e <- sum(sapply(edges(makeGraph(x)$full.graph),length))
+  if(!is.null(x$group)) {
+    cat(" Group factor: ",x$group,"\n",sep="")
+    } else {
+    cat(" No group factor","\n")
+    }
+  if(!is.null(x$exogenous)) {
+    cat(" Exogenous variables: ",paste(x$exogenous,collapse=", "),"\n",sep="")
+    } else {
+    cat(" No exogenous variables","\n")
+    }
+  if(n.e>0) {
+    cat(" ",n.e,"/",N.e," significant edges at 95% level","\n",sep="")
+    } else {
+    cat(" No significant edges at 95% level","\n")  
+    }
+  }
+
+# summary method for class dlsem
+summary.dlsem <- function(object,...) {
+  lapply(object$estimate,summary)
+  }
+
+# residuals method for class dlsem
+residuals.dlsem <- function(object,...) {
+  pred <- list()
+  for(i in 1:length(object$estimate)) {
+    pred[[i]] <- object$estimate[[i]]$residuals
+    }
+  names(pred) <- names(object$estimate)
+  ind <- lapply(pred,names)
+  maxind <- max(as.numeric(unlist(ind)))
+  res <- matrix(nrow=maxind,ncol=length(pred))
+  colnames(res) <- names(pred)
+  rownames(res) <- 1:maxind
+  for(i in 1:length(pred)) {
+    inam <- names(pred[[i]])
+    for(j in 1:length(inam)) {      
+      res[as.numeric(inam[j]),i] <- pred[[i]][inam[j]]
+      }
+    }
+  if(!is.null(object$group)) {
+    out <- data.frame(object$data.orig[,object$group],res)
+    colnames(out)[1] <- object$group
+    } else {
+    out <- data.frame(res)
+    }
+  out
   }
 
 # create graph object from dlsem (internal use only)
@@ -1504,15 +1454,10 @@ makeGraph <- function(x,conf=0.95) {
     auxnam <- rownames(isumm)
     for(j in 1:length(auxnam)) {
       auxsg <- sign(isumm[auxnam[j],1])
-      ijnam <- auxnam[j]
-      ijnam <- gsub("theta0_quec.","",ijnam)
-      ijnam <- gsub("theta0_qdec.","",ijnam)
-      #ijnam <- gsub("theta0_trap.","",ijnam)
-      ijnam <- gsub("theta0_gamma.","",ijnam)
-      if(ijnam %in% nomi) {        
-        G0 <- addEdge(ijnam,nomi[i],G0,1)
+      if(auxnam[j] %in% nomi) {        
+        G0 <- addEdge(auxnam[j],nomi[i],G0,1)
         if(isumm[auxnam[j],4]<1-conf) {
-          G <- addEdge(ijnam,nomi[i],G,1)
+          G <- addEdge(auxnam[j],nomi[i],G,1)
           if(auxsg>0) {
             eSign <- c(eSign,"+")
             } else {
@@ -1521,7 +1466,7 @@ makeGraph <- function(x,conf=0.95) {
           } else {
           eSign <- c(eSign,"")
           }
-        names(eSign)[length(eSign)] <- paste(ijnam,"~",nomi[i],sep="")              
+        names(eSign)[length(eSign)] <- paste(auxnam[j],"~",nomi[i],sep="")              
         }
       }
     }
@@ -1532,54 +1477,38 @@ makeGraph <- function(x,conf=0.95) {
 edgeCoeff <- function(x,lag=NULL,conf=0.95) {
   if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'",call.=F)
   if(length(conf)!=1 || !is.numeric(conf) || conf<=0 || conf>=1) stop("Arguent 'conf' must be a real number greater than 0 and less than 1",call.=F)
-  nomi <- names(x$estimate)
-  if(is.null(lag)) {
-    laglen <- c()
-    for(i in 1:length(nomi)) {
-      isumm <- summary(x$estimate[[nomi[i]]])$coefficients
-      auxnam <- rownames(isumm)
-      for(j in 1:length(auxnam)) {
-        ijnam <- auxnam[j]
-        ijnam <- gsub("theta0_quec.","",ijnam)
-        ijnam <- gsub("theta0_qdec.","",ijnam)
-        #ijnam <- gsub("theta0_trap.","",ijnam)
-        ijnam <- gsub("theta0_gamma.","",ijnam)
-        if(ijnam %in% nomi) {
-          cumb <- lagEff(x$estimate[[nomi[i]]],x=ijnam,cumul=F,conf=conf)
-          laglen <- c(laglen,rownames(cumb)[nrow(cumb)])
-          }
-        }
-      }                                         
-    lag <- 0:max(as.numeric(laglen))
+  if(!is.null(lag)) {
+    for(i in 1:length(lag)) {
+      if(!is.numeric(lag[i]) || is.na(lag[i]) || lag[i]<0 || lag[i]!=round(lag[i])) stop("Argument 'lag' must contain non-negative integer numbers only",call.=F)
+      }  
     }
-  bList <- vector("list",length=length(lag))
+  nomi <- names(x$estimate)
+  laglen <- c()
   for(i in 1:length(nomi)) {
     isumm <- summary(x$estimate[[nomi[i]]])$coefficients
     auxnam <- rownames(isumm)
     for(j in 1:length(auxnam)) {
-      ijnam <- auxnam[j]
-      ijnam <- gsub("theta0_quec.","",ijnam)
-      ijnam <- gsub("theta0_qdec.","",ijnam)
-      #ijnam <- gsub("theta0_trap.","",ijnam)
-      ijnam <- gsub("theta0_gamma.","",ijnam)
-      if(ijnam %in% nomi) {
-        cumb <- lagEff(x$estimate[[nomi[i]]],x=ijnam,cumul=F,conf=conf)
-        for(w in 1:length(lag)) {
-          if(as.character(lag[w]) %in% rownames(cumb)) {
-            wbhat <- cumb[as.character(lag[w]),]
-            } else {
-            wbhat <- rep(0,3)
-            }
-          if(isumm[auxnam[j],4]<1-conf) {
-            bList[[w]] <- rbind(bList[[w]],wbhat)                       
-            } else {
-            bList[[w]] <- rbind(bList[[w]],rep(0,3))               
-            }
-          rownames(bList[[w]])[nrow(bList[[w]])] <- paste(ijnam,"~",nomi[i],sep="")
+      if(auxnam[j] %in% nomi) {
+        cumb <- lagEff(x$estimate[[nomi[i]]],x=auxnam[j],cumul=F,conf=conf,lag=NULL)
+        laglen <- c(laglen,rownames(cumb)[nrow(cumb)])
+        }
+      }
+    }                                         
+  meL <- max(as.numeric(laglen))
+  lagOK <- sort(unique(c(lag,0:meL)))
+  bList <- vector("list",length=length(lagOK))
+  for(i in 1:length(nomi)) {
+    isumm <- summary(x$estimate[[nomi[i]]])$coefficients
+    auxnam <- rownames(isumm)
+    for(j in 1:length(auxnam)) {
+      if(auxnam[j] %in% nomi) {
+        for(w in 1:length(lagOK)) {
+          bList[[w]] <- rbind(bList[[w]],lagEff(x$estimate[[nomi[i]]],x=auxnam[j],cumul=F,conf=conf,lag=lagOK[w]))
+          rownames(bList[[w]])[nrow(bList[[w]])] <- paste(auxnam[j],"~",nomi[i],sep="")
           }
         }
       }
-    if(!is.null(bList)) names(bList) <- lag
+    if(!is.null(bList)) names(bList) <- lagOK
     }
   for(i in 1:length(bList)) {
     auxnam <- rownames(bList[[i]])
@@ -1589,12 +1518,29 @@ edgeCoeff <- function(x,lag=NULL,conf=0.95) {
       }
     rownames(bList[[i]]) <- newnam
     }
-  for(i in 1:length(bList)) colnames(bList[[i]]) <- c(paste(100*(1-conf)/2,"%",sep=""),"50%",paste(100*(1+conf)/2,"%",sep=""))
-  bList
+  for(i in 1:length(bList)) {
+    colnames(bList[[i]]) <- c("estimate",paste(c("lower ","upper "),conf*100,"%",sep=""))
+    }
+  if(is.null(lag)) {
+    bList
+    } else {
+    voidB <- bList[[1]]
+    voidB[] <- 0
+    bList2 <- vector("list",length=length(lag))
+    names(bList2) <- lag
+    for(i in 1:length(bList2)) {
+      if(lag[i]<=max(lagOK)) {
+        bList2[[i]] <- bList[[as.character(lag[i])]]
+        } else {
+        bList2[[i]] <- voidB
+        }
+      }
+    bList2
+    }
   }
 
 # plot method for class dlsem
-plot.dlsem <- function(x,conf=0.95,node.col=NULL,font.col=NULL,border.col=NULL,edge.col=NULL,edge.lab=NULL,...) {
+plot.dlsem <- function(x,conf=0.95,show.sign=TRUE,show.ns=TRUE,node.col=NULL,font.col=NULL,border.col=NULL,edge.col=NULL,edge.lab=NULL,...) {
   defpar <- par()
   G <- makeGraph(x,conf=conf)
   nomi <- nodes(G$full.graph)  
@@ -1614,7 +1560,7 @@ plot.dlsem <- function(x,conf=0.95,node.col=NULL,font.col=NULL,border.col=NULL,e
   nAttr$fontsize <- rep(14,length(nomi))
   nAttr$height <- rep(2.5,length(nomi))
   nAttr$width <- rep(4,length(nomi))
-  nAttr$label <- sapply(nomi,cutString,l=12)  ##### max number of characters: 12
+  nAttr$label <- sapply(nomi,cutString,l=12)  ##### maximum number of characters: 12
   for(i in 1:length(nAttr)) {
     names(nAttr[[i]]) <- nomi
     }
@@ -1627,25 +1573,26 @@ plot.dlsem <- function(x,conf=0.95,node.col=NULL,font.col=NULL,border.col=NULL,e
     #eAttr$labelfontsize <- rep(14,length(edge.lab))
     #names(eAttr$labelfontsize) <- names(edge.lab)
     }
-  #if(sign.col==T) {
-  eCol <- G$sign
-  eCol[which(G$sign=="+")] <- "green4"
-  eCol[which(G$sign=="-")] <- "tomato3"
-  eCol[which(G$sign=="")] <- "grey55" #####
+  if(!is.null(edge.col)) {
+    eAttr$color <- edge.col     
+    eAttr$color[which(G$sign=="")] <- NA
+    } else {
+    eCol <- G$sign
+    if(show.sign==T) {    
+      eCol[which(G$sign=="+")] <- "green4"
+      eCol[which(G$sign=="-")] <- "tomato3"
+      } else {
+      eCol[which(G$sign=="+")] <- "grey55"
+      eCol[which(G$sign=="-")] <- "grey55"
+      }
+    if(show.ns==T) {
+      eCol[which(G$sign=="")] <- "grey55"
+      } else {
+      eCol[which(G$sign=="")] <- NA  
+      }
+    }
   eAttr[[length(eAttr)+1]] <- eCol
-  names(eAttr)[length(eAttr)] <- "color"
-    #} else {
-    #if(!is.null(edge.col)) {
-    #  eAttr$color <- edge.col     
-    #  eAttr$color[which(G$sign=="")] <- NA
-    #  } else {
-    #  eCol <- rep("grey25",length(G$sign))
-    #  names(eCol) <- names(G$sign)
-    #  eCol[which(G$sign=="")] <- NA
-    #  eAttr[[length(eAttr)+1]] <- eCol
-    #  names(eAttr)[length(eAttr)] <- "color"
-    #  }
-    #}                              
+  names(eAttr)[length(eAttr)] <- "color"                             
   plot(G$full.graph,"dot",nodeAttrs=nAttr,edgeAttrs=eAttr,attrs=list(edge=list(color="grey25",arrowsize=0.4)),...)
   options(warn=-1)
   par(defpar)
@@ -1750,46 +1697,77 @@ topOrder <- function(G) {
   }
 
 # check conditional independence
-isIndep <- function(x,var1,var2,given=NULL,conf=0.95) {
-  if(class(x)!="dlsem") stop("The first argument must be an object of class 'dlsem'",call.=F)
-  if(length(var1)!=1) stop("Argument 'var1' must have length 1",call.=F)
-  if(length(var2)!=1) stop("Argument 'var2' must have length 1",call.=F)
-  G <- makeGraph(x,conf=conf)$graph
+isIndep <- function(x,var1=NULL,var2=NULL,given=NULL,conf=0.95,use.ns=FALSE) {
+  if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'",call.=F)
+  if(is.null(var1) || is.na(var1)) stop("Argument 'var1' is missing",call.=F)
+  if(!is.null(var1) && length(var1)!=1) stop("Argument 'var1' must have length 1",call.=F)
+  if(is.null(var2) || is.na(var2)) stop("Argument 'var2' is missing",call.=F)  
+  if(!is.null(var2) && length(var2)!=1) stop("Argument 'var2' must have length 1",call.=F)
+  if(!is.null(given) && is.na(given)) stop("Argument 'given' is missing",call.=F)  
+  if(length(use.ns)!=1 || !is.logical(use.ns)) stop("Argument 'use.ns' must be a logical value",call.=F)
+  Gobj <- makeGraph(x,conf=conf)
+  if(use.ns==F) {
+    G <- Gobj$graph
+    } else {
+    G <- Gobj$full.graph
+    }
   nomi <- nodes(G)
   auxcheck <- setdiff(c(var1,var2,given),nomi)
-  if(length(auxcheck)>0) stop("Unknown variable ",paste(auxcheck,collapse=", "),call.=F)
-  Gm <- moralize(ancestralGraph(c(var1,var2,given),G))
-  pset <- edges(Gm)                      
-  xedg <- c()
-  for(i in 1:length(pset)) {
-    if(length(pset[[i]])>0) {
-      for(j in 1:length(pset[[i]])) {
-        xedg <- rbind(xedg,c(names(pset)[i],pset[[i]][j])) 
+  if(length(auxcheck)>0) stop("Unknown variable '",auxcheck[1],"'",sep="",call.=F)
+  if(length(unlist(edges(G)))>0) {
+    Gm <- moralize(ancestralGraph(c(var1,var2,given),G))
+    pset <- edges(Gm)                      
+    xedg <- c()
+    for(i in 1:length(pset)) {
+      if(length(pset[[i]])>0) {
+        for(j in 1:length(pset[[i]])) {
+          xedg <- rbind(xedg,c(names(pset)[i],pset[[i]][j])) 
+          }
         }
+      }                              
+    if(!is.null(xedg)) {
+      xedg <- rbind(xedg,xedg[,2:1])
+      nomi <- sort(unique(xedg))
+      borde <- var1
+      reached <- c()
+      neighb <- function(x,node) {
+        Ne <- c(x[which(x[,1]==node),2],x[which(x[,2]==node),1])
+        sort(unique(Ne))
+        }                     
+      while(length(borde)>0) {
+        reached <- c(reached,borde)
+        fan_borde <- c()
+        for(i in 1:length(borde)) {                      
+          auxne <- neighb(xedg,borde[i])                 
+          fan_borde <- c(fan_borde,auxne) 
+          }                              
+        borde <- setdiff(fan_borde,c(reached,given))   
+        if(length(intersect(borde,var2))>0) break()
+        }
+      ifelse(length(borde)>0, res <- F, res <- T)
+      } else {
+      res <- T
       }
-    }                              
-  if(!is.null(xedg)) {
-    xedg <- rbind(xedg,xedg[,2:1])
-    nomi <- sort(unique(xedg))
-    borde <- var1
-    reached <- c()
-    neighb <- function(x,node) {
-      Ne <- c(x[which(x[,1]==node),2],x[which(x[,2]==node),1])
-      sort(unique(Ne))
-      }                     
-    while(length(borde)>0) {
-      reached <- c(reached,borde)
-      fan_borde <- c()
-      for(i in 1:length(borde)) {                      
-        auxne <- neighb(xedg,borde[i])                 
-        fan_borde <- c(fan_borde,auxne) 
-        }                              
-      borde <- setdiff(fan_borde,c(reached,given))   
-      if(length(intersect(borde,var2))>0) break()
-      }
-    ifelse(length(borde)>0, res <- F, res <- T)
     } else {
     res <- T
+    }
+  res
+  }
+
+# matrix of edges (internal use only)
+edgeMat <- function(x,conf,full) {
+  if(full==T) {
+    xedg <- edges(makeGraph(x,conf=conf)$full.graph)
+    } else {
+    xedg <- edges(makeGraph(x,conf=conf)$graph)
+    }
+  res <- c()
+  if(length(xedg)>0) {
+    for(i in 1:length(xedg)) {
+      if(length(xedg[[i]])>0) {
+        res <- rbind(res,cbind(rep(names(xedg)[i],length(xedg[[i]])),xedg[[i]]))
+        }
+      }
     }
   res
   }
@@ -1842,15 +1820,14 @@ dpathFind <- function(G,from,to) {
 # find lag to sum (internal use only)
 findlag2sum <- function(x,lag) {
   g <- length(x)                             
-  auxlag <- 0:lag
   out <- list()
-  for(w in 1:length(auxlag)) {
+  for(w in 1:length(lag)) {
     mycode <- "res <- c(); "
     for(i in 1:g) {
       mycode <- paste(mycode,"for(k",i," in 1:length(x[[",i,"]])) { ; ",sep="")
       }
     mycode <- paste(mycode,paste("xaux <- c(",paste("x[[",1:g,"]][k",1:g,"]",collapse=",",sep=""),"); ",sep=""),sep="")
-    mycode <- paste(mycode,"if(sum(xaux)==auxlag[w]) { res <- rbind(res,xaux) }; ",sep="")
+    mycode <- paste(mycode,"if(sum(xaux)==lag[w]) { res <- rbind(res,xaux) }; ",sep="")
     mycode <- paste(mycode,paste(rep("}",length(x)),collapse="; "),sep="")
     eval(parse(text=mycode))
     if(is.null(res)) {
@@ -1861,31 +1838,42 @@ findlag2sum <- function(x,lag) {
     colnames(res) <- names(x)             
     out[[w]] <- res
     }
-  names(out) <- auxlag
+  names(out) <- lag
   out
   }
 
 # disentanglement of causal effects
-causalEff <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
+causalEff <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95,use.ns=FALSE) {
   if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'",call.=F)
+  if(is.null(from) || is.na(from)) stop("Argument 'from' is missing",call.=F)
+  if(is.null(to) || is.na(to)) stop("Argument 'to' is missing",call.=F)
+  if(!is.character(from)) stop("Invalid argument 'from'",call.=F)
+  if(!is.character(to) || length(to)!=1) stop("Invalid argument 'to'",call.=F)
+  if(length(cumul)!=1 || !is.logical(cumul)) stop("Arguent 'cumul' must be a logical value",call.=F)
+  if(length(use.ns)!=1 || !is.logical(use.ns)) stop("Argument 'use.ns' must be a logical value",call.=F)
+  if(!is.null(lag)) {
+    for(i in 1:length(lag)) {
+      if(!is.numeric(lag[i]) || is.na(lag[i]) || lag[i]<0 || lag[i]!=round(lag[i])) stop("Argument 'lag' must contain non-negative integer numbers only",call.=F)
+      }
+    }
   auxcheck <- setdiff(c(from,to),names(x$estimate))
   if(length(auxcheck)>0) {
     auxcntx <- intersect(auxcheck,x$exogenous)
     if(length(auxcntx)>0) {
-      stop("Exogenous variables cannot be involved in path analysis",call.=F)
+      stop("Variable '",auxcntx[1],"' is exogenous and cannot appear in argument 'from' or 'to'",call.=F)
       } else {
-      stop("Unknown variable: ",paste(auxcheck,collapse=", "),call.=F)
+      stop("Unknown variable '",auxcheck[1],"'",sep="",call.=F)
       }
     }
-  if(is.null(from)) stop("Argument 'from' is missing",call.=F)
-  if(is.null(to)) stop("Argument 'to' is missing",call.=F)
-  if(!is.character(from)) stop("Invalid argument 'from'",call.=F)
-  if(!is.character(to) || length(to)!=1) stop("Invalid argument 'to'",call.=F)
   Gobj <- makeGraph(x,conf=conf)
-  G <- Gobj$graph
+  if(use.ns==F) {
+    G <- Gobj$graph
+    } else {
+    G <- Gobj$full.graph
+    }
   nomi <- nodes(G)
-  if(length(setdiff(from,nomi))>0) stop("Unknown variable ",paste(setdiff(from,nomi),collapse=", "),call.=F)
-  if((to %in% nomi)==F) stop("Unknown variable ",to,call.=F)
+  if(length(setdiff(from,nomi))>0) stop("Unknown variable '",setdiff(from,nomi)[1],"'",sep="",call.=F)
+  if((to %in% nomi)==F) stop("Unknown variable '",to,"'",sep="",call.=F)
   isOK <- rep(1,length(from))
   for(i in 1:length(from)) {
     if((to %in% nodeDescen(from[i],G))==F) isOK[i] <- 0
@@ -1936,42 +1924,32 @@ causalEff <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
     for(i in 1:length(pathList)) {
       newPathList <- c(newPathList,pathList[[i]])
       }                                                        
-    if(is.null(lag)) {
-      laglen <- list()
-      for(i in 1:length(newPathList)) {
-        jlaglen <- list()
-        for(j in 2:length(newPathList[[i]])) {
-          auxnam <- paste(newPathList[[i]][j],"~",newPathList[[i]][j-1],sep="")
-          auxeff <- lagEff(x$estimate[[newPathList[[i]][j]]],x=newPathList[[i]][j-1],cumul=F,conf=conf)
-          auxpos <- which(auxeff[,2]!=0)
-          if(length(auxpos)>0) {
-            jlaglen[[j-1]] <- as.numeric(rownames(auxeff)[auxpos])
-            } else {
-            jlaglen[[j-1]] <- NA
-            }
+    laglen <- list()
+    for(i in 1:length(newPathList)) {
+      jlaglen <- list()
+      for(j in 2:length(newPathList[[i]])) {
+        auxnam <- paste(newPathList[[i]][j],"~",newPathList[[i]][j-1],sep="")
+        auxeff <- lagEff(x$estimate[[newPathList[[i]][j]]],x=newPathList[[i]][j-1],cumul=F,conf=conf,lag=NULL)
+        auxpos <- which(auxeff[,1]!=0)
+        if(length(auxpos)>0) {
+          jlaglen[[j-1]] <- as.numeric(rownames(auxeff)[auxpos])
+          } else {
+          jlaglen[[j-1]] <- NA
           }
-        laglen[[i]] <- c(min(jlaglen[[1]],na.rm=T),sum(sapply(jlaglen,max,na.rm=T)))
-        }          
-      lag <- 0:(max(unlist(laglen))+1)
-      cutab <- 0
-      } else {
-      for(i in 1:length(lag)) {
-        if(!is.numeric(lag[i]) || lag[i]<0 || lag[i]!=round(lag[i])) stop("Argument 'lag' must contain non-negative integer numbers only",call.=F)
-        }                                       
-      lagOK <- lag
-      lag <- 0:max(lag)
-      cutab <- 1
+        }
+      laglen[[i]] <- c(min(jlaglen[[1]],na.rm=T),sum(sapply(jlaglen,max,na.rm=T)))
       }
-    mycoeff <- edgeCoeff(x,lag=lag,conf=conf)
-    #
+    meL <- max(unlist(laglen))+1        
+    lagOK <- 0:meL
+    mycoeff <- edgeCoeff(x,lag=lagOK,conf=conf)         
     sd_calc <- function(muvet,sdvet) { sqrt(prod(muvet^2+sdvet^2)-prod(muvet^2)) }
     quan <- -qnorm((1-conf)/2)
     bhat <- list()
     for(i in 1:length(mycoeff)) {
       bhat[[i]] <- matrix(nrow=nrow(mycoeff[[i]]),ncol=2)
       for(j in 1:nrow(mycoeff[[i]])) {
-        auxeval <- mycoeff[[i]][j,2]
-        auxsd <- (mycoeff[[i]][j,3]-mycoeff[[i]][j,2])/quan
+        auxeval <- mycoeff[[i]][j,1]
+        auxsd <- (mycoeff[[i]][j,3]-mycoeff[[i]][j,1])/quan
         bhat[[i]][j,] <- c(auxeval,auxsd)
         }
       rownames(bhat[[i]]) <- rownames(mycoeff[[i]])
@@ -1979,24 +1957,24 @@ causalEff <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
     names(bhat) <- names(mycoeff)
     outList <- list()                       
     for(i in 1:length(newPathList)) {           
-      outList[[i]] <- matrix(nrow=length(lag),ncol=3)
-      rownames(outList[[i]]) <- lag
-      colnames(outList[[i]]) <- c(paste(100*(1-conf)/2,"%",sep=""),"50%",paste(100*(1+conf)/2,"%",sep=""))
+      outList[[i]] <- matrix(nrow=length(lagOK),ncol=3)
+      rownames(outList[[i]]) <- lagOK
+      colnames(outList[[i]]) <- c("estimate",paste(c("lower ","upper "),conf*100,"%",sep=""))
       auxbetalag <- list()
       for(j in 2:length(newPathList[[i]])) {
         auxnam <- paste(newPathList[[i]][j],"~",newPathList[[i]][j-1],sep="")
-        auxeff <- lagEff(x$estimate[[newPathList[[i]][j]]],x=newPathList[[i]][j-1],cumul=F,conf=conf)
-        auxpos <- which(auxeff[,2]!=0)
+        auxeff <- lagEff(x$estimate[[newPathList[[i]][j]]],x=newPathList[[i]][j-1],cumul=F,conf=conf,lag=lagOK)
+        auxpos <- which(auxeff[,1]!=0)
         if(length(auxpos)>0) {                                 
           auxbetalag[[j-1]] <- as.numeric(rownames(auxeff)[auxpos])
           } else {
           auxbetalag[[j-1]] <- 0
           }
         names(auxbetalag)[j-1] <- auxnam
-        }                              
-      lagsumMat <- findlag2sum(auxbetalag,lag=max(lag))
+        }
+      lagsumMat <- findlag2sum(auxbetalag,lagOK)
       for(j in 1:length(lagsumMat)) {
-        auxlag <- as.character(lag[j])                           
+        auxlag <- as.character(lagOK[j])                           
         auxind <- lagsumMat[[j]]                          
         if(nrow(auxind)>0) {
           auxres <- array(dim=c(nrow(auxind),ncol(auxind),2))
@@ -2013,17 +1991,17 @@ causalEff <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
             }
           mupath <- sum(muprod)
           sdpath <- sqrt(sum(sdprod^2))
-          outList[[i]][j,] <- c(mupath-quan*sdpath,mupath,mupath+quan*sdpath)
+          outList[[i]][j,] <- c(mupath,mupath-quan*sdpath,mupath+quan*sdpath)
           } else {
           outList[[i]][j,] <- rep(0,3)        
           }
         }
       }
     names(outList) <- sapply(newPathList,function(x){paste(x,collapse="*")})
-    out <- matrix(nrow=length(lag),ncol=3)
-    rownames(out) <- lag
-    colnames(out) <- c(paste(100*(1-conf)/2,"%",sep=""),"50%",paste(100*(1+conf)/2,"%",sep=""))
-    for(j in 1:length(lag)) {
+    out <- matrix(nrow=length(lagOK),ncol=3)
+    rownames(out) <- lagOK
+    colnames(out) <- c("estimate",paste(c("lower ","upper "),conf*100,"%",sep=""))
+    for(j in 1:length(lagOK)) {
       auxover <- rep(0,3)
       for(i in 1:length(outList)) {
         auxover <- auxover+outList[[i]][j,]
@@ -2041,22 +2019,34 @@ causalEff <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95) {
           }
         }    
       }
-    if(cutab==1) {
+    if(is.null(lag)) {
+      outList
+      } else {
+      lagSel <- lag
+      auxOlag <- which(lag>max(lagOK))
+      if(length(auxOlag)>0) lagSel[auxOlag] <- max(lagOK)  
+      outList2 <- outList
       for(i in 1:length(outList)) {
-        outList[[i]] <- outList[[i]][as.character(lagOK),]    
+        outList2[[i]] <- outList[[i]][as.character(lagSel),,drop=F]
+        rownames(outList2[[i]]) <- lag
         }
+      outList2
       }
-    outList
     } else {
-    stop("No significant paths found between the selected variables. Try to reduce the confidence level",call.=F)
+    auxanc <- nodeAnces(to,makeGraph(x)$full.graph)
+    if(length(intersect(from,auxanc))>0) {
+      stop("No paths found connecting the selected variables. Try to reduce 'conf' or to set 'use.ns' to TRUE",call.=F)
+      } else {
+      stop("No paths exist connecting the selected variables",call.=F)
+      }
     }
   }
 
 # fit indices
-fitIndices <- function(x) {
+modelFit <- function(x) {
   if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'",call.=F)
   xfit <- x$estimate     
-  deg <- n <- expdev <- resdev <- Rsq <- aic <- bic <- mdl <- c()
+  deg <- n <- expdev <- resdev <- Rsq <- ll <- aic <- bic <- mdl <- c()
   for(i in 1:length(xfit)) {
     resdev[i] <- deviance(xfit[[i]])
     auxss <- anova(xfit[[i]])$'Sum Sq'
@@ -2064,17 +2054,20 @@ fitIndices <- function(x) {
     n[i] <- length(residuals(xfit[[i]]))
     deg[i] <- xfit[[i]]$df.residual
     Rsq[i] <- summary(xfit[[i]])$'r.squared'
-    aic[i] <- modFit(xfit[[i]],"aic")
-    bic[i] <- modFit(xfit[[i]],"bic")
-    mdl[i] <- modFit(xfit[[i]],"mdl")
+    ll[i] <- modscore(xfit[[i]],"ll")
+    aic[i] <- modscore(xfit[[i]],"aic")
+    bic[i] <- modscore(xfit[[i]],"bic")
+    mdl[i] <- modscore(xfit[[i]],"mdl")
     }  
-  out1 <- c(Rsq,sum(expdev)/(sum(expdev)+sum(resdev)))
+  out <- c(Rsq,sum(expdev)/(sum(expdev)+sum(resdev)))
+  names(out) <- c(names(xfit),"(overall)")
+  out0 <- c(ll,sum(ll))
+  names(out0) <- c(names(xfit),"(overall)")
+  out1 <- c(aic,sum(aic))
   names(out1) <- c(names(xfit),"(overall)")
-  out2 <- c(aic,sum(aic))
+  out2 <- c(bic,sum(bic))
   names(out2) <- c(names(xfit),"(overall)")
-  out3 <- c(bic,sum(bic))
+  out3 <- c(mdl,sum(mdl))
   names(out3) <- c(names(xfit),"(overall)")
-  out4 <- c(mdl,sum(mdl))
-  names(out4) <- c(names(xfit),"(overall)")
-  list('R squared'=out1,'Akaike Information Criterion'=out2,'Bayesian Information Criterion'=out3,'Minimum Description Length'=out4)
+  list('R squared'=out,'logL'=out0,'AIC'=out1,'BIC'=out2,'MDL'=out3)
   }
