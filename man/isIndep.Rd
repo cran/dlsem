@@ -14,7 +14,7 @@
 \value{Logical}
 \note{The result is unchanged if arguments \code{var1} and \code{var2} are switched.}
 \references{J. Pearl (2000). Causality: Models, Reasoning, and Inference. Cambridge University Press. Cambridge, UK.}
-%\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 \seealso{\link{dlsem}.}
 \examples{
 data(industry)

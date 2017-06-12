@@ -37,7 +37,7 @@
     
   D. Kwiatkowski, P. C. B. Phillips, P. Schmidt, and Y. Shin (1992). Testing the Null Hypothesis of Stationarity against the Alternative of a Unit Root. \emph{Journal of Econometrics}, 54 (1-3): 159-178.
 }
-%\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 %\seealso{}
 \examples{
 data(industry)

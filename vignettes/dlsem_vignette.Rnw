@@ -1,10 +1,10 @@
 \documentclass[10pt]{article}
-%\VignetteIndexEntry{Distributed-Lag Structural Equation Modelling with the R Package dlsem}
+%\VignetteIndexEntry{Distributed-Lag Linear Structural Equation Modelling with the R Package dlsem}
 %\VignettePackage{dlsem}
-%\VignetteKeyword{Directed acyclic graphs}
+%\VignetteKeyword{Constrained lag shape}
+%\VignetteKeyword{Directed acyclic graph}
 %\VignetteKeyword{Dynamic causal inference}
 %\VignetteKeyword{Impact analysis}
-%\VignetteKeyword{Lag modelling}
 
 \usepackage{boxedminipage,color,a4wide,url}
 \usepackage[english]{babel}
@@ -29,12 +29,12 @@
 %@
 
 
-\title{Distributed-Lag Structural Equation Modelling \\ with the R Package dlsem}
+\title{Distributed-Lag Linear Structural Equation Modelling \\ with the R Package dlsem}
 \author{Alessandro Magrini\\
-Dep. Statistics, Computer Science, Applications\\
-University of Florence, Italy\\
-<magrini@disia.unifi.it>}
-\date{\texttt{dlsem} version 1.7 -- 10 January 2017}
+Dep. Economics and Management\\
+University of Pisa, Italy\\
+<alessandro.magrini@for.unipi.it>}
+\date{\texttt{dlsem} version 1.8 -- 13 June 2017}
 
 
 
@@ -79,12 +79,15 @@ University of Florence, Italy\\
 \section{Introduction}
 
 Package \texttt{dlsem} implements inference functionalities
-for structural equation modelling with constrained lag shapes (DLSEM: \citealp{magrini16}).
-DLSEM is suited to perform dynamic causal inference, that is to
+for distributed-lag linear structural equation models
+with constrained lag shapes (DLSEMs: \citealp{magrini16}).
+Endpoint-constrained quadratic, quadratic decreasing and gamma
+lag shapes are available.
+DLSEMs allow to perform dynamic causal inference, that is to
 assess and disentangle causal effects at different time lags.
 The vignette is structured as follows.
-In Section \ref{sec:theory}, theory on structural equation modelling
-with constrained lag shapes is presented.
+In Section \ref{sec:theory}, theory on distributed-lag linear
+structural equation models with constrained lag shapes is presented.
 In Section \ref{sec:install}, instructions for the installation
 of the \texttt{dlsem} packages are provided.
 In Section \ref{sec:example}, the practical use of \texttt{dlsem}
@@ -95,8 +98,8 @@ is illustrated through a fictitious impact assessment problem.
 \label{sec:theory}
 
 Lagged instances of one or more covariates
-can be included in the classical linear regression model
-to to account for temporal delays in their influence on the response:
+can be included in the linear regression model
+to account for temporal delays in their influence on the response:
 \begin{equation}\label{eq:uncons_dllm}
 y_t = \beta_0+\sum_{j=1}^J \sum_{l=0}^{L_j} \beta_{j,l} ~ x_{j,t-l}+\epsilon_t \hspace{1cm} \epsilon_t \sim \text{N}(0,\sigma^2)
 \end{equation}
@@ -138,7 +141,7 @@ and the \textit{gamma} lag shape:
 \begin{equation}\label{eq:gamma}
 \begin{gathered}
 \beta_{j,l} = \theta_j (l+1)^\frac{\delta}{1-\delta}\lambda_j^l \left[\left(\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}\right)^\frac{\delta_j}{1-\delta_j}\lambda_j^{\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}-1}\right]^{-1}\\
-0<\delta_j<1 \hspace{1cm} 0<\lambda_j<1.
+0<\delta_j<1 \hspace{1cm} 0<\lambda_j<1
 \end{gathered}
 \end{equation}
 The endpoint-constrained quadratic lag shape
@@ -177,7 +180,7 @@ rejects the hypothesis of unit root for all of them.
 \begin{figure}[!h]
 \centering
 \includegraphics[scale=1]{figures/sampledag.png}
-\caption{A directed acyclic graph for SEM.
+\caption{The directed acyclic graph of a SEM.
 The regression model applied to variable $V_1$ has no covariates,
 the regression models applied to variables $V_2$ and $V_3$ have $V_1$ as covariate,
 the regression model applied to variable $V_4$ has $V_2$ and $V_3$ as covariates.}
@@ -185,20 +188,35 @@ the regression model applied to variable $V_4$ has $V_2$ and $V_3$ as covariates
 \end{figure}
 
 
-In the Pearl's framework \citep{pearl00}, structural equation modelling (SEM)
-consists of applying a linear regression model to each variable, and
-all linear regression models define an acyclic directed graph (DAG).
-In the DAG, variables are represented by nodes, a node
-receives a directed edge from another node
-if the variable represented by the latter is a covariate
-in the regression model of the variable represented by the former,
-and no directed cycles are present (see Figure \ref{fig:dagsam}).
-If a node receives a directed edge from another node in the DAG,
-the former is called child of the latter, and the latter is
-called parent of the former.
-Also, the DAG has a causal interpretation, and a causal effect is associated
-to each edge, directed path or couple of nodes to represent expected
-changes induced by an intervention (\citealp[Chapter 5.3]{pearl00}; \citealp{pearl12}):
+Structural equation models (SEMs) have a long history starting
+with the contribution of \citet{wright34} and further elaborated
+by \citet{pearl00} in the context of causal inference.
+The basic feature of a SEM is a directed acyclic graph
+(DAG, see \citealp[pages 12 and on]{pearl00}).
+In a DAG, variables are represented by nodes and directed
+edges may connect pairs of variables without creating
+directed cycles (Figure \ref{fig:dagsam}).
+If a variable receives an edge from another variable,
+the latter is called \textit{parent} of the former.
+A DAG encodes a factorization of the joint probability distribution:
+\begin{equation}
+p(V_1,\dots,V_m )=\prod_{j=1}^J p(V_j \mid \Pi_j)
+\end{equation}
+where $\Pi_j$ is the set of parents of variable $V_j$.
+As such, if some pairs of variables are not connected by an edge,
+the DAG implies a set of conditional independence statements
+\citep[pages 16 and on]{pearl00}.
+A SEM is defined by a specification of
+$p(V_j \mid \Pi_j)$ for $j=1,\ldots,J$.
+In a linear parametric formulation (linear SEM), $p(V_j \mid \Pi_j)$
+is the linear regression model where $V_j$ is the response
+variable and its parents in the DAG are the covariates.
+
+In the Pearl's framework, the DAG has a causal interpretation,
+and a causal effect is associated to each edge, directed path
+or couple of nodes to represent expected changes induced by an
+intervention (\citealp[Chapter 5.3]{pearl00}; \citealp{pearl12}).
+For a linear SEM:
 \begin{itemize}
 \item the causal effect associated to each edge in the DAG is
 the coefficient of the variable represented by the node originating
@@ -210,7 +228,7 @@ the product of the causal effects associated to each edge in the path;
 the sum of the causal effects associated to each
 directed path connecting the nodes representing the two variables.
 \end{itemize}
-Thus, SEM can be employed to assess and decompose the average change
+Thus, a linear SEM can be employed to assess and decompose the average change
 in the value of any variable induced by an intervention provoking a
 unit variation in the value of any other variable.
 The causal effect of a variable on another is
@@ -220,17 +238,16 @@ made by a single edge is called \textit{direct} effect,
 while the causal effects associated to the other directed
 paths are denoted as \textit{indirect} effects.
 
-Distributed-lag structural equation modelling (DLSEM) is
-an extension of SEM, where a constrained lag shape
-is applied to each covariate in each regression model.
-For DLSEM, the DAG does not explicitly include time lags, and
+A distributed-lag linear structural equation model (DLSEM) is
+a SEM where each regression model is a distributed-lag
+linear regression model with constrained lag shapes.
+For a DLSEM, the DAG does not explicitly include time lags, and
 an edge connecting two nodes implies that there is
 at least one time lag where the coefficient
 of the variable represented by the parent node in the regression model
 of the variable represented by the child node is non-zero.
-DLSEM can be employed to assess and decompose the causal effect of any variable
-to another at different time lags
-by extending the rules above: %reported in Subsection \ref{sub:sem}:
+A DLSEM can be exploited to assess and decompose the causal effect of any variable
+to another at different time lags by extending the rules above:
 \begin{itemize}
   %
   \item The causal effect associated to each edge in the DAG at lag $k$
@@ -289,7 +306,7 @@ use the command:
 update.packages("dlsem")
 @
 
-The latest version of \texttt{dlsem} is 1.7.
+The latest version of \texttt{dlsem} is 1.8.
 
 
 \section{Illustrative example}
@@ -301,8 +318,21 @@ whether the influence through time of the number job positions in
 industry (proxy of the industrial development) on
 the amount of greenhouse gas emissions (proxy of pollution)
 is direct and/or mediated by the amount of private consumption.
+The DAG for the proposed problem is shown in Figure \ref{fig:dag0}.
 The analysis will be conducted on the dataset $\mathsf{industry}$,
 containing data for $10$ imaginary regions in the period 1983-2015.
+
+
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=1]{figures/dag0.pdf}
+\caption{The DAG for the industrial development problem.
+`Job': number of job positions in industry.
+`Consum': private consumption index.
+`Pollution': amount of greenhouse gas emissions.}
+\label{fig:dag0}
+\end{figure}
+
 
 @
 <<echo=F>>=
@@ -321,24 +351,10 @@ summary(industry)
 \subsection{Specification of the model code}
 \label{sub:example1}
 
-The first step to perform DLSEM with \texttt{dlsem}
-is the specification of the model code encoding
-the DAG relating variables, together with assumptions
-and constraints on the lag shape for each variable.
-The DAG for the proposed problem is shown in Figure \ref{fig:dag0}.
-
-
-\begin{figure}[!h]
-\centering
-\includegraphics[scale=1]{figures/dag0.pdf}
-\caption{The DAG for the industrial development problem.
-`Job': number of job positions in industry.
-`Consum': private consumption index.
-`Pollution': amount of greenhouse gas emissions.}
-\label{fig:dag0}
-\end{figure}
-
-
+The first step to build a DLSEM with the \texttt{dlsem} package
+is the definition of the model code, which is meant to include the
+formal specification of the regression models in the DLSEM.
+%
 The model code must be a list of formulas, one for each regression model.
 In each formula, the response and the covariates must be quantitative variables\footnote{
 %
@@ -380,7 +396,7 @@ mycode <- list(
 \subsection{Specification of control options}
 \label{sub:example2}
 
-The second step to perform DLSEM with \texttt{dlsem}
+The second step to build a DLSEM with the \texttt{dlsem} package
 is the specification of control options.
 Control options must be a named list containing one or more among
 several components.
@@ -650,15 +666,9 @@ Spurious Regressions in Econometrics.
 \bibitem[Judge \textit{et al.}(1985)]{judge85} G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985).
 The Theory and Practice of Econometrics. John Wiley \& Sons, 2nd ed., New York, US-NY.
 
-\bibitem[Lauritzen(1996)]{lauritzen96} S. L. Lauritzen (1996). Graphical Models.
-Oxford University Press, Oxford, UK.
-
 \bibitem[Levin \textit{et al.}(2002)]{levin02} A. Levin, C. Lin, and C. J. Chub (2002).
 Unit Root Tests in Panel Data: Asymptotic and Finite-Sample Properties.
 \textit{Journal of Econometrics}, 108: 1-24.
-
-%\bibitem[Newey and West(1978)]{newey78} W. K. Newey, and K. D. West (1978).
-%A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. %\emph{Econometrica}, 55(3), 703-708.
 
 \bibitem[Magrini \textit{et al.}(2016)]{magrini16} A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016).
 Distributed-Lag Structural Equation Modelling: An Application to Impact Assessment of Research Activity on European Agriculture.
@@ -671,6 +681,8 @@ In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Gui
 \bibitem[Pearl(2000)]{pearl00} J. Pearl (2000).
 Causality: Models, Reasoning, and Inference.
 Cambridge University Press. Cambridge, UK.
+
+\bibitem[Wright(1934)]{wright34} S. Wright (1934). The Method of Path Coefficients. Annals of Mathematical Statistics, 5(3): 161-215.
 
 \end{thebibliography}
 

@@ -19,7 +19,7 @@
 }
 %\value{}
 %\references{}
-%\author{Alessandro Magrini <magrini@disia.unifi.it>}
+%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 \seealso{\link{dlsem}; \link{causalEff}; \link{lagPlot}.}
 \examples{
 data(industry)

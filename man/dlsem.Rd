@@ -1,7 +1,7 @@
 \name{dlsem}
 \alias{dlsem}
-\title{Distributed-lag structural equation modelling}
-\description{Estimation of a structural equation model with constrained lag shapes.}
+\title{Distributed-lag linear structural equation modelling}
+\description{Estimation of a distributed-lag linear structural equation model.}
 \usage{dlsem(model.code, group = NULL, exogenous = NULL, data, log = FALSE, control = NULL,
   test = "adf", combine = "choi", k = 0, lshort = TRUE, maxdiff = 3, tol = 0.0001,
   maxiter = 500, selection = "aic")}
@@ -20,8 +20,8 @@
   \item{lshort}{Logical. If \code{TRUE}, the short version of the truncation lag parameter is used for the KPSS test.
     Ignored if \code{test}=\code{"adf"}. Default is \code{TRUE}.}
   \item{maxdiff}{The maximum differentiation order to apply. If \code{maxdiff}=0, differentiation will not be applied. Default is 3.}
-  \item{tol}{The tolerance threshold of the EM algorithm. Ignored if \code{imputation}=\code{FALSE}. Default is 0.0001.}
-  \item{maxiter}{The maximum number of iterations for the EM algorithm. Default is 500, minimum is 10.}
+  \item{maxiter}{The maximum number of iterations for the EM algorithm. Default is 500. If \code{maxiter}=0, imputation will not be performed.}
+  \item{tol}{The tolerance threshold of the EM algorithm. Default is 0.0001.}
   \item{selection}{The criterion to be used for the adaptation of lag shapes, that can be one among \code{"aic"} to minimise the Akaike Information Criterion (Akaike, 1974),
     \code{"bic"} to minimise the Bayesian Information Criterion (Schwarz, 1978), and \code{"mdl"} to minimise the Minimum Description Length (Rissanen, 1978). Default is \code{"aic"}.}
 }
@@ -60,10 +60,7 @@ Argument \code{control} must be a named list containing one or more among the fo
   (either '+' for non-negative, or '-' for non-positive) of the coefficients of one or more covariates.
   If not provided, adaptation will disregard the sign of coefficients. Ignored if \code{adapt}=\code{FALSE} for a certain covariate.}
   }
-%Variables appearing in the model code but not included in data will be considered as unobserved.
-%If there is at least one unobserved variable, imputation using EM will be performed whatever the value of argument \code{imputation}.
 }
-%\note{Model indentification is not checked. Standard errors and confidence intervals may be uncorrect if the model is not identified.}
 \value{An object of class \code{dlsem}, with the following components:
   \item{estimate}{A list of objects of class \code{lm}, one for each response variable.}
   \item{model.code}{The model code after eventual adaptation.}
@@ -79,17 +76,11 @@ S3 methods available for class \code{dlsem} are:
   \item{plot}{displays the directed acyclic graph. 
   If option \code{show.sign} is set to \code{TRUE} (the default), each significant edge is coloured with respect to the sign of its causal effect (green: positive, red: negative).
   If option \code{show.ns} is set to \code{TRUE} (the default), not statistically significant edges are shown in grey, otherwise they are omitted.}
-  %\item{fitted}{returns fitted values.}
   \item{residuals}{returns residuals.}
-  %\item{predict}{computes predictions.}
 }
 \references{
-%A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016). Distributed-Lag Structural Equation Modelling:
-%An Application to Impact Assessment of Research Activity on European Agriculture.
-%\emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.
-
 %W. K. Newey, and K. D. West (1978). A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. \emph{Econometrica}, 55(3), 703-708.}
-%\author{Alessandro Magrini <magrini@disia.unifi.it>
+%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 
 H. Akaike (1974). A New Look at the Statistical Identification Model. \emph{IEEE Transactions on Automatic Control}, 19, 716-723.
 
@@ -101,7 +92,7 @@ G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statisti
 
 %P. Schmidt (1974). An Argument for the Usefulness of the Gamma Distributed Lag Model. \emph{International Economic Review}, 15(1).
 }
-\seealso{\link{unirootTest}.}
+\seealso{\link{unirootTest}; \link{causalEff}.}
 \examples{
 data(industry)
 
@@ -135,6 +126,7 @@ myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
 
 # add a qualitative exogenous variable
 industry[,"Policy"] <- factor(1*(industry[,"Year"]>=2006))
+levels(industry[,"Policy"]) <- c("no","yes")
 myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP","Policy"),
   data=industry,log=TRUE)
   

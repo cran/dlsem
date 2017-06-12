@@ -1,4 +1,4 @@
-export(unirootTest, dlsem, modelFit, isIndep, edgeCoeff, causalEff, lagPlot, auto.lagPlot)
+export(unirootTest, dlsem, modelFit, isIndep, edgeCoeff, causalEff, makePrediction, lagPlot, auto.lagPlot)
 
 S3method(print, dlsem)
 S3method(summary, dlsem)
