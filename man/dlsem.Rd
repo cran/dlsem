@@ -2,28 +2,49 @@
 \alias{dlsem}
 \title{Distributed-lag linear structural equation modelling}
 \description{Estimation of a distributed-lag linear structural equation model.}
-\usage{dlsem(model.code, group = NULL, exogenous = NULL, data, log = FALSE, control = NULL,
-  test = "adf", combine = "choi", k = 0, lshort = TRUE, maxdiff = 3, tol = 0.0001,
-  maxiter = 500, selection = "aic")}
+\usage{dlsem(model.code, group = NULL, exogenous = NULL, data, log = FALSE,
+  diff.options = list(test="adf",combine="choi",k=0,lshort=TRUE,maxdiff=3),
+  imput.options = list(tol=0.0001,maxiter=500,no.imput=NULL),
+  global.control = NULL, local.control = NULL)}
 \arguments{
   \item{model.code}{A list of objects of class \code{formula}, each describing a single regression model. See \code{Details}.}
   \item{group}{The name of the group factor (optional). If \code{NULL}, no groups are considered.}
-  \item{exogenous}{The name of exogenous variables (optional). Exogenous variables can be either quantitative or qualitative, must appear in no equation, and are not lagged.}  
+  \item{exogenous}{The name of exogenous variables (optional). Exogenous variables can be either quantitative or qualitative, must appear in no regression model, and are not lagged.}  
   \item{data}{An object of class \code{data.frame} containing data.}
   \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to strictly positive quantitative variables. Default is \code{FALSE}.}
-  \item{control}{A list containing options for estimation. See \code{Details}.}
-  \item{test}{The unit root test to use, that can be either \code{"adf"} or \code{"kpss"} (see \link{unirootTest}). Default is \code{"adf"}.}
-  \item{combine}{The method to combine p-values of different groups, that can be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest}).
-    Ignored if \code{group} is \code{NULL}. Default is \code{"choi"}.}
-  \item{k}{The lag order to calculate the statistic of the Augmented Dickey-Fuller test.
-    Ignored if \code{test}=\code{"kpss"}. Default is 0.}
-  \item{lshort}{Logical. If \code{TRUE}, the short version of the truncation lag parameter is used for the KPSS test.
-    Ignored if \code{test}=\code{"adf"}. Default is \code{TRUE}.}
-  \item{maxdiff}{The maximum differentiation order to apply. If \code{maxdiff}=0, differentiation will not be applied. Default is 3.}
-  \item{maxiter}{The maximum number of iterations for the EM algorithm. Default is 500. If \code{maxiter}=0, imputation will not be performed.}
-  \item{tol}{The tolerance threshold of the EM algorithm. Default is 0.0001.}
-  \item{selection}{The criterion to be used for the adaptation of lag shapes, that can be one among \code{"aic"} to minimise the Akaike Information Criterion (Akaike, 1974),
-    \code{"bic"} to minimise the Bayesian Information Criterion (Schwarz, 1978), and \code{"mdl"} to minimise the Minimum Description Length (Rissanen, 1978). Default is \code{"aic"}.}
+  %
+  \item{diff.options}{A list containing options for the differentiation. The list may consist of any number of components among the following: 
+    \itemize{
+    \item{test: }{the unit root test to use, that can be either \code{"adf"} or \code{"kpss"} (see \link{unirootTest}). Default is \code{"adf"};}
+    \item{combine: }{the method to combine p-values of different groups, that can be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest})
+      Ignored if \code{group} is \code{NULL}. Default is \code{"choi"};}
+    \item{k: }{the lag order to calculate the statistic of the Augmented Dickey-Fuller test.
+      Ignored if \code{test}=\code{"kpss"}. Default is 0;}
+    \item{lshort: }{logical. If \code{TRUE}, the short version of the truncation lag parameter is used for the KPSS test.
+     Ignored if \code{test}=\code{"adf"}. Default is \code{TRUE};}
+    \item{maxdiff: }{the maximum differentiation order to apply. If \code{maxdiff}=0, differentiation will not be applied. Default is 3.}
+    }}
+  %
+  \item{imput.options}{A list containing options for the imputation of missing values. The list may consist of any number of components among the following:
+    \itemize{
+    \item{tol: }{the tolerance threshold of the EM algorithm. Default is 0.0001;}
+    \item{maxiter: }{the maximum number of iterations for the EM algorithm. Default is 500. If \code{maxiter}=0, imputation will not be performed;}
+    \item{no.input: }{the name of variables to which imputation will not be applied.}  
+    }}
+  %
+  \item{global.control}{A list containing global options for the estimation. The list may consist of any number of components among the following:
+    \itemize{
+    \item{adapt: }{a logical value indicating if adaptation of lag shapes must be performed. Default is \code{FALSE};}
+    \item{max.gestation: }{the maximum gestation lag for one or more covariates. If not provided, it is taken as equal to \code{max.lead} (see below). Ignored if \code{adapt}=\code{FALSE};}
+    \item{max.lead: }{the maximum lead lag. If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE};} 
+    \item{min.width: }{the minimum lag width. It cannot be greater than \code{max.lead}. If not provided, it is taken as 0. Ignored if \code{adapt}=\code{FALSE};}
+    \item{sign: }{the sign (either '+' for non-negative, or '-' for non-positive) of the coefficients. If not provided, adaptation will disregard the sign of coefficients. Ignored if \code{adapt}=\code{FALSE};}  
+    \item{selection: }{the criterion to be used for the adaptation of lag shapes, that can be one among \code{"aic"} to minimise the Akaike Information Criterion (Akaike, 1974),
+      \code{"bic"} to minimise the Bayesian Information Criterion (Schwarz, 1978), and \code{"mdl"} to minimise the Minimum Description Length (Rissanen, 1978). Default is \code{"aic"}.}
+    }}
+  
+  \item{local.control}{A list containing variable-specific options for the estimation.
+  These options prevail on the ones contained in \code{global.control}. See \code{Details}.}
 }
 \details{Formulas cannot contain qualitative variables or interaction terms (no ':' or '*' symbols), and
 may contain the following operators for lag specification:
@@ -45,7 +66,7 @@ See Judge et al. (1985, Chapters 9-10) for more details.
 The formula of regression models with no covariates excepting exogenous variables can be omitted from argument \code{model.code}.
 The group factor and exogenous variables must not appear in any formula.
 
-Argument \code{control} must be a named list containing one or more among the following components:
+Argument \code{local.control} must be a named list containing one or more among the following components:
   \itemize{
   %\item{\code{L}: }{a named vector of non-negative integer values including the highest lag with non-zero autocorrelation for one or more response variables.
   %If greater than 0, the Newey-West correction of the covariance matrix of estimates (Newey and West, 1987) is used. Default is 0 for all response variables.}
@@ -60,6 +81,7 @@ Argument \code{control} must be a named list containing one or more among the fo
   (either '+' for non-negative, or '-' for non-positive) of the coefficients of one or more covariates.
   If not provided, adaptation will disregard the sign of coefficients. Ignored if \code{adapt}=\code{FALSE} for a certain covariate.}
   }
+If some local control options conflict with global ones, only the former are applied.
 }
 \value{An object of class \code{dlsem}, with the following components:
   \item{estimate}{A list of objects of class \code{lm}, one for each response variable.}
@@ -96,13 +118,12 @@ G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statisti
 \examples{
 data(industry)
 
-# estimation without control options
+# estimation without adaptation of lag shapes
 mycode <- list(
   Consum~quec(Job,0,5),
   Pollution~quec(Job,1,8)+quec(Consum,1,6)
   )
-myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
-  data=industry,log=TRUE)
+myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),data=industry,log=TRUE)
 
 
 ### adaptation of lag shapes (takes some seconds more)
@@ -112,8 +133,12 @@ myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
 #  Pollution~quec(Job,0,15)+quec(Consum,0,15)
 #  )
 #                      
+#myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),data=industry,
+#  global.control=list(adapt=T,max.gestation=3,min.width=5,max.lead=15,sign="+"),log=TRUE)
+#
+### equivalently, one may specify control options for each variable:
+#
 #mycontrol <- list(
-#  adapt=c(Consum=T,Pollution=T),
 #  max.gestation=list(Consum=c(Job=3),Pollution=c(Consum=3,Job=3)),
 #  max.lead=list(Consum=c(Job=15),Pollution=c(Consum=15,Job=15)),
 #  min.width=list(Consum=c(Job=5),Pollution=c(Consum=5,Job=5)),
@@ -121,7 +146,7 @@ myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
 #  )
 #
 #myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),data=industry,
-#  control=mycontrol,log=TRUE)
+#  global.control=list(adapt=T),local.control=mycontrol,log=TRUE)
 
 
 # add a qualitative exogenous variable

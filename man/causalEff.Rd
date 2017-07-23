@@ -1,6 +1,7 @@
 \name{causalEff}
 \alias{causalEff}
-\title{Assessment and disentanglement of causal effects at different time lags}
+\title{Assessment %and decomposition
+of causal effects at different time lags}
 \description{Given one or more starting variables and one ending variable,
 return the coefficient associated to each directed path connecting them
 and the overall one at one or more time lags.}
@@ -36,7 +37,6 @@ mycode <- list(
   Consum~quec(Job,0,5),
   Pollution~quec(Job,1,8)+quec(Consum,1,6)
   )
-myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
-  data=industry,log=TRUE)
+myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),data=industry,log=TRUE)
 causalEff(myfit,from="Job",to="Pollution",lag=c(0,5,10,15),cumul=TRUE)
 }

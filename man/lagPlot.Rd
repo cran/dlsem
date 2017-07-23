@@ -27,8 +27,7 @@ mycode <- list(
   Consum~quec(Job,0,5),
   Pollution~quec(Job,1,8)+quec(Consum,1,6)
   )
-myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
-  data=industry,log=TRUE)
+myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),data=industry,log=TRUE)
 
 # the lag shape associated to specific paths
 lagPlot(myfit,path="Job*Pollution")
