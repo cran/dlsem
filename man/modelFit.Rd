@@ -15,13 +15,12 @@ The fifth component contains the Minimum Information Length (Rissanen, 1978) for
 }
 %\note{}
 \references{
-H. Akaike (1974). A New Look at the Statistical Identification Model. \emph{IEEE Transactions on Automatic Control}, 19, 716-723.
+H. Akaike (1974). A New Look at the Statistical Identification Model. \emph{IEEE Transactions on Automatic Control}, 19, 716-723. DOI: 10.1109/TAC.1974.1100705
 
-J. Rissanen (1978). Modeling by Shortest Data Description. \emph{Automatica}, 14(5): 465-658.
+J. Rissanen (1978). Modeling by Shortest Data Description. \emph{Automatica}, 14(5): 465-658. DOI: 10.1016/0005-1098(78)90005-5
 
-G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statistics}, 6, 461-464.
+G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statistics}, 6, 461-464. DOI: 10.1214/aos/1176344136
 }
-%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 \seealso{\link{dlsem}}
 \examples{
 data(industry)

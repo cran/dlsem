@@ -11,7 +11,6 @@
 }
 %\value{}
 %\references{}
-%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 \seealso{\link{dlsem}; \link{lagPlot}.}
 \examples{
 data(industry)

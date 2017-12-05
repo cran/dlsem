@@ -1,7 +1,6 @@
 \name{causalEff}
 \alias{causalEff}
-\title{Assessment %and decomposition
-of causal effects at different time lags}
+\title{Assessment of causal effects at different time lags}
 \description{Given one or more starting variables and one ending variable,
 return the coefficient associated to each directed path connecting them
 and the overall one at one or more time lags.}
@@ -14,7 +13,7 @@ and the overall one at one or more time lags.}
   \item{lag}{A non-negative integer or a vector of non-negative integers indicating the time lags at which coefficients must be computed. If \code{NULL}, all relevant time lags are considered.}
   \item{cumul}{Logical. If \code{FALSE} (the default), instantaneous coefficients are returned, otherwise cumulative ones are provided.}
   \item{conf}{The confidence level. Default is 0.95.}
-  \item{use.ns}{A logical value indicating whether not statistically significant edges (at level \code{conf}) should be considered or not. If \code{FALSE} (the default), they will be ignored.}
+  \item{use.ns}{A logical value indicating whether edges without statistically significant causal effect (at level \code{conf}) should be considered or not. If \code{FALSE} (the default), they will be ignored.}
 }
 \value{A list containing one matrix for each directed path between the starting variables and the ending variable and one matrix for the overall coefficient. %, and a character vector.
 Each matrix contains point estimate and confidence interval (at level \code{conf}) for the associated coefficient at each requested time lag.}
@@ -23,13 +22,10 @@ Each matrix contains point estimate and confidence interval (at level \code{conf
 %trace rules for classical path analysis (Wright, 1934; Pearl, 2012).
 }
 \references{
-J. Pearl (2012). The Causal Foundations of Structural Equation Modelling. In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY.
-%
-%J. Pearl (2009). Causal Inference in Statistics: An overview. \emph{Statistics Surveys}, 3: 96-146.
+J. Pearl (2012). The Causal Foundations of Structural Equation Modelling. In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY. ISBN: 978-16-062-3077-0
 %
 %S. Wright (1934). The Method of Path Coefficients. \emph{Annals of Mathematical Statistics}, 5(3): 161-215.
 }
-%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 \seealso{\link{dlsem}; \link{lagPlot}.}
 \examples{
 data(industry)

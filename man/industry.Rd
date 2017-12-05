@@ -2,7 +2,7 @@
 \alias{industry}
 \docType{data}
 \title{Industrial development}
-\description{Fictitious data on industrial development from 1983 to 2014 in 10 imaginary regions.}
+\description{Simulated data on industrial development from 1983 to 2014 in 10 imaginary regions.}
 \usage{data(industry)}
 \format{
   A data frame with a total of 320 observations on the following 7 variables:

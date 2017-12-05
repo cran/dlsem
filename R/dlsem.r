@@ -993,7 +993,7 @@ lagPlot <- function(x,from=NULL,to=NULL,path=NULL,maxlag=NULL,cumul=FALSE,conf=0
   if(is.null(path) && (is.null(to) || is.na(to))) stop("Argument 'to' is missing",call.=F)
   xedgF <- edgeMat(x,conf=conf,full=T)
   xedg <- edgeMat(x,conf=conf,full=F)
-  if(is.null(path)) {                                         
+  if(is.null(path)) {                        
     auxpa <- causalEff(x,from=from,to=to,lag=NULL,cumul=cumul,conf=conf,use.ns=use.ns)$overall
     } else {
     auxstr <- strsplit(path,"\\*")[[1]]
@@ -1383,6 +1383,7 @@ dlsem <- function(model.code,group=NULL,exogenous=NULL,data,log=FALSE,diff.optio
       }
     }
   nomi <- c()
+  optList <- list()
   cat("Start estimation...")
   flush.console()
   for(i in 1:length(model.code)) {
@@ -1471,10 +1472,12 @@ dlsem <- function(model.code,group=NULL,exogenous=NULL,data,log=FALSE,diff.optio
         isg[names(iauxsg)] <- iauxsg
         }
       }
+    optList[[i]] <- list(adapt=iad,max.gestation=iges,min.width=iwd,max.lead=ilead,sign=isg)
     mod0 <- dlaglm(iform,group=group,data=data,adapt=iad,max.gestation=iges,min.width=iwd,max.lead=ilead,sign=isg,selection=global.control$selection)  ### L=iL,
     res[[i]] <- mod0
     messlen <- nchar(auxmess)
     }
+  names(optList) <- nomi
   auxmess <- "Estimation completed"
   auxdel <- messlen-nchar(auxmess)+1
   if(auxdel>0) {
@@ -1494,7 +1497,7 @@ dlsem <- function(model.code,group=NULL,exogenous=NULL,data,log=FALSE,diff.optio
     }
   names(finalcode) <- topG
   out <- list(estimate=res[topG],model.code=finalcode,exogenous=exogenous,group=group,log=log,ndiff=ndiff,
-    #diff.options=diff.options,imput.options=imput.options,global.control=global.control,local.control=local.control,
+    diff.options=diff.options,imput.options=imput.options,selection=global.control$selection,adaptation=optList,
     data.orig=origdat[,c(group,nodenam)],data.used=data[,c(group,nodenam)])
   class(out) <- "dlsem"
   out
@@ -1526,7 +1529,7 @@ auto.lagPlot <- function(x,cumul=FALSE,conf=0.95,plotDir=NULL) {
 
 # print method for class dlsem
 print.dlsem <- function(x,...) {
-  cat("A distributed-lag linear structural causal model","\n")
+  cat("A distributed-lag linear structural equation model","\n")
   n.e <- sum(sapply(edges(makeGraph(x)$graph),length))
   N.e <- sum(sapply(edges(makeGraph(x)$full.graph),length))
   if(!is.null(x$group)) {
@@ -1540,9 +1543,9 @@ print.dlsem <- function(x,...) {
     cat(" No exogenous variables","\n")
     }
   if(n.e>0) {
-    cat(" ",n.e,"/",N.e," significant edges at 95% level","\n",sep="")
+    cat(" ",n.e,"/",N.e," significant edges at 5% level","\n",sep="")
     } else {
-    cat(" No significant edges at 95% level","\n")  
+    cat(" No significant edges at 5% level","\n")  
     }
   }
 
@@ -1676,7 +1679,8 @@ edgeCoeff <- function(x,lag=NULL,conf=0.95) {
   }
 
 # plot method for class dlsem
-plot.dlsem <- function(x,conf=0.95,show.sign=TRUE,show.ns=TRUE,node.col=NULL,font.col=NULL,border.col=NULL,edge.col=NULL,edge.lab=NULL,...) {
+plot.dlsem <- function(x,conf=0.95,style=2,node.col=NULL,font.col=NULL,border.col=NULL,edge.col=NULL,edge.lab=NULL,...) {
+  if((style %in% c(0,1,2))==F) stop("Argument 'style' must be either '0' (plain), '1' (significance shown), or '2' (signs shown)",call.=F)
   defpar <- par()[setdiff(names(par()),c("cin","cra","csi","cxy","din","page"))]
   G <- makeGraph(x,conf=conf)
   nomi <- nodes(G$full.graph)  
@@ -1714,21 +1718,25 @@ plot.dlsem <- function(x,conf=0.95,show.sign=TRUE,show.ns=TRUE,node.col=NULL,fon
     eAttr$color[which(G$sign=="")] <- NA
     } else {
     eCol <- G$sign
-    if(show.sign==T) {    
-      eCol[which(G$sign=="+")] <- "green4"
-      eCol[which(G$sign=="-")] <- "tomato3"
-      } else {
+    if(style==1) {
       eCol[which(G$sign=="+")] <- "grey30"
       eCol[which(G$sign=="-")] <- "grey30"
-      }
-    if(show.ns==T) {
+      eCol[which(G$sign=="")] <- "grey75"
+      } else if(style==2) {
+      eCol[which(G$sign=="+")] <- "green4"
+      eCol[which(G$sign=="-")] <- "tomato3"
       eCol[which(G$sign=="")] <- "grey75"
       } else {
-      eCol[which(G$sign=="")] <- NA  
+      eCol[] <- "grey30"
       }
+    eAttr[[length(eAttr)+1]] <- eCol
     }
-  eAttr[[length(eAttr)+1]] <- eCol
-  names(eAttr)[length(eAttr)] <- "color"                             
+  names(eAttr)[length(eAttr)] <- "color"
+  #eStyl <- G$sign
+  #eStyl[which(G$sign=="+")] <- "solid"
+  #eStyl[which(G$sign=="-")] <- "dashed"
+  #eAttr[[length(eAttr)+1]] <- eStyl
+  #names(eAttr)[length(eAttr)] <- "style"  
   plot(G$full.graph,"dot",nodeAttrs=nAttr,edgeAttrs=eAttr,attrs=list(edge=list(color="grey25",arrowsize=0.4)),...)
   par(defpar)
   }   
@@ -1976,7 +1984,7 @@ findlag2sum <- function(x,lag) {
   out
   }
 
-# disentanglement of causal effects
+# computation of causal effects
 causalEff <- function(x,from=NULL,to=NULL,lag=NULL,cumul=FALSE,conf=0.95,use.ns=FALSE) {
   if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'",call.=F)
   if(is.null(from) || is.na(from)) stop("Argument 'from' is missing",call.=F)
@@ -2203,278 +2211,6 @@ modelFit <- function(x) {
   names(out2) <- c(names(xfit),"(overall)")
   out3 <- c(mdl,sum(mdl))
   names(out3) <- c(names(xfit),"(overall)")
-  list('R squared'=out,'logL'=out0,'AIC'=out1,'BIC'=out2,'MDL'=out3)
+  list('Rsq'=out,'logL'=out0,'AIC'=out1,'BIC'=out2,'MDL'=out3)
   }
 
-# find the last k consecutive non missing values (internal use only)
-findConseq <- function(x,m) {
-  res1 <- res2 <- c()
-  for(i in (length(x)-m+1):1) {
-    auxind <- i:(i+m-1)
-    ix <- x[auxind]
-    if(sum(is.na(ix))==0) {
-      res1 <- auxind
-      res2 <- ix
-      break()
-      }
-    }
-  if(is.null(res1)) {
-    NULL
-    } else {
-    list(res1,res2)
-    }
-  }
-
-# undo differentiation (internal use only)
-undiff <- function(x,x0,k0) {
-  res <- rep(NA,length(x))
-  res[k0] <- x0
-  if(sum(is.na(res[max(k0):length(x)]))>0) {
-    for(i in (max(k0)+1):length(x)) {
-      res[i] <- x[i]+res[i-length(k0)]
-      }
-    }
-  if(sum(is.na(res[1:min(k0)]))>0) {
-    for(i in (min(k0)-1):1) {
-      res[i] <- res[i+length(k0)]-x[i+length(k0)]
-      }
-    }
-  res
-  }
-
-# compute predicted values (internal use only)
-predFun <- function(x,newdata,group.levels,n,tol,maxiter,uncert,conf) {
-  nodenam <- topOrder(makeGraph(x)$full.graph)
-  nomi <- c(nodenam,x$exogenous)
-  xfact <- nolog <- x$group
-  for(i in 1:length(nomi)) {
-    if(isQuant(x$data.orig[,nomi[i]])==F) {
-      xfact <- c(xfact,nomi[i])
-      nolog <- c(nolog,nomi[i])
-      } else if(sum(x$data.orig[,nomi[i]]<=0,na.rm=T)>0) {
-      nolog <- c(nolog,nomi[i])
-      }
-    }
-  isT <- 1
-  diffnam <- setdiff(nomi,xfact)
-  if(is.null(newdata)) {
-    tipoInt <- "confidence"
-    } else {
-    tipoInt <- "prediction"
-    }
-  if(!is.null(x$exogenous)) {
-    if(is.null(newdata)) {
-      newdata <- x$data.used[,c(x$group,x$exogenous),drop=F]
-      } else {
-      if(!identical(class(newdata),"data.frame")) stop("Argument 'newdata' must be an object of class 'data.frame'",call.=F)
-      if(sum(is.na(newdata))>0) stop("Missing values in 'newdata' are not allowed",call.=F)
-      auxch1 <- setdiff(colnames(newdata),c(x$group,x$exogenous))
-      if(length(auxch1)>0) stop("Variable '",auxch1[1],"' in 'newdata' is neither a group factor nor an exogenous variable",call.=F)
-      auxch2 <- setdiff(c(x$group,x$exogenous),colnames(newdata))
-      if(length(auxch2)>0) stop("Variable '",auxch2[1],"' not found in 'newdata'",call.=F)
-      isT <- 0
-      }
-    rownames(newdata) <- 1:nrow(newdata)
-    predMat <- matrix(nrow=nrow(newdata),ncol=length(nodenam))
-    colnames(predMat) <- nodenam
-    exodat <- newdata[,c(x$group,x$exogenous),drop=F]
-    colnames(exodat) <- c(x$group,x$exogenous)
-    if(isT==0) {
-      #if(!is.null(x$group)) newdata[,x$group] <- factor(newdata[,x$group],levels=levels(x$data.used[,x$group]))
-      if(x$log==T) {
-        e2log <- setdiff(x$exogenous,nolog)
-        if(length(e2log)>0) exodat[,e2log] <- log(exodat[,e2log])
-        }
-      if(x$ndiff>0) {
-        i2diff <- intersect(diffnam,x$exogenous)
-        if(length(i2diff)>0) exodat <- applyDiff(i2diff,group=x$group,data=exodat,k=rep(x$ndiff,length(i2diff)))
-        }
-      }
-    for(i in 1:length(nodenam)) {
-      ifit <- x$estimate[[nodenam[i]]]   
-      imiss <- names(which(is.na(ifit$coefficients)))
-      iscan <- scanForm(ifit$call)
-      ipar <- setdiff(names(iscan$ltype),c(x$group,x$exogenous))
-      if(length(ipar)>0) {
-        ipredat <- c()
-        for(j in 1:length(ipar)) {
-          if(isT==1) {
-            ipredat <- cbind(ipredat,Zmat(x$data.used[,ipar[j]],iscan$ltype[ipar[j]],iscan$lpar[[ipar[j]]]))
-            } else {
-            ipredat <- cbind(ipredat,Zmat(predMat[,ipar[j]],iscan$ltype[ipar[j]],iscan$lpar[[ipar[j]]]))
-            }
-          }
-        inewdat <- data.frame(exodat,ipredat)
-        colnames(inewdat) <- c(x$group,x$exogenous,ipar)
-        } else {
-        inewdat <- exodat
-        colnames(inewdat) <- c(x$group,x$exogenous)
-        }
-      if(length(imiss)>0) {
-        for(j in 1:length(imiss)) {
-          if(is.factor(inewdat[,imiss[j]])) inewdat[,imiss[j]] <- as.numeric(inewdat[,imiss[j]])
-          }
-        }
-      options(warn=-1)
-      if(uncert=="sample") {
-        ipred <- predict(ifit,newdata=inewdat,se.fit=T)
-        is2 <- ipred$residual.scale^2+ipred$se.fit^2
-        predMat[as.numeric(names(ipred$fit)),i] <- ipred$fit+sqrt(is2)*rt(length(ipred$fit),ipred$df)
-        } else if(uncert=="pred.fit") {
-        ipred <- predict(ifit,newdata=inewdat)            
-        predMat[as.numeric(names(ipred)),i] <- ipred
-        } else if(uncert=="pred.lower") {
-        ipred <- predict(ifit,newdata=inewdat,interval=tipoInt,level=conf)
-        predMat[as.numeric(names(ipred[,2])),i] <- ipred[,2]
-        } else if(uncert=="pred.upper") {
-        ipred <- predict(ifit,newdata=inewdat,interval=tipoInt,level=conf)
-        predMat[as.numeric(names(ipred[,3])),i] <- ipred[,3]
-        } else {
-        stop("Argument 'uncert' must be one among 'sample','pred.fit','pred.lower','pred.upper'",.call=F)
-        }
-      options(warn=0)
-      }
-    if(!is.null(x$group)) {
-      out <- data.frame(newdata[,x$group],predMat)
-      colnames(out)[1] <- x$group
-      } else {
-      out <- data.frame(predMat)
-      }
-    if(!is.null(x$exogenous)) {
-      outnam <- colnames(out)
-      out <- cbind(out,exodat[,x$exogenous])
-      colnames(out) <- c(outnam,x$exogenous)
-      }
-    if(!is.null(x$group)) gruppi <- unique(as.character(newdata[,x$group]))
-    } else {
-    if(!is.null(n)) {
-      if(length(n)!=1 || !is.numeric(n) || n<=0 || n!=round(n)) stop("Argument 'n' must be a positive integer number",call.=F)
-      #if(n<x$ndiff+2) stop("Argument 'n' must be no less than ",x$ndiff+2,call.=F)
-      }
-    if(!is.null(x$group)) {
-      np <- max(table(x$data.orig[,x$group]))
-      if(is.null(group.levels)) {
-        gruppi <- unique(x$data.orig[,x$group])
-        groudat <- rep(gruppi,each=np)
-        } else {
-        origlev <- levels(x$data.orig[,x$group])
-        auxch <- setdiff(group.levels,origlev)
-        if(length(auxch)>0) stop("Unknown level in argument 'group.levels': ",auxch[1],call.=F)
-        gruppi <- group.levels
-        groudat <- factor(rep(group.levels,each=np),levels=origlev)        
-        }
-      predMat <- matrix(nrow=np*length(gruppi),ncol=length(nodenam))
-      } else {
-      predMat <- matrix(nrow=nrow(x$data.orig),ncol=length(nodenam))
-      }
-    colnames(predMat) <- nodenam
-    for(i in 1:length(nodenam)) {
-      ifit <- x$estimate[[nodenam[i]]]
-      iscan <- scanForm(ifit$call)
-      ipar <- setdiff(names(iscan$ltype),x$group)             
-      if(length(ipar)>0) {
-        if(!is.null(x$group)) {
-          ipredat <- c()
-          for(j in 1:length(ipar)) {
-            ijprd <- c()
-            for(w in 1:length(gruppi)) {
-              ijind <- which(groudat==gruppi[w])
-              ijprd[ijind] <- Zmat(predMat[ijind,ipar[j]],iscan$ltype[ipar[j]],iscan$lpar[[ipar[j]]])
-              }
-            ipredat <- cbind(ipredat,ijprd) 
-            }
-          inewdat <- data.frame(groudat,ipredat)
-          colnames(inewdat) <- c(x$group,ipar)
-          } else {
-          inewdat <- c()
-          for(j in 1:length(ipar)) {
-            inewdat <- cbind(inewdat,Zmat(predMat[,ipar[j]],iscan$ltype[ipar[j]],iscan$lpar[[ipar[j]]]))
-            }
-          inewdat <- data.frame(inewdat)
-          colnames(inewdat) <- ipar
-          }
-        } else {          
-        if(!is.null(x$group)) {
-          inewdat <- data.frame(groudat)
-          colnames(inewdat) <- x$group
-          } else {
-          inewdat <- c()
-          }
-        }                            
-      options(warn=-1)
-      if(uncert=="sample") {                                  
-        ipred <- predict(ifit,newdata=inewdat,se.fit=T)      
-        is2 <- ipred$residual.scale^2+ipred$se.fit^2          
-        predMat[as.numeric(names(ipred$fit)),i] <- ipred$fit+sqrt(is2)*rt(length(ipred$fit),ipred$df)
-        } else if(uncert=="pred.fit") {                       
-        ipred <- predict(ifit,newdata=inewdat)
-        predMat[as.numeric(names(ipred)),i] <- ipred
-        } else if(uncert=="pred.lower") {
-        ipred <- predict(ifit,newdata=inewdat,interval=tipoInt,level=conf)
-        predMat[as.numeric(names(ipred[,2])),i] <- ipred[,2]
-        } else if(uncert=="pred.upper") {
-        ipred <- predict(ifit,newdata=inewdat,interval=tipoInt,level=conf)
-        predMat[as.numeric(names(ipred[,3])),i] <- ipred[,3]
-        } else {
-        stop("Argument 'uncert' must be one among 'sample', 'pred.fit', 'pred.lower' and 'pred.upper'",.call=F)
-        }
-      options(warn=0)
-      }
-    if(!is.null(x$group)) {
-      out <- data.frame(groudat,predMat)
-      colnames(out)[1] <- x$group
-      if(!is.null(n)) {
-        newout <- c()
-        for(j in 1:length(gruppi)) {
-          auxind <- which(out[,x$group]==gruppi[j])
-          if(n<=nrow(out[auxind,])) {
-            newout <- rbind(newout,out[auxind[1:n],])
-            } else {
-            ijadd <- repmat(out[rev(auxind)[1],,drop=F],n-nrow(out[auxind,]))
-            newout <- rbind(newout,out[auxind,],ijadd)
-            } 
-          }
-        colnames(newout) <- colnames(out)
-        out <- newout
-        rownames(out) <- 1:nrow(out)
-        }
-      } else {
-      out <- data.frame(predMat)
-      if(!is.null(n)) {
-        if(n<=nrow(out)) {
-          out <- out[1:n,,drop=F]
-          } else {
-          out <- rbind(out,repmat(out[nrow(out),,drop=F],n-nrow(out)))
-          rownames(out) <- 1:nrow(out)
-          }
-        }
-      }
-    }
-  if(maxiter>0) out <- EM.imputation(nomi,group=x$group,data=out,tol=tol,maxiter=maxiter,quiet=T)
-  if(!is.null(x$group)) levels(out[,x$group]) <- levels(x$data.orig[,x$group])
-  out
-  }
-
-# repeat a matrix (internal use only)
-repmat <- function(x,n) {
-  iadd <- c()
-  if(n>1) {
-    for(j in 1:ncol(x)) {
-      iadd <- cbind(iadd,rep(x[,j],n-1))
-      }
-    colnames(iadd) <- colnames(x)
-    }
-  rbind(x,iadd)
-  }
-
-# predictions from a dlsem
-makePrediction <- function(x,newdata=NULL,group.levels=NULL,n=NULL,conf=0.95) {
-  if(class(x)!="dlsem") stop("Argument 'x' must be an object of class 'dlsem'",call.=F)
-  if(length(conf)!=1 || conf<=0 || conf>=1) stop("Arguent 'conf' must be a real number greater than 0 and less than 1",call.=F)
-  auxfit <- predFun(x=x,newdata=newdata,group.levels=group.levels,n=n,tol=0.0001,maxiter=0,uncert="pred.fit")
-  auxsx <- predFun(x=x,newdata=newdata,group.levels=group.levels,n=n,tol=0.0001,maxiter=0,uncert="pred.lower",conf=conf)
-  auxdx <- predFun(x=x,newdata=newdata,group.levels=group.levels,n=n,tol=0.0001,maxiter=0,uncert="pred.upper",conf=conf)
-  out <- list(auxfit,auxsx,auxdx)
-  names(out) <- c("pointwise",paste(c("lower ","upper "),conf*100,"%",sep=""))
-  out
-  }

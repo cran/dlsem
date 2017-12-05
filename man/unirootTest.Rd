@@ -29,15 +29,14 @@
 }
 \note{The null hypothesis of the Augmented Dickey-Fuller test is the presence of an unit root. Instead, the null hypothesis of the KPSS test is the absence of an unit root.}
 \references{
-  I. Choi (2001). Unit Root Tests for Panel Data. \emph{Journal of International Money and Finance}, 20, 249-272.
+I. Choi (2001). Unit Root Tests for Panel Data. \emph{Journal of International Money and Finance}, 20, 249-272. DOI: 10.1016/S0261-5606(00)00048-6
+
+M. Demetrescu, U. Hassler, and A. Tarcolea (2006). Combining Significance of Correlated Statistics with Application to Panel Data. \emph{Oxford Bulletin of Economics and Statistics}, 68(5), 647-663. DOI: 10.1111/j.1468-0084.2006.00181.x
   
-  M. Demetrescu, U. Hassler, and A. Tarcolea (2006). Combining Significance of Correlated Statistics with Application to Panel Data. \emph{Oxford Bulletin of Economics and Statistics}, 68(5), 647-663.
-  
-  D. A. Dickey, and W. A. Fuller (1981). Likelihood Ratio Statistics for Autoregressive Time Series with a Unit Root. \emph{Econometrica}, 49: 1057-1072.
+D. A. Dickey, and W. A. Fuller (1981). Likelihood Ratio Statistics for Autoregressive Time Series with a Unit Root. \emph{Econometrica}, 49: 1057-1072. DOI: 10.2307/1912517
     
-  D. Kwiatkowski, P. C. B. Phillips, P. Schmidt, and Y. Shin (1992). Testing the Null Hypothesis of Stationarity against the Alternative of a Unit Root. \emph{Journal of Econometrics}, 54 (1-3): 159-178.
+D. Kwiatkowski, P. C. B. Phillips, P. Schmidt, and Y. Shin (1992). Testing the Null Hypothesis of Stationarity against the Alternative of a Unit Root. \emph{Journal of Econometrics}, 54 (1-3): 159-178. DOI: 10.1016/0304-4076(92)90104-Y
 }
-%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 %\seealso{}
 \examples{
 data(industry)

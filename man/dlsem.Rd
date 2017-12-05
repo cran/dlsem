@@ -1,7 +1,7 @@
 \name{dlsem}
 \alias{dlsem}
-\title{Distributed-lag linear structural equation modelling}
-\description{Estimation of a distributed-lag linear structural equation model.}
+\title{Parameter estimation}
+\description{Parameter estimation for a distributed-lag linear structural equation model.}
 \usage{dlsem(model.code, group = NULL, exogenous = NULL, data, log = FALSE,
   diff.options = list(test="adf",combine="choi",k=0,lshort=TRUE,maxdiff=3),
   imput.options = list(tol=0.0001,maxiter=500,no.imput=NULL),
@@ -90,27 +90,35 @@ If some local control options conflict with global ones, only the former are app
   \item{group}{The name of the group factor. \code{NULL} is returned if \code{group}=\code{NULL}.}
   \item{log}{The value provided to argument \code{log}.}
   \item{ndiff}{The order of differentiation.}
+  \item{diff.options}{Options used for the differentiation.}
+  \item{imput.options}{Options used for the imputation of missing values.}
+  \item{selection}{The criterion used for the adaptation of lag shapes.}
+  \item{adaptation}{Variable-specific options used for the adaptation of lag shapes.}
   \item{data.orig}{The dataset provided to argument \code{data}.}
   \item{data.used}{Data used in the estimation, that is after eventual logarithmic transformation and differentiation.}
 S3 methods available for class \code{dlsem} are:
   \item{print}{provides essential information on the structural model.}
   \item{summary}{shows summaries of estimation.}
-  \item{plot}{displays the directed acyclic graph. 
-  If option \code{show.sign} is set to \code{TRUE} (the default), each significant edge is coloured with respect to the sign of its causal effect (green: positive, red: negative).
-  If option \code{show.ns} is set to \code{TRUE} (the default), not statistically significant edges are shown in grey, otherwise they are omitted.}
+  \item{plot}{displays the directed acyclic graph.
+  Option \code{conf} controls the confidence level (default is 0.95), while
+  option \code{style} controls the style of the plot:
+    \itemize{
+    \item{\code{style=2} (the default): }{each edge is coloured with respect to the sign of the estimated causal effect (green: positive, red: negative, light grey: not statistically significant)};
+    \item {\code{style=1}: }{edges with statistically significant causal effect are shown in black, otherwise they are shown in light grey};
+    \item {\code{style=0}: }{all edges are shown in black disregarding statistical significance of causal effects}.
+    }}
   \item{residuals}{returns residuals.}
 }
 \references{
 %W. K. Newey, and K. D. West (1978). A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. \emph{Econometrica}, 55(3), 703-708.}
-%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 
-H. Akaike (1974). A New Look at the Statistical Identification Model. \emph{IEEE Transactions on Automatic Control}, 19, 716-723.
+H. Akaike (1974). A New Look at the Statistical Identification Model. \emph{IEEE Transactions on Automatic Control}, 19, 716-723. DOI: 10.1109/TAC.1974.1100705
 
-G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985). The Theory and Practice of Econometrics. John Wiley & Sons, 2nd ed., New York, US-NY.
+G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985). The Theory and Practice of Econometrics. John Wiley & Sons, 2nd ed., New York, US-NY.  ISBN: 978-0-471-89530-5
 
-J. Rissanen (1978). Modeling by Shortest Data Description. \emph{Automatica}, 14(5): 465-658.
+J. Rissanen (1978). Modeling by Shortest Data Description. \emph{Automatica}, 14(5): 465-658. DOI: 10.1016/0005-1098(78)90005-5
 
-G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statistics}, 6, 461-464.
+G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statistics}, 6, 461-464. DOI: 10.1214/aos/1176344136
 
 %P. Schmidt (1974). An Argument for the Usefulness of the Gamma Distributed Lag Model. \emph{International Economic Review}, 15(1).
 }

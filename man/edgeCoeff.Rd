@@ -12,7 +12,6 @@
 \value{A list of matrices, one for each dimension of argument \code{lag}. Each matrix contains point estimate and confidence interval (at level \code{conf}) for each coefficient.}
 %\note{}
 %\references{}
-%\author{Alessandro Magrini <alessandro.magrini@for.unipi.it>}
 \seealso{\link{dlsem}.}
 \examples{
 data(industry)

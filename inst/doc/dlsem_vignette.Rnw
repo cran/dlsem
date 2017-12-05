@@ -1,11 +1,11 @@
 \documentclass[10pt]{article}
-%\VignetteIndexEntry{Distributed-Lag Linear Structural Equation Modelling with the R Package dlsem}
+%\VignetteIndexEntry{Distributed-lag linear structural equation models in R: the dlsem package}
 %\VignettePackage{dlsem}
 %\VignetteKeyword{Constrained lag shapes}
 %\VignetteKeyword{Directed acyclic graphs}
 %\VignetteKeyword{Dynamic causal inference}
-%\VignetteKeyword{Econometrics}
 %\VignetteKeyword{Probabilistic graphical models}
+%\VignetteKeyword{Time series}
 
 \usepackage{boxedminipage,color,a4wide,url}
 \usepackage[english]{babel}
@@ -30,12 +30,12 @@
 %@
 
 
-\title{Distributed-Lag Linear Structural Equation Modelling \\ with the R Package dlsem}
+\title{Distributed-lag linear structural equation models in \texttt{R}:\\the \texttt{dlsem} package}
 \author{Alessandro Magrini\\
-Dep. Economics and Management\\
-University of Pisa, Italy\\
-<alessandro.magrini@for.unipi.it>}
-\date{\texttt{dlsem} version 1.9 -- 24 July 2017}
+Dep. Statistics, Computer Science, Applications\\
+University of Florence, Italy\\
+<magrini@disia.unifi.it>}
+\date{\texttt{dlsem} version 2.0 -- 05 December 2017}
 
 
 
@@ -79,24 +79,27 @@ University of Pisa, Italy\\
 
 \section{Introduction}
 
-Package \texttt{dlsem} implements inference functionalities
-for distributed-lag linear structural equation models
-%with constrained lag shapes
-(DLSEMs: \citealp{magrini16}).
-A DLSEM is a structural equation model \citep[Chapter 5]{pearl00}
-composed of distributed-lag linear regression models \citep[Chapters 9-10]{judge85}.
-Endpoint-constrained quadratic, quadratic decreasing and gamma
-lag shapes are available.
-DLSEMs allow to perform dynamic causal inference, that is to assess %and decompose
-causal effects at different time lags.
+Structural causal models (SCMs, \citealp[Chapter 5]{pearl00})
+consist in the simultaneous application of regression models
+to a set of variables, and, in a parametric linear formulation (linear SCMs),
+represent one of the prevalent methodologies for causal inference in
+contemporary applied sciences.
+Recently, \cite{magrini16} proposed an extension of linear
+SCMs composed of distributed-lag linear regression models \citep[Chapters 9-10]{judge85},
+called \textit{distributed-lag linear structural equation model} (DLSEM).
+A DLSEM accounts for temporal delays in the dependence
+relationships among the variables and allows to
+assess causal effects at different time lags.
+
+Package \texttt{dlsem} implements inference functionalities for DLSEMs
+with several types of constrained lag shapes.
+%Endpoint-constrained quadratic, quadratic decreasing and gamma lag shapes are available.
 This vignette is structured as follows.
-In Section \ref{sec:theory}, theory on distributed-lag linear
-structural equation models %with constrained lag shapes
-is presented.
+In Section \ref{sec:theory}, theory on the DLSEM is presented.
 In Section \ref{sec:install}, instructions for the installation
 of the \texttt{dlsem} package are provided.
 In Section \ref{sec:example}, the practical use of \texttt{dlsem}
-is illustrated through a fictitious impact assessment problem.
+is illustrated through a simple impact assessment problem.
 
 
 \section{Theory}
@@ -113,9 +116,7 @@ at time $t$ and $x_{j,t-l}$ is the value of the
 $j$-th covariate at $l$ time lags before $t$.
 The set $(\beta_{j,0},\beta_{j,1},\ldots,\beta_{j,L_j})$
 is denoted as the \textit{lag shape} of the $j$-th covariate and
-represents its regression coefficient
-%effect on the response variable
-at different time lags.
+represents its regression coefficient at different time lags.
 
 Parameter estimation is inefficient because lagged instances
 of the same covariate are typically highly correlated.
@@ -165,7 +166,7 @@ value $b_j$ as the \textit{lead lag}, and value $b_j-a_j$ as the \textit{lag wid
 A static regression coefficient is obtained if $a_j=b_j=0$.
 Since it is not expressed as a function of $a_j$ and $b_j$,
 the gamma lag shape cannot reduce to a static regression
-coefficent, but values $a_j$ and $b_j$ can be computed through numerical approximation.
+coefficient, but values $a_j$ and $b_j$ can be computed through numerical approximation.
 
 A linear regression model with constrained lag shapes is linear
 in parameters $\beta_0,\theta_1,\ldots,$ $\theta_J$,
@@ -183,11 +184,34 @@ rejects the hypothesis of unit root for all of them.
 %
 }.
 
+Structural causal models (SCMs) were developed by Pearl in the context of causal inference.
+They are rooted to path analysis \citep{wright34}
+and simultaneous equation models \citep{haavelmo43,koopmans50}.
+The basic feature of a SCM is a directed acyclic graph
+(DAG, see \citealp[pages 12 and following]{pearl00}).
+In a DAG, variables are represented by nodes and directed
+edges may connect pairs of variables without creating
+directed cycles (Figure \ref{fig:dagsam}).
+If a variable receives an edge from another variable,
+the latter is called \textit{parent} of the former.
+A DAG encodes a factorization of the joint probability distribution:
+\begin{equation}\label{eq:dag}
+p(V_1,\dots,V_m )=\prod_{j=1}^J p(V_j \mid \Pi_j)
+\end{equation}
+where $\Pi_j$ is the set of parents of variable $V_j$.
+As such, if some pairs of variables are not connected by an edge,
+the DAG implies a set of conditional independence statements
+\citep[pages 16 and following]{pearl00}.
+A SCM is defined by a specification of $p(V_j \mid \Pi_j)$ for $j=1,\ldots,J$.
+In a linear parametric formulation (linear SCM), $p(V_j \mid \Pi_j)$
+is the linear regression model where $V_j$ is the response
+variable and its parents in the DAG are the covariates.
+
 
 \begin{figure}[!h]
 \centering
-\includegraphics[scale=1]{figures/sampledag.png}
-\caption{The directed acyclic graph of a SEM.
+\includegraphics[width=0.4\textwidth]{figures/sampledag.png}
+\caption{The directed acyclic graph of a structural causal model.
 The regression model applied to variable $V_1$ has no covariates,
 the regression models applied to variables $V_2$ and $V_3$ have $V_1$ as covariate,
 the regression model applied to variable $V_4$ has $V_2$ and $V_3$ as covariates.}
@@ -195,36 +219,11 @@ the regression model applied to variable $V_4$ has $V_2$ and $V_3$ as covariates
 \end{figure}
 
 
-Structural equation models (SEMs) have a long history starting
-with the contribution of \citet{wright34} in the genetic field
-and of \citet{haavelmo43} and \citet{koopmans50} in the economic field.
-SEMs were further elaborated by \citet{pearl00} in the context of causal inference.
-The basic feature of a SEM is a directed acyclic graph
-(DAG, see \citealp[pages 12 and on]{pearl00}).
-In a DAG, variables are represented by nodes and directed
-edges may connect pairs of variables without creating
-directed cycles (Figure \ref{fig:dagsam}).
-If a variable receives an edge from another variable,
-the latter is called \textit{parent} of the former.
-A DAG encodes a factorization of the joint probability distribution:
-\begin{equation}
-p(V_1,\dots,V_m )=\prod_{j=1}^J p(V_j \mid \Pi_j)
-\end{equation}
-where $\Pi_j$ is the set of parents of variable $V_j$.
-As such, if some pairs of variables are not connected by an edge,
-the DAG implies a set of conditional independence statements
-\citep[pages 16 and on]{pearl00}.
-A SEM is defined by a specification of
-$p(V_j \mid \Pi_j)$ for $j=1,\ldots,J$.
-In a linear parametric formulation (linear SEM), $p(V_j \mid \Pi_j)$
-is the linear regression model where $V_j$ is the response
-variable and its parents in the DAG are the covariates.
-
-In the Pearl's framework, the DAG has a causal interpretation,
+The DAG of a SCM has a causal interpretation,
 and a causal effect is associated to each edge, directed path
 or couple of nodes to represent expected changes induced by an
 intervention (\citealp[Section 5.3]{pearl00}; \citealp{pearl12}).
-For a linear SEM:
+For a linear SCM:
 \begin{itemize}
 \item the causal effect associated to each edge in the DAG is
 the coefficient of the variable represented by the node originating
@@ -236,9 +235,7 @@ the product of the causal effects associated to each edge in the path;
 the sum of the causal effects associated to each
 directed path connecting the nodes representing the two variables.
 \end{itemize}
-%Each of these causal effects represents
-In this view, each causal effect in a linear SEM represents
-%can be exploited to assess
+In this view, each causal effect in a linear SCM represents
 the average change in
 the value of a variable induced by an intervention provoking
 a unit variation in the value of another variable.
@@ -249,16 +246,16 @@ made by a single edge is called \textit{direct} effect,
 while the causal effects associated to the other directed
 paths are denoted as \textit{indirect} effects.
 
-A distributed-lag linear structural equation model (DLSEM) is
-a SEM composed of distributed-lag linear regression models.
-%with constrained lag shapes.
+Distributed-lag linear structural equation models (DLSEMs) are
+an extension of linear SCMs, where each factor of the probability
+distribution in Equation \ref{eq:dag} is a distributed-lag linear
+regression model \citep[Chapters 9-10]{judge85}.
 For a DLSEM, the DAG does not explicitly include time lags, and
 an edge connecting two nodes implies that there is
 at least one time lag where the coefficient
 of the variable represented by the parent node in the regression model
 of the variable represented by the child node is non-zero.
-A DLSEM can be exploited to assess %and decompose
-the causal effect of any variable
+A DLSEM can be exploited to assess the causal effect of any variable
 to another at different time lags by extending the rules above:
 \begin{itemize}
   %
@@ -296,48 +293,44 @@ effects for each lag up to $k$.
 \section{Installation}
 \label{sec:install}
 
-Before installing \texttt{dlsem}, you must have installed
-\R version 2.1.0 or higher, which is freely available at
-\url{http://www.r-project.org/}.
+Before installing \texttt{dlsem}, you must have installed \texttt{R} version 2.1.0
+or higher, which is freely available at \url{http://www.r-project.org/}.
 
-To install the \texttt{dlsem} package, type the following
-in the \R command prompt:
+To install the \texttt{dlsem} package, type the following in the \texttt{R} command prompt:
 
 @
 <<eval=F>>=
 install.packages("dlsem")
 @
 
-and \R will automatically install the package to
-your system from CRAN.
-In order to keep your copy of \texttt{dlsem} up to date,
-use the command:
+and \texttt{R} will automatically install the package to your system from CRAN.
+In order to keep your copy of \texttt{dlsem} up to date, use the command:
 
 @
 <<eval=F>>=
 update.packages("dlsem")
 @
 
-The latest version of \texttt{dlsem} is 1.9.
+The latest version of \texttt{dlsem} is 2.0.
 
 
 \section{Illustrative example}
 \label{sec:example}
 
 The practical use of package \texttt{dlsem} is illustrated
-through a fictitious impact assessment problem, aiming at testing
-whether the influence through time of the number job positions in
-industry (proxy of the industrial development) on
-the amount of greenhouse gas emissions (proxy of pollution)
+through a simple impact assessment problem denoted as ``industrial development problem''.
+The objective is to test whether the influence through time
+of the number job positions in industry (proxy of the industrial development)
+on the amount of greenhouse gas emissions (proxy of pollution)
 is direct and/or mediated by the amount of private consumption.
-The DAG for the proposed problem is shown in Figure \ref{fig:dag0}.
+The DAG for the industrial development problem is shown in Figure \ref{fig:dag0}.
 The analysis will be conducted on the dataset \code{industry},
-containing data for $10$ imaginary regions in the period 1983-2015.
+containing simulated data for $10$ imaginary regions in the period 1983--2015.
 
 
 \begin{figure}[!h]
 \centering
-\includegraphics[scale=1]{figures/dag0.pdf}
+\includegraphics[width=0.4\textwidth]{figures/dag0.pdf}
 \caption{The DAG for the industrial development problem.
 `Job': number of job positions in industry.
 `Consum': private consumption index.
@@ -385,7 +378,7 @@ the name of the variable to which the lag shape is applied,
 parameter $\delta_j$ and parameter $\lambda_j$.
 If none of these two operators is applied to a variable, it
 is assumed that the coefficient associated to
-that variable is $0$ for time lags greater than $0$ (no lag).
+that variable is $0$ for time lags greater than $0$ (no lag shape).
 The group factor and exogenous variables must not be specified
 in the model code (see Subsection \ref{sub:example3}).
 The regression model for variables with no covariates
@@ -415,7 +408,9 @@ and local (variable-specific) options.
 Global control options must be a named list with one or more of the following
 components:
 \begin{itemize}
-\item \code{adapt}: a logical value indicating if adaptation of lag shapes must be performed (default is \code{FALSE}, that is no adaption);
+\item \code{adapt}: a logical value indicating if adaptation of lag shapes must be performed,
+that is parameters of lag shapes must be chosen on the basis of fit to data.
+Default is \code{FALSE}, meaning no adaptation;
 \item \code{max.gestation}: the maximum gestation lag for one or more covariates. If not provided, it is taken as equal to \code{max.lead} (see below);
 \item \code{max.lead}: the maximum lead lag. If not provided, it is computed accordingly to the sample size;
 \item \code{min.width}: the minimum lag width. It cannot be greater than \code{max.lead}. If not provided, it is taken as 0;
@@ -438,16 +433,13 @@ list(
   )
 @
 
-If some local control options conflicts with global ones, only the former are applied.
+If some local control options conflict with global ones, only the former are applied.
 In this problem, we want to perform adaptation of lag shapes for all regression models
 with the following constraints:
 (i) maximum gestation lag of $3$ years,
 (ii) maximum lead lag of $15$ years,
 (iii) minimum lag width of $5$ years,
 (iv) all coefficients with non-negative sign:
-%excepting the ones in the
-%regression model of the price index of agricultural products,
-%as benefits for consumers improve with the decreasing of prices:
 Control options for these constraints can be expressed in several ways.
 The most simple solution is to specify only global control options,
 as the constraints hold for all regression models:
@@ -488,9 +480,9 @@ mycon_L <- list(
 \subsection{Estimation}
 \label{sub:example3}
 
-Once the model code and control options are specified, the
-structural model can be estimated from data using the command \code{dlsem}$(\cdot)$.
-The user can indicate a group factor to argument \code{group}
+Once the model code and control options are specified, parameter estimation
+can be performed using the command \code{dlsem}$(\cdot)$.
+The user can indicate a single group factor (just one) to argument \code{group}
 and one or more exogenous variables to argument \code{exogenous}.
 By indicating the group factor, one intercept for each level
 of the group factor will be estimated in each regression model.
@@ -509,8 +501,8 @@ Before estimation, differentiation is performed until the
 hypothesis of unit root is rejected by the Augmented Dickey-Fuller test
 for all quantitative variables\footnote{
 %
-If a group factor is specified, the panel version of the
-Augmented Dickey-Fuller test proposed by \cite{levin02} is used insead.
+If the group factor is specified, the panel version of the
+Augmented Dickey-Fuller test proposed by \cite{levin02} is used instead.
 %
 }, and missing values are imputed
 using the Expectation-Maximization algorithm \citep{dempster77}.
@@ -527,9 +519,9 @@ mod0 <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
   data=industry,global.control=mycon_G,local.control=mycon_L,log=T)
 @
 
-After the estimation, the user can display the DAG
-where each edge is coloured according to the sign of its causal effect
-(green for non-negative, red for non-positive).
+After the estimation, the user can display the DAG where each edge
+is coloured with respect to the sign of the estimated causal effect
+(green: positive, red: negative, light gray: not significant).
 The result is shown in Figure \ref{fig:dag1}:
 the group factor and exogenous variables are omitted from the DAG.
 
@@ -541,15 +533,15 @@ plot(mod0)
 
 \begin{figure}[!h]
 \centering
-\includegraphics[scale=1]{figures/dag1.pdf}
-\caption{The DAG where each edge is coloured with respect to the sign of its causal effect.
+\includegraphics[width=0.4\textwidth]{figures/dag1.pdf}
+\caption{The DAG where each edge is coloured with respect to the sign of the estimated causal effect.
 Green: non-negative causal effect. Red: non-positive causal effect.
 Grey: not statistically significant causal effect (no such edges here).}
 \label{fig:dag1}
 \end{figure}
 
 
-All edges result statistically significant,
+All causal effects result statistically significant,
 providing evidence that the influence of industrial development
 on pollution is both direct and mediated by private consumption.
 
@@ -576,13 +568,13 @@ edgeCoeff(mod0)
 \normalsize
 
 
-\subsection{Assessment %and decomposition
-of causal effects}
+\subsection{Assessment of causal effects}
 \label{sub:example4}
 
 Causal effects can be computed using the command \code{causalEff}$(\cdot)$.
-The user must specify one or more starting variables (argument \code{from})
-and the ending variable (argument \code{to}).
+The main arguments are the name of one or more variables generating the causal effects
+(argument \code{from}), and the name of the variable receiving the causal effects
+(argument \code{to}).
 Optionally, specific time lags at which causal effects must be computed
 can be provided to argument \code{lag},
 otherwise all the relevant ones are considered.
@@ -590,11 +582,10 @@ Also, the user can choose whether instantaneous
 (argument \code{cumul} set to \code{FALSE}, the default)
 or cumulative (argument \code{cumul} set to \code{TRUE})
 causal effects must be returned.
-%A causal effect evaluated at a single lag is denoted as
-%\textit{instantaneous} causal effect.
-%The \textit{cumulative} causal effect at a prespecified lag,
-%say $k$, is obtained by summing all the instantaneous causal
-%effects for each lag up to $k$.
+The group factor and exogenous variables cannot be indicated as starting
+or ending variables, and they are not involved in the computation of causal effects,
+but the resulting causal effects are net of their influence.
+
 Here, the cumulative causal effect of the number of job positions
 on the amount of greenhouse gas emissions
 is requested at time lags 0, 5, 10, 15 and 20:
@@ -612,13 +603,14 @@ estimates and confidence intervals of the causal effect associated to
 each path connecting the starting variables to the ending variable
 at the requested time lags.
 Also, estimates and confidence intervals of the overall causal effect
-is shown in the component named \code{overall}.
+are shown in the component named \code{overall}.
 
-Since the logarithmic trasformation was applied to all quantitative
+Since the logarithmic transformation was applied to all quantitative
 variables, causal effects above are interpreted as elasticities,
 that is, for a $1\%$ of job positions more,
-greenhouse gas emissions are expected to grow by $1.31\%$ after $20$ years.
-Actually, the effect ends before $15$ years, as the cumulative causal
+greenhouse gas emissions are expected to grow by $0.61\%$ after $5$ years
+and by $1.10\%$ after $10$ years.
+The influence ends before $15$ years, as the cumulative causal
 effects after $15$ and $20$ years are equal.
 The time lag up to which the effect is non-zero can be found
 by running command \code{causalEff}$(\cdot)$ without providing
@@ -634,7 +626,7 @@ causalEff(mod0,from="Job",to="Pollution",cumul=T)$overall
 ~\\
 The estimated lag shape associated to a path or to an overall causal
 effect can be displayed using the command \code{lagPlot}$(\cdot)$.
-For instance, we can display the lag shape associated to each path
+For instance, one can display the lag shape associated to each path
 connecting the number of job positions to the amount of greenhouse gas emissions:
 
 @
@@ -656,9 +648,9 @@ The resulting graphics are shown in Figure \ref{fig:lagsh}.
 
 \begin{figure}[!h]
 \centering
-{\includegraphics[scale=1]{figures/lagsh1.pdf}}\quad
-{\includegraphics[scale=1]{figures/lagsh2.pdf}}\\
-{\includegraphics[scale=1]{figures/lagsh3.pdf}}
+{\includegraphics[width=0.48\textwidth]{figures/lagsh1.pdf}}\quad
+{\includegraphics[width=0.48\textwidth]{figures/lagsh2.pdf}}\\
+{\includegraphics[width=0.48\textwidth]{figures/lagsh3.pdf}}
 \caption{The estimated lag shape associated to each path connecting
 the number of job positions to the amount of greenhouse gas emissions (upper panels)
 and to the overall causal effect (lower panel).
@@ -668,6 +660,7 @@ $95\%$ confidence intervals are shown in grey.}
 
 
 
+%\pdfbookmark{References}{sec:refs}
 \begin{thebibliography}{99.}%
 
 \bibitem[Akaike(1974)]{akaike74} H. Akaike (1974). A New Look at the Statistical Identification Model.
@@ -709,7 +702,7 @@ Distributed-Lag Structural Equation Modelling: An Application to Impact Assessme
 
 \bibitem[Pearl(2012)]{pearl12} J. Pearl (2012).
 The Causal Foundations of Structural Equation Modelling.
-In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY. 
+In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, pages 68-91. Guilford Press, New York, US-NY. 
 
 \bibitem[Pearl(2000)]{pearl00} J. Pearl (2000).
 Causality: Models, Reasoning, and Inference.
