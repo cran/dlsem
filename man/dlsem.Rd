@@ -9,7 +9,7 @@
 \arguments{
   \item{model.code}{A list of objects of class \code{formula}, each describing a single regression model. See \code{Details}.}
   \item{group}{The name of the group factor (optional). If \code{NULL}, no groups are considered.}
-  \item{exogenous}{The name of exogenous variables (optional). Exogenous variables can be either quantitative or qualitative, must appear in no regression model, and are not lagged.}  
+  \item{exogenous}{The name of exogenous variables (optional). Exogenous variables can be either quantitative or qualitative and must not appear in the model code.}  
   \item{data}{An object of class \code{data.frame} containing data.}
   \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to strictly positive quantitative variables. Default is \code{FALSE}.}
   %
@@ -25,28 +25,49 @@
     \item{maxdiff: }{the maximum differentiation order to apply. If \code{maxdiff}=0, differentiation will not be applied. Default is 3.}
     }}
   %
-  \item{imput.options}{A list containing options for the imputation of missing values. The list may consist of any number of components among the following:
+  \item{imput.options}{A list containing options for the imputation of missing values by means of the Expectation-Maximization algorithm (Dempster et al., 1977). The list may consist of any number of components among the following:
     \itemize{
-    \item{tol: }{the tolerance threshold of the EM algorithm. Default is 0.0001;}
-    \item{maxiter: }{the maximum number of iterations for the EM algorithm. Default is 500. If \code{maxiter}=0, imputation will not be performed;}
+    \item{tol: }{the tolerance threshold. Default is 0.0001;}
+    \item{maxiter: }{the maximum number of iterations. Default is 500. If \code{maxiter}=0, imputation will not be performed;}
     \item{no.input: }{the name of variables to which imputation will not be applied.}  
     }}
   %
   \item{global.control}{A list containing global options for the estimation. The list may consist of any number of components among the following:
     \itemize{
-    \item{adapt: }{a logical value indicating if adaptation of lag shapes must be performed. Default is \code{FALSE};}
-    \item{max.gestation: }{the maximum gestation lag for one or more covariates. If not provided, it is taken as equal to \code{max.lead} (see below). Ignored if \code{adapt}=\code{FALSE};}
-    \item{max.lead: }{the maximum lead lag. If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE};} 
-    \item{min.width: }{the minimum lag width. It cannot be greater than \code{max.lead}. If not provided, it is taken as 0. Ignored if \code{adapt}=\code{FALSE};}
-    \item{sign: }{the sign (either '+' for non-negative, or '-' for non-positive) of the coefficients. If not provided, adaptation will disregard the sign of coefficients. Ignored if \code{adapt}=\code{FALSE};}  
-    \item{selection: }{the criterion to be used for the adaptation of lag shapes, that can be one among \code{"aic"} to minimise the Akaike Information Criterion (Akaike, 1974),
-      \code{"bic"} to minimise the Bayesian Information Criterion (Schwarz, 1978), and \code{"mdl"} to minimise the Minimum Description Length (Rissanen, 1978). Default is \code{"aic"}.}
+    \item{adapt: }{a logical value indicating if adaptation of lag shapes must be performed for all regression models. Default is \code{FALSE};}
+    \item{max.gestation: }{the maximum gestation lag for all covariates. If not provided, it is taken as equal to \code{max.lead} (see below). Ignored if \code{adapt}=\code{FALSE};}
+    \item{max.lead: }{the maximum lead lag for all covariates. If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE};} 
+    \item{min.width: }{the minimum lag width for all covariates. It cannot be greater than \code{max.lead}. If not provided, it is taken as 0. Ignored if \code{adapt}=\code{FALSE};}
+    \item{sign: }{the sign of parameter \eqn{\theta_j} (either '+' for positive or '-' for negative) for all covariates. If not provided, adaptation will disregard the sign of parameter \eqn{\theta_j}. Ignored if \code{adapt}=\code{FALSE};}  
+    \item{selection: }{the criterion to be used for the adaptation of lag shapes, that can be one among \code{'aic'} (the default) to minimise the Akaike Information Criterion (Akaike, 1974), and
+      \code{'bic'} to minimise the Bayesian Information Criterion (Schwarz, 1978).
+      Default is \code{'aic'}.}
     }}
   
   \item{local.control}{A list containing variable-specific options for the estimation.
   These options prevail on the ones contained in \code{global.control}. See \code{Details}.}
 }
-\details{Formulas cannot contain qualitative variables or interaction terms (no ':' or '*' symbols), and
+\details{
+Each regression model in a distributed-lag linear structural equation model has the form:
+\deqn{y_t = \beta_0+\sum_{j=1}^J \sum_{l=0}^{L_j} \beta_{j,l} ~ x_{j,t-l}+\epsilon_t \hspace{1cm} \epsilon_t \sim N(0,\sigma^2)}
+where \eqn{y_t} is the value of the response variable at time \eqn{t} and \eqn{x_{j,t-l}}
+is the value of the \eqn{j}-th covariate at \eqn{l} time lags before \eqn{t}.
+The set \eqn{(\beta_{j,0},\beta_{j,1},\ldots,\beta_{j,L_j})}
+is the lag shape of the \eqn{j}-th covariate.
+
+For the endpoint-constrained quadratic lag shape:
+\deqn{\beta_{j,l} = \theta_j \left[-\frac{4}{(b_j-a_j+2)^2} l^2+\frac{4(a_j+b_j)}{(b_j-a_j+2)^2} l-\frac{4(a_j-1)(b_j+1)}{(b_j-a_j+2)^2} \right] \hspace{1cm} a_j \leq l \leq b_j}
+(otherwise, \eqn{\beta_{j,l}=0}).
+
+For the quadratic decreasing lag shape:
+\deqn{\beta_{j,l} = \theta_j \frac{l^2-2 b_j l+b_j^2}{(b_j-a_j)^2} \hspace{1cm} a_j \leq l \leq b_j}
+(otherwise, \eqn{\beta_{j,l}=0}).
+
+For the gamma lag shape:
+\deqn{\beta_{j,l} = \theta_j (l+1)^\frac{\delta}{1-\delta}\lambda_j^l \left[\left(\frac{\delta_j}{(\delta_j-1)\log(\lambda_j)}\right)^\frac{\delta_j}{1-\delta_j}\lambda_j^{\frac{\delta_j}{(\delta_j-1)\log(\lambda_j)}-1}\right]^{-1}}
+\deqn{0<\delta_j<1 \hspace{1cm} 0<\lambda_j<1}
+
+Formulas cannot contain qualitative variables or interaction terms (no ':' or '*' symbols), and
 may contain the following operators for lag specification:
   \itemize{
   \item{\code{quec}: }{quadratic (2nd order polynomial) lag shape with endpoint constraints;}
@@ -56,32 +77,44 @@ may contain the following operators for lag specification:
 Each operator must have the following three arguments (provided within brackets):
   \enumerate{
   \item{the name of the covariate to which the lag is applied;}
-  \item{the minimum lag with a non-zero coefficient (for 2nd order polynomial lag shapes), or the \code{delta} parameter (for the gamma lag shape);}
-  \item{the maximum lag with a non-zero coefficient (for 2nd order polynomial lag shapes), or the \code{lambda} parameter (for the gamma lag shape).}
+  \item{parameter \eqn{a_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\delta_j} (for the gamma lag shape);}
+  \item{parameter \eqn{b_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\lambda_j} (for the gamma lag shape).}
   }
 For example, \code{quec(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15),
-and \code{gamma(X1,0.75,0.8)} indicates that a gamma lag shape with \code{delta}=0.75 and \code{lambda}=0.8 must be applied to variable X1.
+and \code{gamma(X1,0.75,0.8)} indicates that a gamma lag shape with \eqn{\delta_j=0.75} and \eqn{\lambda_j=0.8} must be applied to variable X1.
 See Judge et al. (1985, Chapters 9-10) for more details.
 
-The formula of regression models with no covariates excepting exogenous variables can be omitted from argument \code{model.code}.
+The formula of regression models with no endogenous covariates may be omitted from argument \code{model.code}.
 The group factor and exogenous variables must not appear in any formula.
 
 Argument \code{local.control} must be a named list containing one or more among the following components:
   \itemize{
-  %\item{\code{L}: }{a named vector of non-negative integer values including the highest lag with non-zero autocorrelation for one or more response variables.
-  %If greater than 0, the Newey-West correction of the covariance matrix of estimates (Newey and West, 1987) is used. Default is 0 for all response variables.}
-  \item{\code{adapt}: }{a named vector of logical values indicating if adaptation of lag shapes must be performed for one or more response variables. Default is \code{FALSE} for all response variables.}
-  \item{\code{max.gestation}: }{a named list. Each component of the list must refer to one response variable and contain a named vector, including the maximum gestation lag for one or more covariates.
-  If not provided, it is taken as equal to \code{max.lead} (see below). Ignored if \code{adapt}=\code{FALSE} for a certain covariate.}
-  \item{\code{max.lead}: }{a named list. Each component of the list must refer to one response variable and contain a named vector, including the maximum lead lag for one or more covariates.
-  If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE} for a certain covariate.}
-  \item{\code{min.width}: }{a named list. Each component of the list must refer to one response variable and contain a named vector, including the minimum lag width for one or more covariates.
-  It cannot be greater than \code{max.lead}. If not provided, it is taken as 0. Ignored if \code{adapt}=\code{FALSE} for a certain covariate.}
-  \item{\code{sign}: }{a named list. Each component of the list must refer to one response variable and contain a named vector, including the sign
-  (either '+' for non-negative, or '-' for non-positive) of the coefficients of one or more covariates.
-  If not provided, adaptation will disregard the sign of coefficients. Ignored if \code{adapt}=\code{FALSE} for a certain covariate.}
+  %\item{\code{L}: }{a named vector of non-negative integer values including the highest lag with non-zero autocorrelation for the indicated regression models.
+  %If greater than 0, the Newey-West correction of the covariance matrix of estimates (Newey and West, 1987) is used.}
+  \item{\code{adapt}: }{a named vector of logical values, where each component must have
+the name of one endogenous variable and indicate if adaptation of lag shapes must be
+performed for the regression model of that variable.}
+  \item{\code{max.gestation}: }{\code{max.gestation}: a named list. Each component of the list must have the
+name of one endogenous variable and be a named vector.
+Each component of the named vector must have the name of one covariate in the regression
+model of the endogenous variable above and include the maximum gestation lag for its lag shape.}
+  \item{\code{max.lead}: }{the same as \code{max.gestation}, with the exception that
+the named vector must include the maximum lead lag.}
+  \item{\code{min.width}: }{the same as \code{max.gestation}, with the exception that
+the named vector must include the minimum lag width.}
+  \item{\code{sign}: }{the same as \code{max.gestation}, with the exception that
+the named vector must include the lag sign (either \code{'+'} for positive or \code{'-'} for negative).}
+  Local control options have no default values, and global ones are applied in their absence.
+  If some local control options conflict with global ones, only the former are applied.
   }
-If some local control options conflict with global ones, only the former are applied.
+
+Imputation of missing values is performed after eventual logarithmic
+transformation and differentiation by assuming group-specific means
+and time-invariant covariance matrix.
+Qualitative variables cannot contain missing values.
+Each quantitative variable must have at least 3 observed values
+if the group factor is not specified,
+otherwise it must have at least 3 observed values per group.
 }
 \value{An object of class \code{dlsem}, with the following components:
   \item{estimate}{A list of objects of class \code{lm}, one for each response variable.}
@@ -94,12 +127,13 @@ If some local control options conflict with global ones, only the former are app
   \item{imput.options}{Options used for the imputation of missing values.}
   \item{selection}{The criterion used for the adaptation of lag shapes.}
   \item{adaptation}{Variable-specific options used for the adaptation of lag shapes.}
+  \item{Rsq}{The R-squared coefficient of determination for each regression model and the overall one.}  
   \item{data.orig}{The dataset provided to argument \code{data}.}
   \item{data.used}{Data used in the estimation, that is after eventual logarithmic transformation and differentiation.}
 S3 methods available for class \code{dlsem} are:
-  \item{print}{provides essential information on the structural model.}
+  \item{print}{provides essential information on the model.}
   \item{summary}{shows summaries of estimation.}
-  \item{plot}{displays the directed acyclic graph.
+  \item{plot}{displays the directed acyclic graph (DAG) of the model including only the endogenous variables.
   Option \code{conf} controls the confidence level (default is 0.95), while
   option \code{style} controls the style of the plot:
     \itemize{
@@ -107,6 +141,13 @@ S3 methods available for class \code{dlsem} are:
     \item {\code{style=1}: }{edges with statistically significant causal effect are shown in black, otherwise they are shown in light grey};
     \item {\code{style=0}: }{all edges are shown in black disregarding statistical significance of causal effects}.
     }}
+  \item{nobs}{returns the number of observations for each regression model.}
+  \item{coef}{returns parameters \eqn{\theta_j (j=1,\ldots,J)} for each regression model.}
+  \item{vcov}{returns the covariance matrix of estimates for each regression model.}
+  \item{logLik}{returns the log-likelihood for each regression model.}
+  \item{AIC}{returns the Akaike Information Criterion for each regression model and the overall one.}
+  \item{BIC}{returns the Bayesian Information Criterion for each regression model and the overall one.}
+  \item{fitted}{returns fitted values.}
   \item{residuals}{returns residuals.}
 }
 \references{
@@ -114,9 +155,9 @@ S3 methods available for class \code{dlsem} are:
 
 H. Akaike (1974). A New Look at the Statistical Identification Model. \emph{IEEE Transactions on Automatic Control}, 19, 716-723. DOI: 10.1109/TAC.1974.1100705
 
-G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985). The Theory and Practice of Econometrics. John Wiley & Sons, 2nd ed., New York, US-NY.  ISBN: 978-0-471-89530-5
+A. P. Dempster, N. M. Laird, and D. B. Rubin (1977). Maximum Likelihood from Incomplete Data via the EM Algorithm. \emph{Journal of the Royal Statistical Society}, Series B, 39(1): 1-38.
 
-J. Rissanen (1978). Modeling by Shortest Data Description. \emph{Automatica}, 14(5): 465-658. DOI: 10.1016/0005-1098(78)90005-5
+G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985). The Theory and Practice of Econometrics. John Wiley & Sons, 2nd ed., New York, US-NY.  ISBN: 978-0-471-89530-5
 
 G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statistics}, 6, 461-464. DOI: 10.1214/aos/1176344136
 
@@ -126,49 +167,110 @@ G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statisti
 \examples{
 data(industry)
 
-# estimation without adaptation of lag shapes
-mycode <- list(
-  Consum~quec(Job,0,5),
-  Pollution~quec(Job,1,8)+quec(Consum,1,6)
+# Estimation without adaptation of lag shapes
+indus.code <- list(
+  Consum~quec(Job,0,4),
+  Pollution~quec(Job,2,6)+quec(Consum,1,5)
   )
-myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),data=industry,log=TRUE)
+indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,log=TRUE)
+
+# Adaptation of lag shapes (estimation takes some seconds more)
+indus.global <- list(adapt=TRUE,max.gestation=3,max.lead=15,min.width=5,sign="+")
+indus.local <- list()
+## NOT RUN:
+# indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
+#   global.control=indus.global,local.control=indus.local,log=TRUE)
+
+# Summary of estimation
+summary(indus.mod)
+
+# DAG with coloured edges
+plot(indus.mod)
+
+# DAG disregarding statistical significance
+plot(indus.mod,style=0)
 
 
-### adaptation of lag shapes (takes some seconds more)
-#
-#mycode <- list(
-#  Consum~quec(Job,0,15),
-#  Pollution~quec(Job,0,15)+quec(Consum,0,15)
-#  )
-#                      
-#myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),data=industry,
-#  global.control=list(adapt=T,max.gestation=3,min.width=5,max.lead=15,sign="+"),log=TRUE)
-#
-### equivalently, one may specify control options for each variable:
-#
-#mycontrol <- list(
-#  max.gestation=list(Consum=c(Job=3),Pollution=c(Consum=3,Job=3)),
-#  max.lead=list(Consum=c(Job=15),Pollution=c(Consum=15,Job=15)),
-#  min.width=list(Consum=c(Job=5),Pollution=c(Consum=5,Job=5)),
-#  sign=list(Consum=c(Job="+"),Pollution=c(Consum="+",Job="+"))
-#  )
-#
-#myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),data=industry,
-#  global.control=list(adapt=T),local.control=mycontrol,log=TRUE)
+### Comparison among alternative models
+
+# Model 2: quadratic decreasing lag shapes
+indus.code_2 <- list(
+  Job ~ 1,
+  Consum~qdec(Job,0,15),
+  Pollution~qdec(Job,0,15)+qdec(Consum,0,15)
+  )
+## NOT RUN:
+# indus.mod_2 <- dlsem(indus.code_2,group="Region",exogenous=c("Population","GDP"),
+#   data=industry,global.control=indus.global,local.control=indus.local,log=TRUE)
+
+# Model 3: gamma lag shapes
+indus.code_3 <- list(
+  Job ~ 1,
+  Consum~gamma(Job,0.5,0.5),
+  Pollution~gamma(Job,0.5,0.5)+gamma(Consum,0.5,0.5)
+  )
+## NOT RUN:
+# indus.mod_3 <- dlsem(indus.code_3,group="Region",exogenous=c("Population","GDP"),
+#   data=industry,global.control=indus.global,local.control=indus.local,log=TRUE)
+
+# goodness of fit indices
+## NOT RUN:
+# lapply(list(QUEC=indus.mod,QDEC=indus.mod_2,GAMMA=indus.mod_3),AIC)
+# lapply(list(QUEC=indus.mod,QDEC=indus.mod_2,GAMMA=indus.mod_3),BIC)
 
 
-# add a qualitative exogenous variable
-industry[,"Policy"] <- factor(1*(industry[,"Year"]>=2006))
-levels(industry[,"Policy"]) <- c("no","yes")
-myfit <- dlsem(mycode,group="Region",exogenous=c("Population","GDP","Policy"),
-  data=industry,log=TRUE)
-  
-# summaries of estimation
-summary(myfit)
+### A more complex model
 
-# directed acyclic graph
-plot(myfit)
+data(agres)
 
-# directed acyclic graph including only statistically significant edges
-plot(myfit,show.ns=FALSE)
+# Qualitative exogenous variable
+agres$POLICY <- factor(1*(agres$YEAR>=2005))
+levels(agres$POLICY) <- c("no","yes")
+
+# Causal levels
+context.var <- c("GDP","EMPL_AGR","UAA","PATENT_OTHER","POLICY")
+investment.var <- c("GBAORD_AGR","BERD_AGR")
+research.var <- c("RD_EDU_AGR","PATENT_AGR")
+impact.var <-  c("ENTR_INCOME_AGR","PPI_AGR")
+
+# Constraints on lag shapes
+agres.global <- list(adapt=TRUE,max.gestation=3,min.width=5,max.lead=20,sign="+")
+auxcon1 <- rep(15,length(investment.var))
+names(auxcon1) <- investment.var
+auxcon2 <- rep("-",length(investment.var)+length(research.var))
+names(auxcon2) <- c(investment.var,research.var)
+agres.local <- list(max.lead=list(RD_EDU_AGR=auxcon1,PATENT_AGR=auxcon1),
+  sign=list(PPI_AGR=auxcon2))
+
+# Endpoint-constrained quadratic lag shapes (estimation takes a couple of minutes)
+auxcode <- c(paste(investment.var,"~1",sep=""),
+  paste(research.var,"~",paste("quec(",investment.var,",0,20)",
+    collapse="+",sep=""),sep=""),
+  paste(impact.var,"~",paste("quec(",c(investment.var,research.var),",0,20)",
+    collapse="+",sep=""),sep=""))
+agres.code <- list()
+for(i in 1:length(auxcode)) {
+  agres.code[[i]] <- formula(auxcode[i])
+  }
+## NOT RUN:
+# agres.mod <- dlsem(agres.code,group="COUNTRY",exogenous=context.var,data=agres,
+#   global.control=agres.global,local.control=agres.local,log=TRUE)
+# summary(agres.mod)
+
+## Gamma lag shapes (estimation takes a dozen of minutes)
+auxcode_2 <- c(paste(investment.var,"~1",sep=""),
+  paste(research.var,"~",paste("gamma(",investment.var,",0.5,0.5)",
+    collapse="+",sep=""),sep=""),
+  paste(impact.var,"~",paste("gamma(",c(investment.var,research.var),",0.5,0.5)",
+    collapse="+",sep=""),sep=""))
+agres.code_2 <- list()
+for(i in 1:length(auxcode_2)) {
+  agres.code_2[[i]] <- formula(auxcode_2[i])
+  }
+## NOT RUN:
+# agres.mod_2 <- dlsem(agres.code_2,group="COUNTRY",exogenous=context.var,data=agres,
+#  global.control=agres.global,local.control=agres.local,log=T)
+# summary(agres.mod_2)
+# lapply(list(QUEC=agres.mod,GAMMA=agres.mod_2),AIC)
+# lapply(list(QUEC=agres.mod,GAMMA=agres.mod_2),BIC)
 }

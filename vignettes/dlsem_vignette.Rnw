@@ -8,35 +8,32 @@
 %\VignetteKeyword{Time series}
 
 \usepackage{boxedminipage,color,a4wide,url}
+
+
 \usepackage[english]{babel}
-\usepackage{natbib}
-\usepackage[latin1]{inputenc}
-\usepackage{amsmath}
+\usepackage[authoryear]{natbib}
+\usepackage{url}
+\usepackage{subfigure}
+\usepackage{multicol}
 \usepackage{multirow}
+\usepackage{rotating}
+\usepackage{dsfont,mathrsfs}
+\usepackage{listings,mdframed}
+\usepackage{caption}
+\usepackage[T1]{fontenc}
+\usepackage{epsfig,graphicx,amsbsy,amsfonts,amssymb,pifont,amsmath,mathcomp}
+\usepackage[latin1]{inputenc}
+\usepackage{hyperref}
 \usepackage{Sweave}
-%\SweaveOpts{height=4}
-%\SweaveOpts{prefix.string=figures/graph}
 \setkeys{Gin}{width=0.4\textwidth}
 
 \def\pkg#1{\texttt{#1}}
-\def\dlsem{\texttt{dlsem}}
-\def\code#1{{\texttt{#1}}}
-\def\R{\texttt{R}}
+\let\proglang=\textsf
+\let\code=\texttt
 
-%<<echo=FALSE,print=FALSE>>=
-%require(dlsem)
-%prettyVersion <- packageDescription("dlsem")$Version
-%prettyDate <- format(Sys.Date(), "%d/%m/%Y")
-%@
-
-
-\title{Distributed-lag linear structural equation models in \texttt{R}:\\the \texttt{dlsem} package}
-\author{Alessandro Magrini\\
-Dep. Statistics, Computer Science, Applications\\
-University of Florence, Italy\\
-<magrini@disia.unifi.it>}
-\date{\texttt{dlsem} version 2.0 -- 05 December 2017}
-
+\title{Distributed-lag linear structural equation models in \proglang{R}:\\the \pkg{dlsem} package}
+\author{Alessandro Magrini\\Dep. Statistics, Computer Science, Applications\\University of Florence, Italy\\<magrini@disia.unifi.it>}
+\date{\pkg{dlsem} version 2.1 -- 04 January 2018}
 
 
 \begin{document}
@@ -44,35 +41,34 @@ University of Florence, Italy\\
 
 %%\SweaveInput{Rmarkup.STY}
 %% ------------------------
-\definecolor{darkred}{rgb}{.7,0,0}
-\definecolor{midnightblue}{rgb}{0.098,0.098,0.439}
-
-\DefineVerbatimEnvironment{Sinput}{Verbatim}{
-  fontfamily=tt,
-  %%fontseries=b,
-  %% xleftmargin=2em,
-  formatcom={\color{midnightblue}}
-}
-\DefineVerbatimEnvironment{Soutput}{Verbatim}{
-  fontfamily=tt,
-  %%fontseries=b,
-  %% xleftmargin=2em,
-  formatcom={\color{darkred}}
-}
-\DefineVerbatimEnvironment{Scode}{Verbatim}{
-  fontfamily=tt,
-  %%fontseries=b,
-  %% xleftmargin=2em,
-  formatcom={\color{blue}}
-}
-
-\fvset{listparameters={\setlength{\topsep}{-2pt}}}
-\renewenvironment{Schunk}{\linespread{.90}}{}
+%\definecolor{darkred}{rgb}{.7,0,0}
+%\definecolor{midnightblue}{rgb}{0.098,0.098,0.439}
+%
+%\DefineVerbatimEnvironment{Sinput}{Verbatim}{
+%  fontfamily=tt,
+%  %%fontseries=b,
+%  %% xleftmargin=2em,
+%  formatcom={\color{midnightblue}}
+%}
+%\DefineVerbatimEnvironment{Soutput}{Verbatim}{
+%  fontfamily=tt,
+%  %%fontseries=b,
+%  %% xleftmargin=2em,
+%  formatcom={\color{darkred}}
+%}
+%\DefineVerbatimEnvironment{Scode}{Verbatim}{
+%  fontfamily=tt,
+%  %%fontseries=b,
+%  %% xleftmargin=2em,
+%  formatcom={\color{blue}}
+%}
+%
+%\fvset{listparameters={\setlength{\topsep}{-2pt}}}
+%\renewenvironment{Schunk}{\linespread{.90}}{}
 %% ------------------------
 
+
 \maketitle
-
-
 \tableofcontents
 \parindent0pt\parskip5pt
 
@@ -84,22 +80,27 @@ consist in the simultaneous application of regression models
 to a set of variables, and, in a parametric linear formulation (linear SCMs),
 represent one of the prevalent methodologies for causal inference in
 contemporary applied sciences.
-Recently, \cite{magrini16} proposed an extension of linear
-SCMs composed of distributed-lag linear regression models \citep[Chapters 9-10]{judge85},
-called \textit{distributed-lag linear structural equation model} (DLSEM).
-A DLSEM accounts for temporal delays in the dependence
-relationships among the variables and allows to
-assess causal effects at different time lags.
+%
+\textit{Distributed-lag linear structural equation models} (DLSEMs)
+are an extension of linear SCMs, where each factor of
+the joint probability distribution is a distributed-lag linear regression
+with constrained lag shapes \citep[Chapters 9-10]{judge85}.
+%
+DLSEMs account for temporal delays in the dependence relationships among
+domain variables and allow to assess causal effects at different time lags.
+As such, they are suitable to investigate the effect of an external impulse
+on a multidimensional system through time.
+Econometrics and epidemiology are two of the main fields of application for DLSEMs.
 
-Package \texttt{dlsem} implements inference functionalities for DLSEMs
+Package \pkg{dlsem} implements inference functionalities for DLSEMs
 with several types of constrained lag shapes.
-%Endpoint-constrained quadratic, quadratic decreasing and gamma lag shapes are available.
 This vignette is structured as follows.
 In Section \ref{sec:theory}, theory on the DLSEM is presented.
 In Section \ref{sec:install}, instructions for the installation
-of the \texttt{dlsem} package are provided.
-In Section \ref{sec:example}, the practical use of \texttt{dlsem}
+of the \pkg{dlsem} package are provided.
+In Section \ref{sec:example}, the practical use of \pkg{dlsem}
 is illustrated through a simple impact assessment problem.
+Section \ref{sec:future} includes considerations on future development of the package.
 
 
 \section{Theory}
@@ -116,7 +117,8 @@ at time $t$ and $x_{j,t-l}$ is the value of the
 $j$-th covariate at $l$ time lags before $t$.
 The set $(\beta_{j,0},\beta_{j,1},\ldots,\beta_{j,L_j})$
 is denoted as the \textit{lag shape} of the $j$-th covariate and
-represents its regression coefficient at different time lags.
+represents its regression coefficient (in the remainder, simply `coefficient')
+at different time lags.
 
 Parameter estimation is inefficient because lagged instances
 of the same covariate are typically highly correlated.
@@ -131,7 +133,7 @@ Unfortunately, the Almon's polynomial lag shape may
 show multiple modes and coefficients with different signs,
 thus entailing problems of interpretation.
 Constrained lag shapes \citep[Chapters 9-10]{judge85} overcome this deficiency.
-Package \texttt{dlsem} includes the \textit{endpoint-constrained quadratic} lag shape:
+Package \pkg{dlsem} includes the \textit{endpoint-constrained quadratic} lag shape:
 \begin{equation}\label{eq:quec}
 \beta_{j,l} = \begin{cases}
   \theta_j \left[-\frac{4}{(b_j-a_j+2)^2} l^2+\frac{4(a_j+b_j)}{(b_j-a_j+2)^2} l-\frac{4(a_j-1)(b_j+1)}{(b_j-a_j+2)^2} \right] & a_j \leq l \leq b_j\\
@@ -154,27 +156,40 @@ and the \textit{gamma} lag shape:
 \end{equation}
 The endpoint-constrained quadratic lag shape
 is zero for a lag $l \leq a_j-1$ or $l \geq b_j+1$,
-and symmetric with mode equal to $\theta_j$ at $(a_j+b_j)/2$.
+and symmetric with mode equal to $\theta_j$ at lag $(a_j+b_j)/2$.
 The quadratic decreasing lag shape
 decreases from value $\theta_j$ at lag $a_j$
 to value $0$ at lag $b_j$ according to
 a quadratic function.
 The gamma lag shape is positively skewed with mode equal to $\theta_j$
-at $\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}$.
+at lag $\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}$.
 Value $a_j$ is denoted as the \textit{gestation lag},
 value $b_j$ as the \textit{lead lag}, and value $b_j-a_j$ as the \textit{lag width}.
-A static regression coefficient is obtained if $a_j=b_j=0$.
+A static coefficient is obtained if $a_j=b_j=0$.
 Since it is not expressed as a function of $a_j$ and $b_j$,
-the gamma lag shape cannot reduce to a static regression
-coefficient, but values $a_j$ and $b_j$ can be computed through numerical approximation.
+the gamma lag shape cannot reduce to a static coefficient,
+but the corresponding values of $a_j$ and $b_j$ can be computed
+through numerical approximation.
+
+For these three lag shapes it holds:
+\begin{equation}\label{eq:sign}
+\begin{gathered}
+\beta_{j,l}>0 \Longleftrightarrow \theta_j>0\\
+\beta_{j,l}<0 \Longleftrightarrow \theta_j<0
+\end{gathered}
+\hspace{1.2cm} \forall~a_j \leq l \leq b_j
+\end{equation}
+and we refer to the \textit{lag sign} as the sign of parameter $\theta_j$.
 
 A linear regression model with constrained lag shapes is linear
 in parameters $\beta_0,\theta_1,\ldots,$ $\theta_J$,
 provided that the values of $a_1,\ldots,a_J,b_1,\ldots,b_J$ are known.
-Thus, one can use ordinary least squares to
-estimate parameters $\beta_0,\theta_1,\ldots,\theta_J$ for several models
+Thus, one can use ordinary least squares to estimate parameters
+$\beta_0,\theta_1,\ldots,\theta_J$ for several models
 with different values of $a_1,\ldots,a_J,b_1,\ldots,b_J$,
-and then select the one with the lowest Akaike Information Criterion \citep{akaike74}\footnote{
+and then select the one with the
+minimum value of the Akaike Information Criterion (AIC, \citealp{akaike74})
+or the Bayesian Information Criterion (BIC, \citealp{schwarz78})\footnote{
 %
 Neither the response variable nor the covariates must contain a trend
 in order to obtain unbiased estimates \citep{granger74}.
@@ -190,8 +205,8 @@ and simultaneous equation models \citep{haavelmo43,koopmans50}.
 The basic feature of a SCM is a directed acyclic graph
 (DAG, see \citealp[pages 12 and following]{pearl00}).
 In a DAG, variables are represented by nodes and directed
-edges may connect pairs of variables without creating
-directed cycles (Figure \ref{fig:dagsam}).
+edges may connect pairs of nodes %variables
+without creating directed cycles (Figure \ref{fig:dagsam}).
 If a variable receives an edge from another variable,
 the latter is called \textit{parent} of the former.
 A DAG encodes a factorization of the joint probability distribution:
@@ -210,20 +225,16 @@ variable and its parents in the DAG are the covariates.
 
 \begin{figure}[!h]
 \centering
-\includegraphics[width=0.4\textwidth]{figures/sampledag.png}
-\caption{The directed acyclic graph of a structural causal model.
-The regression model applied to variable $V_1$ has no covariates,
-the regression models applied to variables $V_2$ and $V_3$ have $V_1$ as covariate,
-the regression model applied to variable $V_4$ has $V_2$ and $V_3$ as covariates.}
+\includegraphics[width=0.3\textwidth]{figures/sampledag.png}
+\caption{An example of directed acyclic graph.}
 \label{fig:dagsam}
 \end{figure}
 
 
 The DAG of a SCM has a causal interpretation,
 and a causal effect is associated to each edge, directed path
-or couple of nodes to represent expected changes induced by an
-intervention (\citealp[Section 5.3]{pearl00}; \citealp{pearl12}).
-For a linear SCM:
+or couple of nodes according to the following definitions
+(\citealp[Section 5.3]{pearl00}; \citealp{pearl12}):
 \begin{itemize}
 \item the causal effect associated to each edge in the DAG is
 the coefficient of the variable represented by the node originating
@@ -236,9 +247,8 @@ the sum of the causal effects associated to each
 directed path connecting the nodes representing the two variables.
 \end{itemize}
 In this view, each causal effect in a linear SCM represents
-the average change in
-the value of a variable induced by an intervention provoking
-a unit variation in the value of another variable.
+the average change in the value of a variable induced by an intervention
+provoking a unit variation in the value of another variable.
 The causal effect of a variable on another is
 termed \textit{overall} causal effect,
 the causal effect associated to a directed path
@@ -247,14 +257,13 @@ while the causal effects associated to the other directed
 paths are denoted as \textit{indirect} effects.
 
 Distributed-lag linear structural equation models (DLSEMs) are
-an extension of linear SCMs, where each factor of the probability
+linear SCMs where each factor of the probability
 distribution in Equation \ref{eq:dag} is a distributed-lag linear
 regression model \citep[Chapters 9-10]{judge85}.
-For a DLSEM, the DAG does not explicitly include time lags, and
-an edge connecting two nodes implies that there is
-at least one time lag where the coefficient
-of the variable represented by the parent node in the regression model
-of the variable represented by the child node is non-zero.
+Time lags are not explicitly shown in the DAG of a DLSEM,
+and an edge connects two nodes, say $V_j \longrightarrow V_i$, if and only if
+there is at least one time lag where the coefficient of variable $V_j$
+in the regression model of variable $V_i$ is non-zero.
 A DLSEM can be exploited to assess the causal effect of any variable
 to another at different time lags by extending the rules above:
 \begin{itemize}
@@ -283,8 +292,8 @@ to another at different time lags by extending the rules above:
   associated to each directed path connecting the two variables.
   %
   \end{itemize}
-A causal effect evaluated at a single lag is denoted as
-\textit{instantaneous} causal effect.
+These rules define a causal effect evaluated at a single lag,
+denoted as \textit{instantaneous} causal effect.
 The \textit{cumulative} causal effect at a prespecified lag,
 say $k$, is obtained by summing all the instantaneous causal
 effects for each lag up to $k$.
@@ -293,31 +302,31 @@ effects for each lag up to $k$.
 \section{Installation}
 \label{sec:install}
 
-Before installing \texttt{dlsem}, you must have installed \texttt{R} version 2.1.0
+Before installing \pkg{dlsem}, you must have installed \proglang{R} version 2.1.0
 or higher, which is freely available at \url{http://www.r-project.org/}.
 
-To install the \texttt{dlsem} package, type the following in the \texttt{R} command prompt:
+To install the \pkg{dlsem} package, type the following in the \proglang{R} command prompt:
 
 @
 <<eval=F>>=
 install.packages("dlsem")
 @
 
-and \texttt{R} will automatically install the package to your system from CRAN.
-In order to keep your copy of \texttt{dlsem} up to date, use the command:
+and \proglang{R} will automatically install the package to your system from CRAN.
+In order to keep your copy of \pkg{dlsem} up to date, use the command:
 
 @
 <<eval=F>>=
 update.packages("dlsem")
 @
 
-The latest version of \texttt{dlsem} is 2.0.
+The latest version of \pkg{dlsem} is 2.1.
 
 
 \section{Illustrative example}
 \label{sec:example}
 
-The practical use of package \texttt{dlsem} is illustrated
+The practical use of package \pkg{dlsem} is illustrated
 through a simple impact assessment problem denoted as ``industrial development problem''.
 The objective is to test whether the influence through time
 of the number job positions in industry (proxy of the industrial development)
@@ -325,7 +334,7 @@ on the amount of greenhouse gas emissions (proxy of pollution)
 is direct and/or mediated by the amount of private consumption.
 The DAG for the industrial development problem is shown in Figure \ref{fig:dag0}.
 The analysis will be conducted on the dataset \code{industry},
-containing simulated data for $10$ imaginary regions in the period 1983--2015.
+containing simulated data for $10$ imaginary regions in the period 1983-2015.
 
 
 \begin{figure}[!h]
@@ -356,10 +365,12 @@ summary(industry)
 \subsection{Specification of the model code}
 \label{sub:example1}
 
-The first step to build a DLSEM with the \texttt{dlsem} package
+The first step to build a DLSEM with the \pkg{dlsem} package
 is the definition of the model code, which includes the
 formal specification of the regression models.
-%
+The variables for which a regression model is specified are called \textit{endogenous} variables.
+The other variables are referred as \textit{exogenous} variables.
+
 The model code must be a list of formulas, one for each regression model.
 In each formula, the response and the covariates must be quantitative variables\footnote{
 %
@@ -370,27 +381,24 @@ as described in Subsection \ref{sub:example3}.
 can be employed to specify, respectively, an endpoint-constrained quadratic,
 a quadratic decreasing or a gamma lag shape.
 Operators \code{quec}$(\cdot)$ and \code{qdec}$(\cdot)$ have three arguments:
-the name of the variable to which the lag shape is applied,
-the minimum lag with a non-zero coefficient ($a_j$), and
-the maximum lag with a non-zero coefficient ($b_j$).
+the name of the covariate to which the lag shape is applied,
+the gestation lag ($a_j$) and the lead lag ($b_j$).
 Operator \code{gamma}$(\cdot)$ has three arguments:
-the name of the variable to which the lag shape is applied,
+the name of the covariate to which the lag shape is applied,
 parameter $\delta_j$ and parameter $\lambda_j$.
-If none of these two operators is applied to a variable, it
-is assumed that the coefficient associated to
-that variable is $0$ for time lags greater than $0$ (no lag shape).
-The group factor and exogenous variables must not be specified
-in the model code (see Subsection \ref{sub:example3}).
-The regression model for variables with no covariates
-besides the group factor and exogenous variables
-can be omitted from the model code (for example, one could omit the
-regression model for the number of job positions).
-In this problem, an endpoint-constrained quadratic
-lag shape between 0 and 15 time lags is assumed for all variables:
+If none of these two operators is applied to a covariate, it is assumed that
+its coefficient is equal to $0$ for time lags greater than $0$ (no lag shape).
+The group factor and exogenous variables must not appear
+in the model code (see Subsection \ref{sub:example3} for the way to include them).
+The specification of regression models with no endogenous covariates
+may be omitted from the model code (for example, one could avoid to
+specify the regression model for the number of job positions).
+In this problem, all lag shapes are assumed to be endpoint-constrained quadratic
+lag shapes between 0 and 15 time lags:
 
 @
 <<echo=T>>=
-mycode <- list(
+indus.code <- list(
   Job ~ 1,
   Consum~quec(Job,0,15),
   Pollution~quec(Job,0,15)+quec(Consum,0,15)
@@ -401,62 +409,67 @@ mycode <- list(
 \subsection{Specification of control options}
 \label{sub:example2}
 
-The second step to build a DLSEM with the \texttt{dlsem} package
+The second step to build a DLSEM with the \pkg{dlsem} package
 is the specification of control options.
-Control options are distinguished into global (applied to all variables)
-and local (variable-specific) options.
+Control options are distinguished into global (applied to all regression models)
+and local (model-specific) options.
 Global control options must be a named list with one or more of the following
 components:
 \begin{itemize}
 \item \code{adapt}: a logical value indicating if adaptation of lag shapes must be performed,
 that is parameters of lag shapes must be chosen on the basis of fit to data.
 Default is \code{FALSE}, meaning no adaptation;
-\item \code{max.gestation}: the maximum gestation lag for one or more covariates. If not provided, it is taken as equal to \code{max.lead} (see below);
-\item \code{max.lead}: the maximum lead lag. If not provided, it is computed accordingly to the sample size;
-\item \code{min.width}: the minimum lag width. It cannot be greater than \code{max.lead}. If not provided, it is taken as 0;
-\item \code{sign}: the sign (either '+' for non-negative, or '-' for non-positive) of the coefficients. If not provided, adaptation will disregard the sign of coefficients.
+\item \code{max.gestation}: the maximum gestation lag for all lag shapes.
+If not provided, it is taken as equal to \code{max.lead} (see below);
+\item \code{max.lead}: the maximum lead lag for all lag shapes.
+If not provided, it is computed accordingly to the sample size;
+\item \code{min.width}: the minimum lag width for all lag shapes.
+It cannot be greater than \code{max.lead}. If not provided, it is taken as 0;
+\item \code{sign}: the lag sign for all lag shapes, that can be
+either \code{'+'} for positive or \code{'-'} for negative.
+If not provided, adaptation will disregard the lag sign.
 \end{itemize}
-Local control options must be a named list with the same components above,
-with the difference that each component must be a named list where each
-component refers to a specific variable and is a vector where each element
-refers to a specific covariate in the regression model of that variable.
-As an example, the following code specifies local control options on the
-minimum lag width of covariate \code{Consum} in the regression model of
-variable \code{Pollution}, and on the sign of covariates \code{Job} and
-\code{Consum} in the regression model of variable \code{Consum}:
-
-@
-<<echo=T,eval=F>>=
-list(
-  min.width=list(Pollution=c(Consum=5)),
-  sign=list(Pollution=c(Job="+",Consum="+"))
-  )
-@
-
+Local control options must be a named list containing one or more among the following components:
+\begin{itemize}
+\item \code{adapt}: a named vector of logical values, where each component must have
+the name of one endogenous variable and indicate if adaptation of lag shapes must be
+performed for the regression model of that variable;
+\item \code{max.gestation}: a named list. Each component of the list must have the
+name of one endogenous variable and be a named vector.
+Each component of the named vector must have the name of one covariate in the regression
+model of the endogenous variable above and include the maximum gestation lag for its lag shape;
+\item \code{max.lead}: the same as \code{max.gestation}, with the exception that
+the named vector must include the maximum lead lag;
+\item \code{min.width}: the same as \code{max.gestation}, with the exception that
+the named vector must include the minimum lag width;
+\item \code{sign}: the same as \code{max.gestation}, with the exception that
+the named vector must include the lag sign (either \code{'+'} for positive or \code{'-'} for negative).
+\end{itemize}
+Local control options have no default values, and global ones are applied in their absence.
 If some local control options conflict with global ones, only the former are applied.
-In this problem, we want to perform adaptation of lag shapes for all regression models
-with the following constraints:
-(i) maximum gestation lag of $3$ years,
-(ii) maximum lead lag of $15$ years,
-(iii) minimum lag width of $5$ years,
-(iv) all coefficients with non-negative sign:
+
+Suppose that one wants to perform adaptation with the following constraints for all lag shapes:
+(i) maximum gestation lag of 3 years,
+(ii) maximum lead lag of 15 years,
+(iii) minimum lag width of 5 years,
+(iv) positive lag sign.
 Control options for these constraints can be expressed in several ways.
 The most simple solution is to specify only global control options,
 as the constraints hold for all regression models:
 
 @
 <<echo=T>>=
-mycon_G <- list(adapt=T,max.gestation=3,max.lead=15,min.width=5,sign="+")
-mycon_L <- list()
+indus.global <- list(adapt=T,max.gestation=3,max.lead=15,min.width=5,sign="+")
+indus.local <- list()
 @
 
 In alternative, one may specify only local control options, by repeating
-them for each variable:
+them for each regression model:
 
 @
 <<echo=T>>=
-mycon_G <- list()
-mycon_L <- list(
+indus.global <- list()
+indus.local <- list(
   adapt=c(Consum=T,Pollution=T),
   max.gestation=list(Consum=c(Job=3),Pollution=c(Job=3,Consum=3)),
   max.lead=list(Consum=c(Job=15),Pollution=c(Job=15,Consum=15)),
@@ -468,8 +481,8 @@ mycon_L <- list(
 or both local and global control options:
 
 <<echo=T>>=
-mycon_G <- list(adapt=T,min.width=5)
-mycon_L <- list(
+indus.global <- list(adapt=T,min.width=5)
+indus.local <- list(
   max.gestation=list(Consum=c(Job=3),Pollution=c(Job=3,Consum=3)),
   max.lead=list(Consum=c(Job=15),Pollution=c(Job=15,Consum=15)),
   sign=list(Consum=c(Job="+"),Pollution=c(Job="+",Consum="+"))
@@ -477,7 +490,7 @@ mycon_L <- list(
 @
 
 
-\subsection{Estimation}
+\subsection{Parameter estimation}
 \label{sub:example3}
 
 Once the model code and control options are specified, parameter estimation
@@ -485,10 +498,11 @@ can be performed using the command \code{dlsem}$(\cdot)$.
 The user can indicate a single group factor (just one) to argument \code{group}
 and one or more exogenous variables to argument \code{exogenous}.
 By indicating the group factor, one intercept for each level
-of the group factor will be estimated in each regression model.
+of the group factor will be estimated in each regression model,
+in order to explain the variability due to differences between groups.
 By indicating exogenous variables, they will be included as
-non-lagged covariates in each regression model, in order to eliminate spurious
-effects due to differences between the levels of the group factor.
+non-lagged covariates in each regression model,
+in order to eliminate cross-sectional spurious effects.
 Each exogenous variable can be either qualitative or quantitative
 and its coefficient in each regression
 model is $0$ for time lags greater than $0$ (no lag).
@@ -497,15 +511,25 @@ strictly positive quantitative variables by setting argument
 \code{log} to \code{TRUE},
 in order to interpret each coefficient as an elasticity
 (percentage increase in the value of the response variable for $1\%$ increase in the value of a covariate).
-Before estimation, differentiation is performed until the
+Before parameter estimation, differentiation is performed until the
 hypothesis of unit root is rejected by the Augmented Dickey-Fuller test
 for all quantitative variables\footnote{
 %
 If the group factor is specified, the panel version of the
 Augmented Dickey-Fuller test proposed by \cite{levin02} is used instead.
 %
-}, and missing values are imputed
-using the Expectation-Maximization algorithm \citep{dempster77}.
+}, and missing values are imputed with their conditional mean
+using the Expectation-Maximization algorithm \citep{dempster77}\footnote{
+%
+Imputation of missing values is performed after eventual logarithmic
+transformation and differentiation by assuming group-specific means
+and time-invariant covariance matrix.
+Qualitative variables cannot contain missing values.
+Each quantitative variable must have at least 3 observed values
+if the group factor is not specified,
+otherwise it must have at least 3 observed values per group.
+%
+}.
 In this problem, the region is indicated as the group factor,
 while population and gross domestic product are indicated as
 exogenous variables.
@@ -515,19 +539,56 @@ global and local control options are provided to arguments
 
 @
 <<echo=T>>=
-mod0 <- dlsem(mycode,group="Region",exogenous=c("Population","GDP"),
-  data=industry,global.control=mycon_G,local.control=mycon_L,log=T)
+indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),
+  data=industry,global.control=indus.global,local.control=indus.local,log=T)
 @
 
-After the estimation, the user can display the DAG where each edge
-is coloured with respect to the sign of the estimated causal effect
-(green: positive, red: negative, light gray: not significant).
-The result is shown in Figure \ref{fig:dag1}:
-the group factor and exogenous variables are omitted from the DAG.
+The results of command \code{dlsem}($\cdot$) is an object of class \code{dlsem}.
+Among the components of \code{dlsem} objects, we found:
+\begin{itemize}
+\item \code{estimate}: a list of objects of class \code{lm}, one for each response variable;
+\item \code{model.code}: the model code after eventual adaptation;
+\item \code{data.used}: data after eventual logarithmic transformation and differentiation.
+\end{itemize}
+The \code{summary} method for class \code{dlsem} returns the summary of the estimation
+of parameters $a_j$, $b_j$ and $\theta_j$ ($j=1,\ldots,J$)
+for each endogenous variable, together with goodness of fit indices:
+
+\small
+@
+<<echo=T>>=
+summary(indus.mod)
+@
+\normalsize
+
+~\\
+We see that the number of job positions in industry (\code{Job}) significantly influences,
+on one hand, the amount of private consumption (\code{Consum}) from 0 to 4 time lags and,
+on the other hand, the amount of greenhouse gas emissions (\code{Pollution}) from 2 to 6 time lags,
+while the amount of private consumption (\code{Consum}) significantly influences
+the amount of greenhouse gas emissions (\code{Pollution}) from 1 to 5 time lags.
+This result provides evidence that the influence of industrial development
+on pollution is both direct and mediated by private consumption.
+
+The full summary of parameter estimation, including the group-specific intercepts
+and the coefficients of exogenous variables, can be obtained by applying the
+\code{summary} method to component \code{estimate} of the \code{dlsem} object:
+
+\small
+@
+<<echo=T>>=
+lapply(indus.mod$estimate,summary)
+@
+\normalsize
+
+~\\
+The \code{plot} method for class \code{dlsem} displays the DAG of the model
+where each edge is coloured with respect to the sign of the estimated causal effect
+(green: positive, red: negative, light gray: not statistically significant):
 
 @
 <<echo=T,eval=F>>=
-plot(mod0)
+plot(indus.mod)
 @
 
 
@@ -535,93 +596,63 @@ plot(mod0)
 \centering
 \includegraphics[width=0.4\textwidth]{figures/dag1.pdf}
 \caption{The DAG where each edge is coloured with respect to the sign of the estimated causal effect.
-Green: non-negative causal effect. Red: non-positive causal effect.
+Green: positive causal effect. Red: negative causal effect.
 Grey: not statistically significant causal effect (no such edges here).}
 \label{fig:dag1}
 \end{figure}
 
 
-All causal effects result statistically significant,
-providing evidence that the influence of industrial development
-on pollution is both direct and mediated by private consumption.
-
-The user can also request the summary of estimation:
-
-\small
-@
-<<echo=T>>=
-summary(mod0)
-@
-\normalsize
-
-~\\
-The summary of estimation returns estimates of parameters $\theta_j$ ($j=1,\ldots,J$).
-Instead, the command \code{edgeCoeff}$(\cdot)$ can be used to obtain estimates
-and confidence intervals of coefficients at the relevant time lags
-$\beta_{j,l}$ ($j=1,\ldots,J$; $l=0,1,\ldots$):
-
-\small
-@
-<<echo=T>>=
-edgeCoeff(mod0)
-@
-\normalsize
+The result is shown in Figure \ref{fig:dag1}.
+Note that the DAG includes only the endogenous variables.
 
 
 \subsection{Assessment of causal effects}
 \label{sub:example4}
 
-Causal effects can be computed using the command \code{causalEff}$(\cdot)$.
-The main arguments are the name of one or more variables generating the causal effects
-(argument \code{from}), and the name of the variable receiving the causal effects
+After parameter estimation is performed by means of command \code{dlsem}$(\cdot)$,
+the command \code{causalEff}$(\cdot)$ can be used on the resulting object of class \code{dlsem}
+to compute the causal effect associated to any edge, directed path or couple of nodes
+at different time lags.
+The main arguments of command \code{causalEff}$(\cdot)$ include
+the name of one or more variables generating the causal effect
+(argument \code{from}), and the name of the variable receiving the causal effect
 (argument \code{to}).
-Optionally, specific time lags at which causal effects must be computed
+Optionally, specific time lags at which the causal effect must be computed
 can be provided to argument \code{lag},
 otherwise all the relevant ones are considered.
-Also, the user can choose whether instantaneous 
+Also, the user can choose whether the instantaneous 
 (argument \code{cumul} set to \code{FALSE}, the default)
-or cumulative (argument \code{cumul} set to \code{TRUE})
-causal effects must be returned.
-The group factor and exogenous variables cannot be indicated as starting
-or ending variables, and they are not involved in the computation of causal effects,
-but the resulting causal effects are net of their influence.
+or the cumulative (argument \code{cumul} set to \code{TRUE})
+causal effect must be returned.
+Only exogenous variables can be indicated as starting or ending variables.
+Note that, due to the properties of the multiple linear regression model,
+causal effects are net of the influence of the group factor and exogenous variables.
 
-Here, the cumulative causal effect of the number of job positions
-on the amount of greenhouse gas emissions
-is requested at time lags 0, 5, 10, 15 and 20:
+The cumulative causal effect of the number of job positions
+on the amount of greenhouse gas emissions can be obtained
+by means of the following code:
 
 \small
 @
 <<echo=T>>=
-causalEff(mod0,from="Job",to="Pollution",lag=seq(0,20,by=5),cumul=T)
+causalEff(indus.mod,from="Job",to="Pollution",cumul=T)
 @
 \normalsize
 
 ~\\
-The output of command \code{causalEff}$(\cdot)$ is a list of matrices, each containing
-estimates and confidence intervals of the causal effect associated to
-each path connecting the starting variables to the ending variable
-at the requested time lags.
-Also, estimates and confidence intervals of the overall causal effect
-are shown in the component named \code{overall}.
+The output of command \code{causalEff}$(\cdot)$ is a list of matrices,
+each containing estimate and confidence interval
+for the causal effect associated to each path connecting
+the starting variables to the ending variable at the requested time lags.
+Also, estimate and confidence interval for the overall causal effect
+are contained in the component named \code{overall}.
 
-Since the logarithmic transformation was applied to all quantitative
-variables, causal effects above are interpreted as elasticities,
-that is, for a $1\%$ of job positions more,
-greenhouse gas emissions are expected to grow by $0.61\%$ after $5$ years
-and by $1.10\%$ after $10$ years.
-The influence ends before $15$ years, as the cumulative causal
-effects after $15$ and $20$ years are equal.
-The time lag up to which the effect is non-zero can be found
-by running command \code{causalEff}$(\cdot)$ without providing
-a value to argument \code{lag}:
-
-\small
-@
-<<echo=T>>=
-causalEff(mod0,from="Job",to="Pollution",cumul=T)$overall
-@
-\normalsize
+Since the logarithmic transformation was applied to all quantitative variables,
+the resulting causal effects are interpreted as elasticities, that is, for a $1\%$
+of job positions more, greenhouse gas emissions are expected to grow by $0.61\%$
+after 5 years and by $1.11\%$ after 10 years.
+The influence ends after 11 years, as the cumulative causal effects
+at 11 and 12 years are equal.
 
 ~\\
 The estimated lag shape associated to a path or to an overall causal
@@ -631,8 +662,8 @@ connecting the number of job positions to the amount of greenhouse gas emissions
 
 @
 <<echo=T,eval=F>>=
-lagPlot(mod0,path="Job*Pollution")
-lagPlot(mod0,path="Job*Consum*Pollution")
+lagPlot(indus.mod,path="Job*Pollution")
+lagPlot(indus.mod,path="Job*Consum*Pollution")
 @
 
 or the lag shape associated to the overall causal effect of
@@ -640,17 +671,21 @@ the number of job positions on the amount of greenhouse gas emissions:
 
 @
 <<echo=T,eval=F>>=
-lagPlot(mod0,from="Job",to="Pollution")
+lagPlot(indus.mod,from="Job",to="Pollution")
 @
 
 The resulting graphics are shown in Figure \ref{fig:lagsh}.
+Note that the lag shape associated to a path including more than one edge
+is a mixture of constrained lag shapes, thus it may show an irregular aspect,
+like it is the case of the overall causal effect displayed in the lower
+panel of Figure \ref{fig:lagsh}.
 
 
 \begin{figure}[!h]
 \centering
-{\includegraphics[width=0.48\textwidth]{figures/lagsh1.pdf}}\quad
-{\includegraphics[width=0.48\textwidth]{figures/lagsh2.pdf}}\\
-{\includegraphics[width=0.48\textwidth]{figures/lagsh3.pdf}}
+{\includegraphics[width=0.48\textwidth]{figures/lagsh1a.pdf}}\quad
+{\includegraphics[width=0.48\textwidth]{figures/lagsh1b.pdf}}\\
+{\includegraphics[width=0.48\textwidth]{figures/lagsh1c.pdf}}
 \caption{The estimated lag shape associated to each path connecting
 the number of job positions to the amount of greenhouse gas emissions (upper panels)
 and to the overall causal effect (lower panel).
@@ -659,8 +694,79 @@ $95\%$ confidence intervals are shown in grey.}
 \end{figure}
 
 
+\subsection{Model comparison}
+\label{sub:example5}
 
-%\pdfbookmark{References}{sec:refs}
+We now fit two alternative models for the industrial development problem,
+such that all lag shapes are quadratic decreasing and gamma lag shapes, respectively:
+
+\small
+@
+<<echo=T>>=
+# model 2: quadratic decreasing lag shapes
+indus.code_2 <- list(
+  Job ~ 1,
+  Consum~qdec(Job,0,15),
+  Pollution~qdec(Job,0,15)+qdec(Consum,0,15)
+  )
+indus.mod_2 <- dlsem(indus.code_2,group="Region",exogenous=c("Population","GDP"),
+  data=industry,global.control=indus.global,local.control=indus.local,log=T)
+summary(indus.mod_2)
+# model 3: gamma lag shapes
+indus.code_3 <- list(
+  Job ~ 1,
+  Consum~gamma(Job,0.5,0.5),
+  Pollution~gamma(Job,0.5,0.5)+gamma(Consum,0.5,0.5)
+  )
+indus.mod_3 <- dlsem(indus.code_3,group="Region",exogenous=c("Population","GDP"),
+  data=industry,global.control=indus.global,local.control=indus.local,log=T)
+summary(indus.mod_3)
+@
+\normalsize
+
+We see that the three models provide different results.
+Methods \code{AIC} and \code{BIC} for class \code{dlsem} can be used
+to compare them according to AIC and BIC, respectively:
+
+\small
+@
+<<echo=T>>=
+lapply(list(QUEC=indus.mod,QDEC=indus.mod_2,GAMMA=indus.mod_3),AIC)
+lapply(list(QUEC=indus.mod,QDEC=indus.mod_2,GAMMA=indus.mod_3),BIC)
+@
+\normalsize
+
+The model with endpoint-constrained quadratic lag shapes has the best
+fit according to both AIC and BIC.
+Note that the fit for variable \code{Job} is constant in each model
+because it has no endogenous covariates.
+
+
+\section{Future development}
+\label{sec:future}
+
+Lag shapes included in the package may represent a large number of real-world lag structures:
+unimodal symmetric (with the endpoint-constrained quadratic lag shape),
+unimodal asymmetric (with the gamma lag shape) and
+skewned ones (with the quadratic decreasing lag shape).
+Nevertheless, additional lag shapes with further specific features may be added in future.
+
+Parameter estimation in DLSEM cannot be performed in a single step
+unless gestation and lead lags are all known.
+Since complete search over all the possible models is infeasible
+for most real-world applications, a heuristic search is currently implemented.
+Further development of the package may be directed towards the improvement
+of the search strategy.
+
+Grouped data are currently managed through fixed effects estimation.
+In the future, random effects estimation may be implemented to enhance inference
+whenever the considered groups are a subset of the possible ones,
+or covariates with values constant within groups (second-level covariates) are involved.
+
+Please, do not hesitate to contact me for questions, feedback or bug reports.
+
+
+\pdfbookmark{References}{sec:refs}
 \begin{thebibliography}{99.}%
 
 \bibitem[Akaike(1974)]{akaike74} H. Akaike (1974). A New Look at the Statistical Identification Model.
@@ -696,10 +802,6 @@ In: T. C. Koopmans (ed.), Statistical Inference in Dynamic Economic Models, page
 Unit Root Tests in Panel Data: Asymptotic and Finite-Sample Properties.
 \textit{Journal of Econometrics}, 108: 1-24.
 
-\bibitem[Magrini \textit{et al.}(2016)]{magrini16} A. Magrini, F. Bartolini, A. Coli, and B. Pacini (2016).
-Distributed-Lag Structural Equation Modelling: An Application to Impact Assessment of Research Activity on European Agriculture.
-\emph{Proceedings of the 48th Meeting of the Italian Statistical Society}, 8-10 June 2016, Salerno, IT.
-
 \bibitem[Pearl(2012)]{pearl12} J. Pearl (2012).
 The Causal Foundations of Structural Equation Modelling.
 In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, pages 68-91. Guilford Press, New York, US-NY. 
@@ -707,6 +809,10 @@ In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, pages 68-91. G
 \bibitem[Pearl(2000)]{pearl00} J. Pearl (2000).
 Causality: Models, Reasoning, and Inference.
 Cambridge University Press. Cambridge, UK.
+
+\bibitem[Schwarz(1978)]{schwarz78} G. Schwarz (1978).
+Estimating the Dimension of a Model.
+\textit{Annals of Statistics}, 6, 461-464.
 
 \bibitem[Wright(1934)]{wright34} S. Wright (1934). The Method of Path Coefficients. Annals of Mathematical Statistics, 5(3): 161-215.
 

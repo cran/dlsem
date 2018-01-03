@@ -1,15 +1,22 @@
-export(dlsem, causalEff, lagPlot, edgeCoeff, modelFit, auto.lagPlot, isIndep, unirootTest)
+export(dlsem, causalEff, lagPlot, auto.lagPlot, isIndep, unirootTest)
 
 S3method(print, dlsem)
 S3method(summary, dlsem)
 S3method(plot, dlsem)
+S3method(nobs, dlsem)
+S3method(coef, dlsem)
+S3method(vcov, dlsem)
+S3method(logLik, dlsem)
+S3method(AIC, dlsem)
+S3method(BIC, dlsem)
+S3method(fitted, dlsem)
 S3method(residuals, dlsem)
 
-import(nnet, splines, graph, gRbase, Rgraphviz)
+import(graph, gRbase, Rgraphviz, splines)
 importFrom("grDevices", "dev.off", "pdf")
 importFrom("graphics", "abline", "axis", "box", "grid", "legend","mtext", "par", "points", "polygon")
 importFrom("methods", "new")
-importFrom("stats", "coefficients", "cov", "vcov", "formula","lm", "model.matrix", "logLik",
-  "residuals", "fitted", "quantile", "predict", "pnorm", "qnorm", "qgamma", "rnorm", "rt",
+importFrom("stats", "coefficients", "coef", "nobs", "cov", "vcov", "formula","lm", "model.matrix", "logLik",
+  "AIC", "BIC", "residuals", "fitted", "quantile", "predict", "pnorm", "qnorm", "qgamma", "rnorm", "rt",
   "rchisq", "sd", "var", "anova","deviance", "approx", "embed", "na.omit")
 importFrom("utils", "flush.console")
