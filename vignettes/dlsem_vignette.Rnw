@@ -1,11 +1,11 @@
 \documentclass[10pt]{article}
 %\VignetteIndexEntry{Distributed-lag linear structural equation models in R: the dlsem package}
 %\VignettePackage{dlsem}
-%\VignetteKeyword{Constrained lag shapes}
-%\VignetteKeyword{Directed acyclic graphs}
-%\VignetteKeyword{Dynamic causal inference}
-%\VignetteKeyword{Probabilistic graphical models}
-%\VignetteKeyword{Time series}
+%\VignetteKeyword{directed acyclic graphs}
+%\VignetteKeyword{dynamic causal effects}
+%\VignetteKeyword{linear Markovian models}
+%\VignetteKeyword{polynomial lag shape}
+%\VignetteKeyword{probabilistic graphical models}
 
 \usepackage{boxedminipage,color,a4wide,url}
 
@@ -25,6 +25,8 @@
 \usepackage[latin1]{inputenc}
 \usepackage{hyperref}
 \usepackage{Sweave}
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm]{geometry}
+
 \setkeys{Gin}{width=0.4\textwidth}
 
 \def\pkg#1{\texttt{#1}}
@@ -33,7 +35,7 @@
 
 \title{Distributed-lag linear structural equation models in \proglang{R}:\\the \pkg{dlsem} package}
 \author{Alessandro Magrini\\Dep. Statistics, Computer Science, Applications\\University of Florence, Italy\\<magrini@disia.unifi.it>}
-\date{\pkg{dlsem} version 2.1 -- 04 January 2018}
+\date{\pkg{dlsem} version 2.2 -- 05 March 2018}
 
 
 \begin{document}
@@ -75,21 +77,23 @@
 
 \section{Introduction}
 
-Structural causal models (SCMs, \citealp[Chapter 5]{pearl00})
-consist in the simultaneous application of regression models
-to a set of variables, and, in a parametric linear formulation (linear SCMs),
-represent one of the prevalent methodologies for causal inference in
-contemporary applied sciences.
+Structural causal models (SCMs, \citealp{pearl00})
+are a mathematical framework describing the behaviour of a
+multivariate system, and represent one of the prevalent methodologies
+for causal inference in contemporary applied sciences.
+Markovian SCMs are a special case where the joint probability distribution
+of the considered variables can be factored according to a directed acyclic graph.
 %
-\textit{Distributed-lag linear structural equation models} (DLSEMs)
-are an extension of linear SCMs, where each factor of
-the joint probability distribution is a distributed-lag linear regression
-with constrained lag shapes \citep[Chapters 9-10]{judge85}.
+\textit{Distributed-lag linear structural equation models} (DLSEMs) are
+Markovian SCMs, where each factor of the joint probability distribution
+is a distributed-lag linear regression model
+(see, for example, \citealp[Chapters 9-10]{judge85}).
 %
 DLSEMs account for temporal delays in the dependence relationships among
-domain variables and allow to assess causal effects at different time lags.
-As such, they are suitable to investigate the effect of an external impulse
-on a multidimensional system through time.
+the considered variables and allow to perform dynamic causal inference
+by assessing causal effects at different time lags.
+As such, they are suitable to investigate the effect of an external
+impulse on a multivariate system through time.
 Econometrics and epidemiology are two of the main fields of application for DLSEMs.
 
 Package \pkg{dlsem} implements inference functionalities for DLSEMs
@@ -100,39 +104,46 @@ In Section \ref{sec:install}, instructions for the installation
 of the \pkg{dlsem} package are provided.
 In Section \ref{sec:example}, the practical use of \pkg{dlsem}
 is illustrated through a simple impact assessment problem.
-Section \ref{sec:future} includes considerations on future development of the package.
+Section \ref{sec:remarks} includes final remarks and considerations
+on future development of the package.
 
 
 \section{Theory}
 \label{sec:theory}
 
+\paragraph{Distributed-lag linear regression}
+%
 Lagged instances of one or more covariates
-can be included in the linear regression model
+may be included in the linear regression model
 to account for temporal delays in their influence on the response:
 \begin{equation}\label{eq:uncons_dllm}
-y_t = \beta_0+\sum_{j=1}^J \sum_{l=0}^{L_j} \beta_{j,l} ~ x_{j,t-l}+\epsilon_t \hspace{1cm} \epsilon_t \sim \text{N}(0,\sigma^2)
+y_t = \beta_0+\sum_{j=1}^J\sum_{l=0}^{L_j}\beta_{j,l}~x_{j,t-l}+\epsilon_t
+%\hspace{1cm} \epsilon_t \sim \text{N}(0,\sigma^2)
 \end{equation}
-where $y_t$ is the value of the response variable
-at time $t$ and $x_{j,t-l}$ is the value of the
-$j$-th covariate at $l$ time lags before $t$.
+where $y_t$ is the value of the response variable at time $t$,
+$x_{j,t-l}$ is the value of the $j$-th covariate at $l$ time lags before $t$,
+and $\epsilon_t$ is the random error at time $t$ uncorrelated with the covariates and with $\epsilon_{t-1}$.
 The set $(\beta_{j,0},\beta_{j,1},\ldots,\beta_{j,L_j})$
 is denoted as the \textit{lag shape} of the $j$-th covariate and
 represents its regression coefficient (in the remainder, simply `coefficient')
 at different time lags.
 
-Parameter estimation is inefficient because lagged instances
-of the same covariate are typically highly correlated.
-The Almon's polynomial lag shape \citep{almon65}
-is a well-known solution to this problem, where coefficients for
-lagged instances of a covariate are forced to follow
-a polynomial of order $P$:
+The model in Formula \ref{eq:uncons_dllm} has the disadvantage that
+a parameter is required for each lagged instance of a covariate,
+and lagged instances of the same covariate tend to be highly correlated.
+The Almon's polynomial lag shape \citep{almon65} overcomes these
+limitations by forcing the coefficients for lagged instances
+of the same covariate to follow a polynomial of order $Q$:
 \begin{equation}\label{eq:almon}
-\beta_{j,l} = \sum_{p=0}^P \phi_p l^p
+\beta_{j,l} = \begin{cases}
+  \phi_0 & l=0\\
+  \sum_{q=0}^Q \phi_q l^q & \text{otherwise}
+  \end{cases}
 \end{equation}
-Unfortunately, the Almon's polynomial lag shape may
-show multiple modes and coefficients with different signs,
-thus entailing problems of interpretation.
-Constrained lag shapes \citep[Chapters 9-10]{judge85} overcome this deficiency.
+For instance, for $q=2$ we have that $\beta_{j,l} =\phi_0+\phi_1 l+\phi_2 l^2$.
+Unfortunately, the Almon's polynomial lag shape may show multiple modes
+and coefficients with different signs, thus entailing problems of interpretation.
+Constrained lag shapes \citep[Chapters 9-10]{judge85} overcome this issue.
 Package \pkg{dlsem} includes the \textit{endpoint-constrained quadratic} lag shape:
 \begin{equation}\label{eq:quec}
 \beta_{j,l} = \begin{cases}
@@ -141,9 +152,9 @@ Package \pkg{dlsem} includes the \textit{endpoint-constrained quadratic} lag sha
   \end{cases}
 \end{equation}
 the \textit{quadratic decreasing} lag shape:
-\begin{equation}\label{eq:qud}
+\begin{equation}\label{eq:qdec}
 \beta_{j,l} = \begin{cases}
-  \theta_j \frac{l^2-2 b_j l+b_j^2}{(b_j-a_j)^2} & a_j \leq l \leq b_j\\
+  \theta_j \frac{l^2-2(b_j+1)l+(b_j+1)^2}{(b_j-a_j+1)^2} & a_j \leq l \leq b_j\\
   0 & \text{otherwise}
   \end{cases}
 \end{equation}
@@ -154,13 +165,10 @@ and the \textit{gamma} lag shape:
 0<\delta_j<1 \hspace{1cm} 0<\lambda_j<1
 \end{gathered}
 \end{equation}
-The endpoint-constrained quadratic lag shape
-is zero for a lag $l \leq a_j-1$ or $l \geq b_j+1$,
+The endpoint-constrained quadratic lag shape is zero for a time lag $l<a_j$ or $l>b_j$,
 and symmetric with mode equal to $\theta_j$ at lag $(a_j+b_j)/2$.
-The quadratic decreasing lag shape
-decreases from value $\theta_j$ at lag $a_j$
-to value $0$ at lag $b_j$ according to
-a quadratic function.
+The quadratic decreasing lag shape decreases from value $\theta_j$ at lag $a_j$
+to value $0$ at lag $b_j+1$ according to a quadratic function.
 The gamma lag shape is positively skewed with mode equal to $\theta_j$
 at lag $\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}$.
 Value $a_j$ is denoted as the \textit{gestation lag},
@@ -168,9 +176,9 @@ value $b_j$ as the \textit{lead lag}, and value $b_j-a_j$ as the \textit{lag wid
 A static coefficient is obtained if $a_j=b_j=0$.
 Since it is not expressed as a function of $a_j$ and $b_j$,
 the gamma lag shape cannot reduce to a static coefficient,
-but the corresponding values of $a_j$ and $b_j$ can be computed
+but the corresponding values of $a_j$ and $b_j$ may be computed
 through numerical approximation.
-
+%
 For these three lag shapes it holds:
 \begin{equation}\label{eq:sign}
 \begin{gathered}
@@ -184,43 +192,62 @@ and we refer to the \textit{lag sign} as the sign of parameter $\theta_j$.
 A linear regression model with constrained lag shapes is linear
 in parameters $\beta_0,\theta_1,\ldots,$ $\theta_J$,
 provided that the values of $a_1,\ldots,a_J,b_1,\ldots,b_J$ are known.
-Thus, one can use ordinary least squares to estimate parameters
+Thus, one may use ordinary least squares to estimate parameters
 $\beta_0,\theta_1,\ldots,\theta_J$ for several models
 with different values of $a_1,\ldots,a_J,b_1,\ldots,b_J$,
 and then select the one with the
 minimum value of the Akaike Information Criterion (AIC, \citealp{akaike74})
 or the Bayesian Information Criterion (BIC, \citealp{schwarz78})\footnote{
 %
-Neither the response variable nor the covariates must contain a trend
-in order to obtain unbiased estimates \citep{granger74}.
+Note that neither the response variable nor the covariates must contain
+a trend in order to obtain unbiased estimates with ordinary least squares \citep{granger74}.
 A reasonable procedure is to sequentially apply differentiation to all
 variables until the Augmented Dickey-Fuller test \citep{dickey81}
 rejects the hypothesis of unit root for all of them.
 %
 }.
 
-Structural causal models (SCMs) were developed by Pearl in the context of causal inference.
+\paragraph{Structural causal models}
+%
+Structural causal models (SCMs) were developed by \cite{pearl00}
+in the context of causal inference.
 They are rooted to path analysis \citep{wright34}
 and simultaneous equation models \citep{haavelmo43,koopmans50}.
-The basic feature of a SCM is a directed acyclic graph
-(DAG, see \citealp[pages 12 and following]{pearl00}).
-In a DAG, variables are represented by nodes and directed
-edges may connect pairs of nodes %variables
-without creating directed cycles (Figure \ref{fig:dagsam}).
-If a variable receives an edge from another variable,
-the latter is called \textit{parent} of the former.
-A DAG encodes a factorization of the joint probability distribution:
-\begin{equation}\label{eq:dag}
-p(V_1,\dots,V_m )=\prod_{j=1}^J p(V_j \mid \Pi_j)
+A SCM consists of a tuple
+$\{\boldsymbol{V},\boldsymbol{U},\Omega_{\boldsymbol{V}},\Omega_{\boldsymbol{U}},
+\boldsymbol{f},\mathbb{P}_{\boldsymbol{U}}\}$, where:
+\begin{itemize}
+\item $\boldsymbol{V}=\{V_1,\ldots,V_J\}$ is a set of endogenous variables;
+\item $\Omega_{\boldsymbol{V}}=\Omega_{V_1}\times\ldots\times\Omega_{V_J}$ is the
+cartesian product of the domains of variables in $\boldsymbol{V}$;
+\item $\boldsymbol{U}=\{U_1,\ldots,U_K\}$ is a set of unobserved variables;
+\item $\Omega_{\boldsymbol{U}}=\Omega_{U_1}\times\ldots\times\Omega_{U_K}$ is the
+cartesian product of the domains of variables in $\boldsymbol{U}$;
+\item $\boldsymbol{f}:~\Omega_{\boldsymbol{V}}\times\Omega_{\boldsymbol{U}}\longrightarrow\Omega_{\boldsymbol{V}}$
+is a measurable function;
+\item $\mathbb{P}_{\boldsymbol{U}}$ is a probability measure on $\Omega_{\boldsymbol{U}}$.
+\end{itemize}
+Markovian SCMs \citep[Chapter 3]{pearl00} are a special case where
+$\boldsymbol{f}$ is acyclic and variables in $\boldsymbol{U}$ are each other independent.
+In a Markovian SCM, the following factorization of the
+joint probability distribution of variables in $\boldsymbol{V}$ holds:
+\begin{equation}\label{eq:markov}
+p(v_1,\dots,v_J)=\prod_{j=1}^J p(v_j \mid \Pi_j=\pi_j)
 \end{equation}
-where $\Pi_j$ is the set of parents of variable $V_j$.
-As such, if some pairs of variables are not connected by an edge,
-the DAG implies a set of conditional independence statements
-\citep[pages 16 and following]{pearl00}.
-A SCM is defined by a specification of $p(V_j \mid \Pi_j)$ for $j=1,\ldots,J$.
-In a linear parametric formulation (linear SCM), $p(V_j \mid \Pi_j)$
-is the linear regression model where $V_j$ is the response
-variable and its parents in the DAG are the covariates.
+where $\Pi_j$ is the set of variables in $\boldsymbol{V}$ such that, for $j>1$,
+$V_j$ is independent of variables in $\{V_1,\ldots,V_{j-1}\}\setminus\Pi_j$,
+given variables in $\Pi_j$.
+This means that the joint probability distribution of variables in $\boldsymbol{V}$ 
+can be factored according to conditional independence relationships
+holding among them disregarding variables in $\boldsymbol{U}$.
+\citet[pages 12 and following]{pearl00} shows that these conditional
+independence relationships are encoded into a directed acyclic graph (DAG)
+such that $\Pi_j$ is the parent set of $V_j$, $\forall~j=1,\ldots,J$.
+For example, in the Markovian SCM associated to the DAG in Figure \ref{fig:dagsam}, it holds:
+\begin{equation}\label{eq:dag}
+p(v_1,v_2,v_3,v_4)=p(v_1)~p(v_2 \mid v_1)~p(v_3 \mid v_1)~p(v_4 \mid v_2,v_3)
+\end{equation}
+and, for example, $V_4$ is independent of $V_1$ given $V_2$ and $V_3$.
 
 
 \begin{figure}[!h]
@@ -231,72 +258,107 @@ variable and its parents in the DAG are the covariates.
 \end{figure}
 
 
-The DAG of a SCM has a causal interpretation,
-and a causal effect is associated to each edge, directed path
-or couple of nodes according to the following definitions
-(\citealp[Section 5.3]{pearl00}; \citealp{pearl12}):
-\begin{itemize}
-\item the causal effect associated to each edge in the DAG is
-the coefficient of the variable represented by the node originating
-the edge in the regression model of the variable represented
-by the node receiving the edge;
-\item the causal effect associated to a directed path is
-the product of the causal effects associated to each edge in the path;
-\item the causal effect of a variable on another is
-the sum of the causal effects associated to each
-directed path connecting the nodes representing the two variables.
-\end{itemize}
-In this view, each causal effect in a linear SCM represents
-the average change in the value of a variable induced by an intervention
-provoking a unit variation in the value of another variable.
-The causal effect of a variable on another is
-termed \textit{overall} causal effect,
-the causal effect associated to a directed path
-made by a single edge is called \textit{direct} effect,
-while the causal effects associated to the other directed
-paths are denoted as \textit{indirect} effects.
+Let $\text{do}(V_i=v_i)$ denote an intervention setting the value of $V_i$ to $v_i$.
+Then, in a Markovian SCM it holds:
+\begin{equation}\label{eq:trunc}
+p(v_1,\dots,v_J \mid \text{do}(V_i=v_i))=\prod_{j\not=i} p(v_j \mid \pi_j)\left.\right|_{V_i=v_i}
+\end{equation}
+where $\left.\right|_{V_i=v_i}$ indicates that $p(v_i \mid \pi_i)$ is replaced by value $v_i$.
+This formula, called \textit{truncated factorization} \citep[Section 3.2]{pearl00},
+allows to compute the effect of an intervention from the
+(pre-intervention) distribution in Formula \ref{eq:markov},
+that is to predict such effect from non-experimental (observational) data.
+In a Markovian SCM, the effect of $\text{do}(V_i=v_i)$ on $V_j$,
+called \textit{causal effect} of $V_i$ on $V_j$,
+is given by the following expression (see \citealp[page 70 and following]{pearl00}):
+\begin{equation}\label{eq:markov_ce}
+p(V_j=v_j \mid \text{do}(V_i=v_i))=\sum_{\pi_i} p(V_j=v_j \mid V_i=v_i,\Pi_i=\pi_i)p(\Pi_i=\pi_i)
+\end{equation}
+where $\Pi_i$ is the parent set of $V_i$.
 
-Distributed-lag linear structural equation models (DLSEMs) are
-linear SCMs where each factor of the probability
-distribution in Equation \ref{eq:dag} is a distributed-lag linear
-regression model \citep[Chapters 9-10]{judge85}.
-Time lags are not explicitly shown in the DAG of a DLSEM,
-and an edge connects two nodes, say $V_j \longrightarrow V_i$, if and only if
-there is at least one time lag where the coefficient of variable $V_j$
-in the regression model of variable $V_i$ is non-zero.
-A DLSEM can be exploited to assess the causal effect of any variable
-to another at different time lags by extending the rules above:
+
+%\paragraph{Linear Markovian structural causal models}
+%
+In a linear parametric formulation of SCMs (linear Markovian SCMs),
+each factor $p(v_j \mid \pi_j)$ of the joint probability distribution
+in Formula \ref{eq:markov} is the linear regression model where $V_j$ is
+the response variable and variables in $\Pi_j$ are the covariates.
+For example, in the linear Markovian SCM associated to the DAG
+in Figure \ref{fig:dagsam}, $p(v_4 \mid v_2,v_3)$
+is the linear regression model where $V_4$ is the response
+variable and $V_2$ and $V_3$ are the covariates.
+
+In a linear Markovian SCM, the computation of causal effects involves
+the coefficients of the regression models only, without the need of Formula \ref{eq:markov_ce}.
+Let $\text{do}(\Delta V_i=1)$ be an intervention changing the value of $V_i$ by a unit.
+Under such intervention:
 \begin{itemize}
-  %
-  \item The causal effect associated to each edge in the DAG at lag $k$
-  is represented by the coefficient at lag $k$ of the variable represented by the parent node
-  in the regression model of the variable represented by the child node.
-  %
-  \item The causal effect associated to a directed path at lag $k$ is
-  computed as follows:
-  \begin{itemize}
-  \item[1.] denote the number of edges in the path as $p$;
-  \item[2.] enumerate all the possible $p$-uples of lags, one lag
-    for each of the $p$ edges, such that their sum is equal to $k$;
-  \item[3.] for each $p$-uple of lags:
-    \begin{itemize}
-      \item[-] for each lag in the $p$-uple, compute the coefficient
-      associated to the corresponding edge at that lag;
-      \item[-] compute the product of all these coefficients;
-    \end{itemize}
-  \item[4.] sum all these products.
-  \end{itemize}
-  %
-  \item The causal effect of a variable on another at lag $k$ is
-  represented by the sum of the causal effects at lag $k$
-  associated to each directed path connecting the two variables.
-  %
-  \end{itemize}
-These rules define a causal effect evaluated at a single lag,
-denoted as \textit{instantaneous} causal effect.
-The \textit{cumulative} causal effect at a prespecified lag,
-say $k$, is obtained by summing all the instantaneous causal
-effects for each lag up to $k$.
+\item if $V_i$ is parent of $V_j$,
+the \textit{direct} causal effect of $V_i$ on $V_j$ is equal to
+the coefficient of $V_i$ in the regression model of $V_j$;
+\item the causal effect of $V_i$ on $V_j$ through a multi-edge directed path
+$<V_i,\ldots,V_j>$ connecting $V_i$ to $V_j$,
+called \textit{indirect} causal effect of $V_i$ on $V_j$ through $<V_i,\ldots,V_j>$,
+is equal to (see, for example, \citealp{wright34}):
+\begin{equation}
+e(<V_i,\ldots,V_j>)=\prod_{k:~V_k \in <V_i,\ldots,V_j>\wedge k\not=i} b_{k|k-1}
+\end{equation}
+where $b_{k|k-1}$ is the coefficient of $V_{k-1}$ in the regression model of $V_k$.
+The direct causal effect of $V_i$ on $V_j$
+and all the indirect causal effects of $V_i$ on $V_j$
+are denoted as \textit{pathwise} causal effects of $V_i$ on $V_j$; 
+\item the \textit{overall} causal effect of $V_i$ on $V_j$ is equal to
+the sum of all the pathwise causal effects of $V_i$ on $V_j$.
+\end{itemize}
+For example, in the linear Markovian SCM associated to the DAG in Figure \ref{fig:dagsam},
+there are two directed paths connecting $V_1$ to $V_4$:
+$<V_1,V_2,V_4>$ with pathwise causal effect $b_{2|1}\cdot b_{4|2}$,
+and $<V_1,V_3,V_4>$ with pathwise causal effect $b_{3|1}\cdot b_{4|3}$.
+Thus, the overall causal effect of $V_1$ on $V_4$ is equal to
+%$\text{E}(V_4 \mid \text{do}(\Delta V_1=1))$
+$b_{2|1}\cdot b_{4|2}+b_{3|1}\cdot b_{4|3}$.
+
+
+\paragraph{Distributed-lag linear structural equation models}
+%
+Distributed-lag linear structural equation models (DLSEMs) are
+Markovian SCMs where each factor of the joint probability distribution
+in Formula \ref{eq:markov} is a distributed-lag linear regression model
+(see, for example, \citealp[Chapters 9-10]{judge85}).
+%
+The DAG of a DLSEM would involve all the possible temporal instances
+of each variable in $\boldsymbol{V}$.
+Here, for simplicity, a static DAG is still used for a DLSEM, where
+the edge $<V_i,V_j>$ exists if and only if
+there exists at least one time lag where the coefficient of variable $V_i$
+in the regression model of variable $V_j$ is non-zero.
+Causal effects at different time lags in a DLSEM are defined as follows:
+\begin{itemize}
+\item if $V_i$ is parent of $V_j$,
+the \textit{direct} causal effect of $V_i$ on $V_j$ at lag $l$ is equal to
+the coefficient of $V_i$ at lag $l$ in the regression model of $V_j$;
+\item Let $<V_{d_0},\ldots,V_{d_m}>$, $d_0=i$ and $d_m=j$, be a directed path
+composed of $m$ edges connecting $V_i$ to $V_j$,
+and $\mathcal{L}_m$ be the set of all the possible ordered $m$-uples
+of time lags such that their sum is equal to $l$.
+The \textit{indirect} causal effect of $V_i$ on $V_j$ through such path at lag $l$ is equal to:
+\begin{equation}\label{eq:dlsem_indirect}
+e(<V_{d_0},\ldots,V_{d_m}>;d_0=i,d_m=j)=\sum_{(l_1,\ldots,l_m)\in\mathcal{L}_m}\hspace{0.3cm}\prod_{k=1}^m b^{(l_k)}_{d_k|d_{k-1}}
+\end{equation}
+where $b^{(l_k)}_{d_k|d_{k-1}}$ is the coefficient of $V_{d_{k-1}}$ at lag $l_k$
+in the regression model of $V_{d_k}$;
+\item the \textit{overall} causal effect of $V_i$ on $V_j$ at lag $l$ is equal to
+the sum of all the pathwise causal effects of $V_i$ on $V_j$ at lag $l$.
+\end{itemize}
+The causal effects just defined are denoted as \textit{instantaneous}
+causal effects, as they are evaluated at a single time lag.
+The \textit{cumulative} causal effect at a pre-specified time lag, say $l$,
+is obtained by summing all the instantaneous causal effects at each time lag up to $l$.
+%
+A \textit{pathwise causal lag shape} is the set of causal effects
+associated to a path at different time lags.
+An \textit{overall causal lag shape} is the set of the
+overall causal effects of a variable on another one at different time lags.
 
 
 \section{Installation}
@@ -320,7 +382,7 @@ In order to keep your copy of \pkg{dlsem} up to date, use the command:
 update.packages("dlsem")
 @
 
-The latest version of \pkg{dlsem} is 2.1.
+The latest version of \pkg{dlsem} is 2.2.
 
 
 \section{Illustrative example}
@@ -369,21 +431,22 @@ The first step to build a DLSEM with the \pkg{dlsem} package
 is the definition of the model code, which includes the
 formal specification of the regression models.
 The variables for which a regression model is specified are called \textit{endogenous} variables.
-The other variables are referred as \textit{exogenous} variables.
+The other variables are referred as \textit{exogenous} variables
+(not to be confused with the unobserved disturbances).
 
 The model code must be a list of formulas, one for each regression model.
 In each formula, the response and the covariates must be quantitative variables\footnote{
 %
-Qualitative variables can be included only as exogenous variables,
+Qualitative variables may be included only as exogenous variables,
 as described in Subsection \ref{sub:example3}.
 %
-}, and operators \code{quec}$(\cdot)$, \code{qdec}$(\cdot)$ and \code{gamma}$(\cdot)$
-can be employed to specify, respectively, an endpoint-constrained quadratic,
+}, and operators \code{quec.lag}$(\cdot)$, \code{qdec.lag}$(\cdot)$ and \code{gamma.lag}$(\cdot)$
+may be employed to specify, respectively, an endpoint-constrained quadratic,
 a quadratic decreasing or a gamma lag shape.
-Operators \code{quec}$(\cdot)$ and \code{qdec}$(\cdot)$ have three arguments:
+Operators \code{quec.lag}$(\cdot)$ and \code{qdec.lag}$(\cdot)$ have three arguments:
 the name of the covariate to which the lag shape is applied,
 the gestation lag ($a_j$) and the lead lag ($b_j$).
-Operator \code{gamma}$(\cdot)$ has three arguments:
+Operator \code{gamma.lag}$(\cdot)$ has three arguments:
 the name of the covariate to which the lag shape is applied,
 parameter $\delta_j$ and parameter $\lambda_j$.
 If none of these two operators is applied to a covariate, it is assumed that
@@ -400,8 +463,8 @@ lag shapes between 0 and 15 time lags:
 <<echo=T>>=
 indus.code <- list(
   Job ~ 1,
-  Consum~quec(Job,0,15),
-  Pollution~quec(Job,0,15)+quec(Consum,0,15)
+  Consum~quec.lag(Job,0,15),
+  Pollution~quec.lag(Job,0,15)+quec.lag(Consum,0,15)
   )
 @
 
@@ -425,7 +488,7 @@ If not provided, it is taken as equal to \code{max.lead} (see below);
 If not provided, it is computed accordingly to the sample size;
 \item \code{min.width}: the minimum lag width for all lag shapes.
 It cannot be greater than \code{max.lead}. If not provided, it is taken as 0;
-\item \code{sign}: the lag sign for all lag shapes, that can be
+\item \code{sign}: the lag sign for all lag shapes, that may be
 either \code{'+'} for positive or \code{'-'} for negative.
 If not provided, adaptation will disregard the lag sign.
 \end{itemize}
@@ -453,7 +516,7 @@ Suppose that one wants to perform adaptation with the following constraints for 
 (ii) maximum lead lag of 15 years,
 (iii) minimum lag width of 5 years,
 (iv) positive lag sign.
-Control options for these constraints can be expressed in several ways.
+Control options for these constraints may be expressed in several ways.
 The most simple solution is to specify only global control options,
 as the constraints hold for all regression models:
 
@@ -495,7 +558,7 @@ indus.local <- list(
 
 Once the model code and control options are specified, parameter estimation
 can be performed using the command \code{dlsem}$(\cdot)$.
-The user can indicate a single group factor (just one) to argument \code{group}
+The user may indicate a single group factor (just one) to argument \code{group}
 and one or more exogenous variables to argument \code{exogenous}.
 By indicating the group factor, one intercept for each level
 of the group factor will be estimated in each regression model,
@@ -503,10 +566,10 @@ in order to explain the variability due to differences between groups.
 By indicating exogenous variables, they will be included as
 non-lagged covariates in each regression model,
 in order to eliminate cross-sectional spurious effects.
-Each exogenous variable can be either qualitative or quantitative
+Each exogenous variable may be either qualitative or quantitative
 and its coefficient in each regression
 model is $0$ for time lags greater than $0$ (no lag).
-The user can decide to apply the logarithmic transformation to all
+The user may decide to apply the logarithmic transformation to all
 strictly positive quantitative variables by setting argument
 \code{log} to \code{TRUE},
 in order to interpret each coefficient as an elasticity
@@ -518,12 +581,11 @@ for all quantitative variables\footnote{
 If the group factor is specified, the panel version of the
 Augmented Dickey-Fuller test proposed by \cite{levin02} is used instead.
 %
-}, and missing values are imputed with their conditional mean
-using the Expectation-Maximization algorithm \citep{dempster77}\footnote{
+}, and each missing value is replaced by its conditional mean
+computed through the Expectation-Maximization algorithm \citep{dempster77}\footnote{
 %
-Imputation of missing values is performed after eventual logarithmic
-transformation and differentiation by assuming group-specific means
-and time-invariant covariance matrix.
+The computation is performed after eventual logarithmic transformation and differentiation,
+assuming group-specific means and time-invariant covariance matrix.
 Qualitative variables cannot contain missing values.
 Each quantitative variable must have at least 3 observed values
 if the group factor is not specified,
@@ -546,13 +608,11 @@ indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),
 The results of command \code{dlsem}($\cdot$) is an object of class \code{dlsem}.
 Among the components of \code{dlsem} objects, we found:
 \begin{itemize}
-\item \code{estimate}: a list of objects of class \code{lm}, one for each response variable;
-\item \code{model.code}: the model code after eventual adaptation;
+\item \code{estimate}: a list of objects of class \code{lm}, one for each regression model;
+\item \code{call}: a list containing the call for each regression model after eventual adaptation of lag shapes;
 \item \code{data.used}: data after eventual logarithmic transformation and differentiation.
 \end{itemize}
-The \code{summary} method for class \code{dlsem} returns the summary of the estimation
-of parameters $a_j$, $b_j$ and $\theta_j$ ($j=1,\ldots,J$)
-for each endogenous variable, together with goodness of fit indices:
+The \code{summary} method for class \code{dlsem} returns the summary of the estimation:
 
 \small
 @
@@ -570,18 +630,6 @@ the amount of greenhouse gas emissions (\code{Pollution}) from 1 to 5 time lags.
 This result provides evidence that the influence of industrial development
 on pollution is both direct and mediated by private consumption.
 
-The full summary of parameter estimation, including the group-specific intercepts
-and the coefficients of exogenous variables, can be obtained by applying the
-\code{summary} method to component \code{estimate} of the \code{dlsem} object:
-
-\small
-@
-<<echo=T>>=
-lapply(indus.mod$estimate,summary)
-@
-\normalsize
-
-~\\
 The \code{plot} method for class \code{dlsem} displays the DAG of the model
 where each edge is coloured with respect to the sign of the estimated causal effect
 (green: positive, red: negative, light gray: not statistically significant):
@@ -610,17 +658,15 @@ Note that the DAG includes only the endogenous variables.
 \label{sub:example4}
 
 After parameter estimation is performed by means of command \code{dlsem}$(\cdot)$,
-the command \code{causalEff}$(\cdot)$ can be used on the resulting object of class \code{dlsem}
-to compute the causal effect associated to any edge, directed path or couple of nodes
-at different time lags.
+the command \code{causalEff}$(\cdot)$ can be used on the resulting object of class \code{dlsem} to compute
+all the pathwise causal lag shapes and the overall one connecting two variables.
 The main arguments of command \code{causalEff}$(\cdot)$ include
 the name of one or more variables generating the causal effect
 (argument \code{from}), and the name of the variable receiving the causal effect
 (argument \code{to}).
-Optionally, specific time lags at which the causal effect must be computed
-can be provided to argument \code{lag},
-otherwise all the relevant ones are considered.
-Also, the user can choose whether the instantaneous 
+Optionally, specific time to which computation should be focused may be provided to argument \code{lag},
+otherwise the whole lag shapes will be considered.
+Also, the user may choose whether the instantaneous 
 (argument \code{cumul} set to \code{FALSE}, the default)
 or the cumulative (argument \code{cumul} set to \code{TRUE})
 causal effect must be returned.
@@ -629,7 +675,7 @@ Note that, due to the properties of the multiple linear regression model,
 causal effects are net of the influence of the group factor and exogenous variables.
 
 The cumulative causal effect of the number of job positions
-on the amount of greenhouse gas emissions can be obtained
+on the amount of greenhouse gas emissions may be obtained
 by means of the following code:
 
 \small
@@ -640,13 +686,10 @@ causalEff(indus.mod,from="Job",to="Pollution",cumul=T)
 \normalsize
 
 ~\\
-The output of command \code{causalEff}$(\cdot)$ is a list of matrices,
-each containing estimate and confidence interval
-for the causal effect associated to each path connecting
-the starting variables to the ending variable at the requested time lags.
-Also, estimate and confidence interval for the overall causal effect
-are contained in the component named \code{overall}.
-
+The output of command \code{causalEff}$(\cdot)$ is a list of matrices
+including point estimates and asymptotic confidence intervals for all the pathwise causal
+lag shapes and the overall one connecting the starting variables to the ending variable.
+%
 Since the logarithmic transformation was applied to all quantitative variables,
 the resulting causal effects are interpreted as elasticities, that is, for a $1\%$
 of job positions more, greenhouse gas emissions are expected to grow by $0.61\%$
@@ -655,9 +698,8 @@ The influence ends after 11 years, as the cumulative causal effects
 at 11 and 12 years are equal.
 
 ~\\
-The estimated lag shape associated to a path or to an overall causal
-effect can be displayed using the command \code{lagPlot}$(\cdot)$.
-For instance, one can display the lag shape associated to each path
+A pathwise or an overall causal lag shape can be displayed using the command \code{lagPlot}$(\cdot)$.
+For instance, one may display the causal lag shape associated to each path
 connecting the number of job positions to the amount of greenhouse gas emissions:
 
 @
@@ -666,8 +708,8 @@ lagPlot(indus.mod,path="Job*Pollution")
 lagPlot(indus.mod,path="Job*Consum*Pollution")
 @
 
-or the lag shape associated to the overall causal effect of
-the number of job positions on the amount of greenhouse gas emissions:
+or the overall causal lag shape of the number of job positions on
+the amount of greenhouse gas emissions:
 
 @
 <<echo=T,eval=F>>=
@@ -675,9 +717,9 @@ lagPlot(indus.mod,from="Job",to="Pollution")
 @
 
 The resulting graphics are shown in Figure \ref{fig:lagsh}.
-Note that the lag shape associated to a path including more than one edge
-is a mixture of constrained lag shapes, thus it may show an irregular aspect,
-like it is the case of the overall causal effect displayed in the lower
+Note that a multi-edge pathwise causal lag shape
+is a mixture of different lag shapes, thus it may show an irregular aspect,
+like it is the case of the overall causal lag shape displayed in the lower
 panel of Figure \ref{fig:lagsh}.
 
 
@@ -686,10 +728,9 @@ panel of Figure \ref{fig:lagsh}.
 {\includegraphics[width=0.48\textwidth]{figures/lagsh1a.pdf}}\quad
 {\includegraphics[width=0.48\textwidth]{figures/lagsh1b.pdf}}\\
 {\includegraphics[width=0.48\textwidth]{figures/lagsh1c.pdf}}
-\caption{The estimated lag shape associated to each path connecting
-the number of job positions to the amount of greenhouse gas emissions (upper panels)
-and to the overall causal effect (lower panel).
-$95\%$ confidence intervals are shown in grey.}
+\caption{Pathwise causal lag shapes (upper panels) and the overall one (lower panel)
+connecting the number of job positions to the amount of greenhouse gas emissions.
+$95\%$ asymptotic confidence intervals are shown in grey.}
 \label{fig:lagsh}
 \end{figure}
 
@@ -706,21 +747,21 @@ such that all lag shapes are quadratic decreasing and gamma lag shapes, respecti
 # model 2: quadratic decreasing lag shapes
 indus.code_2 <- list(
   Job ~ 1,
-  Consum~qdec(Job,0,15),
-  Pollution~qdec(Job,0,15)+qdec(Consum,0,15)
+  Consum~qdec.lag(Job,0,15),
+  Pollution~qdec.lag(Job,0,15)+qdec.lag(Consum,0,15)
   )
 indus.mod_2 <- dlsem(indus.code_2,group="Region",exogenous=c("Population","GDP"),
   data=industry,global.control=indus.global,local.control=indus.local,log=T)
-summary(indus.mod_2)
+summary(indus.mod_2)$endogenous
 # model 3: gamma lag shapes
 indus.code_3 <- list(
   Job ~ 1,
-  Consum~gamma(Job,0.5,0.5),
-  Pollution~gamma(Job,0.5,0.5)+gamma(Consum,0.5,0.5)
+  Consum~gamma.lag(Job,0.5,0.5),
+  Pollution~gamma.lag(Job,0.5,0.5)+gamma.lag(Consum,0.5,0.5)
   )
 indus.mod_3 <- dlsem(indus.code_3,group="Region",exogenous=c("Population","GDP"),
   data=industry,global.control=indus.global,local.control=indus.local,log=T)
-summary(indus.mod_3)
+summary(indus.mod_3)$endogenous
 @
 \normalsize
 
@@ -742,8 +783,8 @@ Note that the fit for variable \code{Job} is constant in each model
 because it has no endogenous covariates.
 
 
-\section{Future development}
-\label{sec:future}
+\section{Final remarks}
+\label{sec:remarks}
 
 Lag shapes included in the package may represent a large number of real-world lag structures:
 unimodal symmetric (with the endpoint-constrained quadratic lag shape),
@@ -754,16 +795,17 @@ Nevertheless, additional lag shapes with further specific features may be added 
 Parameter estimation in DLSEM cannot be performed in a single step
 unless gestation and lead lags are all known.
 Since complete search over all the possible models is infeasible
-for most real-world applications, a heuristic search is currently implemented.
-Further development of the package may be directed towards the improvement
-of the search strategy.
+for most real-world applications, a heuristic search based on forward
+model selection is currently implemented.
+Further development of the package may be directed towards the
+improvement of the search strategy.
 
 Grouped data are currently managed through fixed effects estimation.
 In the future, random effects estimation may be implemented to enhance inference
 whenever the considered groups are a subset of the possible ones,
 or covariates with values constant within groups (second-level covariates) are involved.
 
-Please, do not hesitate to contact me for questions, feedback or bug reports.
+Please, do not hesitate to contact me for questions, feedbacks or bug reports.
 
 
 \pdfbookmark{References}{sec:refs}

@@ -4,25 +4,25 @@
 \title{Distributed-lag linear structural equation models}
 \description{
 Inference functionalities for distributed-lag linear structural equation models (DLSEMs).
-DLSEMs are an extension of linear structural causal models (Pearl, 2000, Chapter 5), where
-each factor of the joint probability distribution is a distributed-lag linear regression
-with constrained lag shapes (Judge et al., 1985, Chapters 9-10).
+DLSEMs are Markovian structural causal models (Pearl, 2000, Chapter 5), where each factor
+of the joint probability distribution is a distributed-lag linear regression model
+(Judge et al., 1985, Chapters 9-10).
 DLSEMs account for temporal delays in the dependence relationships among the variables
-and allow to assess causal effects at different time lags.
+and allow to perform dynamic causal inference by assessing causal effects at different time lags.
 Endpoint-constrained quadratic, quadratic decreasing and gamma lag shapes are available.
 The main functions of the package are:
 \itemize{
   \item{\link{dlsem}, }{to perform parameter estimation;}
-  \item{\link{causalEff}, }{to assess causal effects at different time lags;}
-  \item{\link{lagPlot}, }{to plot the lag shape associated to a path or to an overall causal effect.} 
+  \item{\link{causalEff}, }{to compute all the pathwise causal lag shapes and the overall one connecting two or more variables;}
+  \item{\link{lagPlot}, }{to display a pathwise or an overall causal lag shape.}
   }
 }
 \details{
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 2.1\cr
-  Date: \tab 2018-01-04\cr
+  Version: \tab 2.2\cr
+  Date: \tab 2018-03-05\cr
   License: \tab GPL-2
   }
 }

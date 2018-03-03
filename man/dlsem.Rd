@@ -1,22 +1,25 @@
 \name{dlsem}
 \alias{dlsem}
 \title{Parameter estimation}
-\description{Parameter estimation for a distributed-lag linear structural equation model.}
-\usage{dlsem(model.code, group = NULL, exogenous = NULL, data, log = FALSE,
+\description{Parameter estimation is performed for a distributed-lag linear structural equation model.
+A single group factor may be taken into account.}
+\usage{dlsem(model.code, group = NULL, time= NULL, exogenous = NULL, data, log = FALSE,
   diff.options = list(test="adf",combine="choi",k=0,lshort=TRUE,maxdiff=3),
-  imput.options = list(tol=0.0001,maxiter=500,no.imput=NULL),
+  imput.options = list(tol=0.0001,maxiter=500,recons=TRUE,no.imput=NULL),
   global.control = NULL, local.control = NULL)}
 \arguments{
   \item{model.code}{A list of objects of class \code{formula}, each describing a single regression model. See \code{Details}.}
   \item{group}{The name of the group factor (optional). If \code{NULL}, no groups are considered.}
-  \item{exogenous}{The name of exogenous variables (optional). Exogenous variables can be either quantitative or qualitative and must not appear in the model code.}  
+  \item{time}{The name of the time factor (optional). If \code{time} is \code{NULL} and \code{group} is not \code{NULL}, data are assumed to be temporally ordered within each group.
+  If both \code{time} and \code{group} are \code{NULL}, data are assumed to be temporally ordered.}
+  \item{exogenous}{The name of exogenous variables (optional). Exogenous variables may be either quantitative or qualitative and must not appear in the model code.}  
   \item{data}{An object of class \code{data.frame} containing data.}
   \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to strictly positive quantitative variables. Default is \code{FALSE}.}
   %
   \item{diff.options}{A list containing options for the differentiation. The list may consist of any number of components among the following: 
     \itemize{
-    \item{test: }{the unit root test to use, that can be either \code{"adf"} or \code{"kpss"} (see \link{unirootTest}). Default is \code{"adf"};}
-    \item{combine: }{the method to combine p-values of different groups, that can be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest})
+    \item{test: }{the unit root test to use, that may be either \code{"adf"} or \code{"kpss"} (see \link{unirootTest}). Default is \code{"adf"};}
+    \item{combine: }{the method to combine p-values of different groups, that may be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest})
       Ignored if \code{group} is \code{NULL}. Default is \code{"choi"};}
     \item{k: }{the lag order to calculate the statistic of the Augmented Dickey-Fuller test.
       Ignored if \code{test}=\code{"kpss"}. Default is 0;}
@@ -25,21 +28,23 @@
     \item{maxdiff: }{the maximum differentiation order to apply. If \code{maxdiff}=0, differentiation will not be applied. Default is 3.}
     }}
   %
-  \item{imput.options}{A list containing options for the imputation of missing values by means of the Expectation-Maximization algorithm (Dempster et al., 1977). The list may consist of any number of components among the following:
+  \item{imput.options}{A list containing options for the imputation of missing values through the Expectation-Maximization algorithm (Dempster et al., 1977).
+  The list may consist of any number of components among the following:
     \itemize{
     \item{tol: }{the tolerance threshold. Default is 0.0001;}
     \item{maxiter: }{the maximum number of iterations. Default is 500. If \code{maxiter}=0, imputation will not be performed;}
-    \item{no.input: }{the name of variables to which imputation will not be applied.}  
+    \item{recons: }{a logical value indicating whether univariate reconstruction of time series should be performed before applying differentiation. Reconstruction is performed using cubic splines and is limited to the observed range of each time series (no extrapolation). It may be useful to avoid further missing values due to differentiation in time series with contiguous missing values. Default is \code{TRUE}.} 
+    \item{no.input: }{the name of variables to which reconstruction and imputation should not be applied.}  
     }}
   %
   \item{global.control}{A list containing global options for the estimation. The list may consist of any number of components among the following:
     \itemize{
-    \item{adapt: }{a logical value indicating if adaptation of lag shapes must be performed for all regression models. Default is \code{FALSE};}
-    \item{max.gestation: }{the maximum gestation lag for all covariates. If not provided, it is taken as equal to \code{max.lead} (see below). Ignored if \code{adapt}=\code{FALSE};}
+    \item{adapt: }{a logical value indicating whether adaptation of lag shapes should be performed for all regression models. Default is \code{FALSE};}
+    \item{max.gestation: }{the maximum gestation lag for all covariates. If not provided, it is assumed to be equal to \code{max.lead} (see below). Ignored if \code{adapt}=\code{FALSE};}
     \item{max.lead: }{the maximum lead lag for all covariates. If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE};} 
-    \item{min.width: }{the minimum lag width for all covariates. It cannot be greater than \code{max.lead}. If not provided, it is taken as 0. Ignored if \code{adapt}=\code{FALSE};}
+    \item{min.width: }{the minimum lag width for all covariates. It cannot be greater than \code{max.lead}. If not provided, it is assumed to be 0. Ignored if \code{adapt}=\code{FALSE};}
     \item{sign: }{the sign of parameter \eqn{\theta_j} (either '+' for positive or '-' for negative) for all covariates. If not provided, adaptation will disregard the sign of parameter \eqn{\theta_j}. Ignored if \code{adapt}=\code{FALSE};}  
-    \item{selection: }{the criterion to be used for the adaptation of lag shapes, that can be one among \code{'aic'} (the default) to minimise the Akaike Information Criterion (Akaike, 1974), and
+    \item{selection: }{the criterion to be used for the adaptation of lag shapes, that may be one among \code{'aic'} (the default) to minimise the Akaike Information Criterion (Akaike, 1974), and
       \code{'bic'} to minimise the Bayesian Information Criterion (Schwarz, 1978).
       Default is \code{'aic'}.}
     }}
@@ -49,9 +54,12 @@
 }
 \details{
 Each regression model in a distributed-lag linear structural equation model has the form:
-\deqn{y_t = \beta_0+\sum_{j=1}^J \sum_{l=0}^{L_j} \beta_{j,l} ~ x_{j,t-l}+\epsilon_t \hspace{1cm} \epsilon_t \sim N(0,\sigma^2)}
-where \eqn{y_t} is the value of the response variable at time \eqn{t} and \eqn{x_{j,t-l}}
-is the value of the \eqn{j}-th covariate at \eqn{l} time lags before \eqn{t}.
+\deqn{y_t = \beta_0+\sum_{j=1}^J \sum_{l=0}^{L_j} \beta_{j,l} ~ x_{j,t-l}+\epsilon_t
+%\hspace{1cm} %\epsilon_t \sim N(0,\sigma^2)
+}
+where \eqn{y_t} is the value of the response variable at time \eqn{t},
+\eqn{x_{j,t-l}} is the value of the \eqn{j}-th covariate at \eqn{l} time lags before \eqn{t},
+and \eqn{\epsilon_t} is the random error at time \eqn{t} uncorrelated with the covariates and with \eqn{\epsilon_{t-1}}.
 The set \eqn{(\beta_{j,0},\beta_{j,1},\ldots,\beta_{j,L_j})}
 is the lag shape of the \eqn{j}-th covariate.
 
@@ -60,7 +68,7 @@ For the endpoint-constrained quadratic lag shape:
 (otherwise, \eqn{\beta_{j,l}=0}).
 
 For the quadratic decreasing lag shape:
-\deqn{\beta_{j,l} = \theta_j \frac{l^2-2 b_j l+b_j^2}{(b_j-a_j)^2} \hspace{1cm} a_j \leq l \leq b_j}
+\deqn{\beta_{j,l} = \theta_j \frac{l^2-2(b_j+1)l+(b_j+1)^2}{(b_j-a_j+1)^2} \hspace{1cm} a_j \leq l \leq b_j}
 (otherwise, \eqn{\beta_{j,l}=0}).
 
 For the gamma lag shape:
@@ -70,9 +78,9 @@ For the gamma lag shape:
 Formulas cannot contain qualitative variables or interaction terms (no ':' or '*' symbols), and
 may contain the following operators for lag specification:
   \itemize{
-  \item{\code{quec}: }{quadratic (2nd order polynomial) lag shape with endpoint constraints;}
-  \item{\code{qdec}: }{quadratic (2nd order polynomial) decreasing lag shape;}
-  \item{\code{gamma}: }{gamma lag shape.}
+  \item{\code{quec.lag}: }{quadratic (2nd order polynomial) lag shape with endpoint constraints;}
+  \item{\code{qdec.lag}: }{quadratic (2nd order polynomial) decreasing lag shape;}
+  \item{\code{gamma.lag}: }{gamma lag shape.}
   }
 Each operator must have the following three arguments (provided within brackets):
   \enumerate{
@@ -80,8 +88,8 @@ Each operator must have the following three arguments (provided within brackets)
   \item{parameter \eqn{a_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\delta_j} (for the gamma lag shape);}
   \item{parameter \eqn{b_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\lambda_j} (for the gamma lag shape).}
   }
-For example, \code{quec(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15),
-and \code{gamma(X1,0.75,0.8)} indicates that a gamma lag shape with \eqn{\delta_j=0.75} and \eqn{\lambda_j=0.8} must be applied to variable X1.
+For example, \code{quec.lag(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15),
+and \code{gamma.lag(X1,0.75,0.8)} indicates that a gamma lag shape with \eqn{\delta_j=0.75} and \eqn{\lambda_j=0.8} must be applied to variable X1.
 See Judge et al. (1985, Chapters 9-10) for more details.
 
 The formula of regression models with no endogenous covariates may be omitted from argument \code{model.code}.
@@ -92,7 +100,7 @@ Argument \code{local.control} must be a named list containing one or more among 
   %\item{\code{L}: }{a named vector of non-negative integer values including the highest lag with non-zero autocorrelation for the indicated regression models.
   %If greater than 0, the Newey-West correction of the covariance matrix of estimates (Newey and West, 1987) is used.}
   \item{\code{adapt}: }{a named vector of logical values, where each component must have
-the name of one endogenous variable and indicate if adaptation of lag shapes must be
+the name of one endogenous variable and indicate whether adaptation of lag shapes should be
 performed for the regression model of that variable.}
   \item{\code{max.gestation}: }{\code{max.gestation}: a named list. Each component of the list must have the
 name of one endogenous variable and be a named vector.
@@ -107,27 +115,29 @@ the named vector must include the lag sign (either \code{'+'} for positive or \c
   Local control options have no default values, and global ones are applied in their absence.
   If some local control options conflict with global ones, only the former are applied.
   }
+Imputation of missing values is performed after eventual logarithmic transformation
+and differentiation, assuming group-specific means and time-invariant covariance matrix.
 
-Imputation of missing values is performed after eventual logarithmic
-transformation and differentiation by assuming group-specific means
-and time-invariant covariance matrix.
 Qualitative variables cannot contain missing values.
-Each quantitative variable must have at least 3 observed values
-if the group factor is not specified,
-otherwise it must have at least 3 observed values per group.
+
+Each quantitative variable must have at least a total of 3 observed values and,
+if the group factor is specified, at least one observed value per group.
+%
+%Note that differentiation may create an additional number of missing values.
 }
 \value{An object of class \code{dlsem}, with the following components:
-  \item{estimate}{A list of objects of class \code{lm}, one for each response variable.}
-  \item{model.code}{The model code after eventual adaptation.}
+  \item{estimate}{A list of objects of class \code{lm}, one for each regression model.}
+  \item{call}{A list containing the call for each regression model after eventual adaptation of lag shapes.}
   \item{exogenous}{The names of exogenous variables.}
   \item{group}{The name of the group factor. \code{NULL} is returned if \code{group}=\code{NULL}.}
   \item{log}{The value provided to argument \code{log}.}
+  \item{uniroot}{the results of the uniroot test.}
   \item{ndiff}{The order of differentiation.}
   \item{diff.options}{Options used for the differentiation.}
   \item{imput.options}{Options used for the imputation of missing values.}
   \item{selection}{The criterion used for the adaptation of lag shapes.}
   \item{adaptation}{Variable-specific options used for the adaptation of lag shapes.}
-  \item{Rsq}{The R-squared coefficient of determination for each regression model and the overall one.}  
+  \item{Rsq}{The coefficient of determination (R-squared) of each regression model and the overall one.}  
   \item{data.orig}{The dataset provided to argument \code{data}.}
   \item{data.used}{Data used in the estimation, that is after eventual logarithmic transformation and differentiation.}
 S3 methods available for class \code{dlsem} are:
@@ -149,6 +159,12 @@ S3 methods available for class \code{dlsem} are:
   \item{BIC}{returns the Bayesian Information Criterion for each regression model and the overall one.}
   \item{fitted}{returns fitted values.}
   \item{residuals}{returns residuals.}
+  \item{predict}{returns predicted values.
+  If k-th order differentiation was applied, predicted values represent variations
+  (on the original scale if \code{log}=\code{FALSE},
+  percentage variations if \code{log}=\code{TRUE}) with respect to k periods before.
+  Optionally, a data frame from which to predict may be provided to argument \code{newdata}.
+  }
 }
 \references{
 %W. K. Newey, and K. D. West (1978). A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. \emph{Econometrica}, 55(3), 703-708.}
@@ -159,9 +175,9 @@ A. P. Dempster, N. M. Laird, and D. B. Rubin (1977). Maximum Likelihood from Inc
 
 G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985). The Theory and Practice of Econometrics. John Wiley & Sons, 2nd ed., New York, US-NY.  ISBN: 978-0-471-89530-5
 
-G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statistics}, 6, 461-464. DOI: 10.1214/aos/1176344136
-
 %P. Schmidt (1974). An Argument for the Usefulness of the Gamma Distributed Lag Model. \emph{International Economic Review}, 15(1).
+
+G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statistics}, 6, 461-464. DOI: 10.1214/aos/1176344136
 }
 \seealso{\link{unirootTest}; \link{causalEff}.}
 \examples{
@@ -169,10 +185,11 @@ data(industry)
 
 # Estimation without adaptation of lag shapes
 indus.code <- list(
-  Consum~quec(Job,0,4),
-  Pollution~quec(Job,2,6)+quec(Consum,1,5)
+  Consum~quec.lag(Job,0,4),
+  Pollution~quec.lag(Job,2,6)+quec.lag(Consum,1,5)
   )
-indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,log=TRUE)
+indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
+  log=TRUE)
 
 # Adaptation of lag shapes (estimation takes some seconds more)
 indus.global <- list(adapt=TRUE,max.gestation=3,max.lead=15,min.width=5,sign="+")
@@ -196,8 +213,8 @@ plot(indus.mod,style=0)
 # Model 2: quadratic decreasing lag shapes
 indus.code_2 <- list(
   Job ~ 1,
-  Consum~qdec(Job,0,15),
-  Pollution~qdec(Job,0,15)+qdec(Consum,0,15)
+  Consum~qdec.lag(Job,0,15),
+  Pollution~qdec.lag(Job,0,15)+qdec.lag(Consum,0,15)
   )
 ## NOT RUN:
 # indus.mod_2 <- dlsem(indus.code_2,group="Region",exogenous=c("Population","GDP"),
@@ -206,8 +223,8 @@ indus.code_2 <- list(
 # Model 3: gamma lag shapes
 indus.code_3 <- list(
   Job ~ 1,
-  Consum~gamma(Job,0.5,0.5),
-  Pollution~gamma(Job,0.5,0.5)+gamma(Consum,0.5,0.5)
+  Consum~gamma.lag(Job,0.5,0.5),
+  Pollution~gamma.lag(Job,0.5,0.5)+gamma.lag(Consum,0.5,0.5)
   )
 ## NOT RUN:
 # indus.mod_3 <- dlsem(indus.code_3,group="Region",exogenous=c("Population","GDP"),
@@ -244,9 +261,9 @@ agres.local <- list(max.lead=list(RD_EDU_AGR=auxcon1,PATENT_AGR=auxcon1),
 
 # Endpoint-constrained quadratic lag shapes (estimation takes a couple of minutes)
 auxcode <- c(paste(investment.var,"~1",sep=""),
-  paste(research.var,"~",paste("quec(",investment.var,",0,20)",
+  paste(research.var,"~",paste("quec.lag(",investment.var,",0,20)",
     collapse="+",sep=""),sep=""),
-  paste(impact.var,"~",paste("quec(",c(investment.var,research.var),",0,20)",
+  paste(impact.var,"~",paste("quec.lag(",c(investment.var,research.var),",0,20)",
     collapse="+",sep=""),sep=""))
 agres.code <- list()
 for(i in 1:length(auxcode)) {
@@ -259,9 +276,9 @@ for(i in 1:length(auxcode)) {
 
 ## Gamma lag shapes (estimation takes a dozen of minutes)
 auxcode_2 <- c(paste(investment.var,"~1",sep=""),
-  paste(research.var,"~",paste("gamma(",investment.var,",0.5,0.5)",
+  paste(research.var,"~",paste("gamma.lag(",investment.var,",0.5,0.5)",
     collapse="+",sep=""),sep=""),
-  paste(impact.var,"~",paste("gamma(",c(investment.var,research.var),",0.5,0.5)",
+  paste(impact.var,"~",paste("gamma.lag(",c(investment.var,research.var),",0.5,0.5)",
     collapse="+",sep=""),sep=""))
 agres.code_2 <- list()
 for(i in 1:length(auxcode_2)) {

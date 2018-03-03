@@ -11,12 +11,14 @@ S3method(AIC, dlsem)
 S3method(BIC, dlsem)
 S3method(fitted, dlsem)
 S3method(residuals, dlsem)
+S3method(predict, dlsem)
+S3method(print, summary.dlsem)
 
-import(graph, gRbase, Rgraphviz, splines)
+import(graph, gRbase, Rgraphviz)
 importFrom("grDevices", "dev.off", "pdf")
 importFrom("graphics", "abline", "axis", "box", "grid", "legend","mtext", "par", "points", "polygon")
 importFrom("methods", "new")
 importFrom("stats", "coefficients", "coef", "nobs", "cov", "vcov", "formula","lm", "model.matrix", "logLik",
   "AIC", "BIC", "residuals", "fitted", "quantile", "predict", "pnorm", "qnorm", "qgamma", "rnorm", "rt",
-  "rchisq", "sd", "var", "anova","deviance", "approx", "embed", "na.omit")
+  "rchisq", "sd", "var", "anova", "deviance", "spline", "approx", "embed", "na.omit")
 importFrom("utils", "flush.console")
