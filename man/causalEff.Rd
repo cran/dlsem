@@ -9,7 +9,7 @@
   \item{from}{The name of the starting variable, or a vector containing the names of starting variables, which must be endogenous variables.}
   \item{to}{The name of the ending variable, which must be an endogenous variable.}
   \item{lag}{A non-negative integer or a vector of non-negative integers indicating the time lags to be considered. If \code{NULL}, the whole lag shapes will be considered.}
-  \item{cumul}{Logical. If \code{FALSE} (the default), instantaneous causal effects are returned, otherwise cumulative ones are provided.}
+  \item{cumul}{Logical. If \code{TRUE}, cumulative causal effects are returned. Default is \code{FALSE}.}
   \item{conf}{The confidence level. Default is 0.95.}
   \item{use.ns}{A logical value indicating whether edges without statistically significant causal effect (at level \code{conf}) should be considered or not. If \code{FALSE} (the default), they will be ignored.}
 }
@@ -19,7 +19,7 @@ An \emph{overall causal lag shape} is the set of overall causal effects of a var
 Note that, due to the properties of the multiple linear regression model,
 causal effects are net of the influence of the group factor and exogenous variables.
 }
-\value{A list containing several matrices including point estimates and asymptotic confidence intervals (at level \code{conf}) for all the pathwise causal lag shapes and the overall one connecting the starting variables to the ending variable.
+\value{A list containing several matrices including point estimates, standard errors and asymptotic confidence intervals (at level \code{conf}) for all the pathwise causal lag shapes and the overall one connecting the starting variables to the ending variable.
 }
 \note{See Section 2 of the vignette for the theory on causal inference in distributed-lag linear structural equation models.
 }
@@ -32,8 +32,8 @@ causal effects are net of the influence of the group factor and exogenous variab
 \examples{
 data(industry)
 indus.code <- list(
-  Consum~quec.lag(Job,0,4),
-  Pollution~quec.lag(Job,2,6)+quec.lag(Consum,1,5)
+  Consum~quec.lag(Job,0,5),
+  Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,6)
   )
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
   log=TRUE)

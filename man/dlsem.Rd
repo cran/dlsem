@@ -4,9 +4,9 @@
 \description{Parameter estimation is performed for a distributed-lag linear structural equation model.
 A single group factor may be taken into account.}
 \usage{dlsem(model.code, group = NULL, time= NULL, exogenous = NULL, data, log = FALSE,
-  diff.options = list(test="adf",combine="choi",k=0,lshort=TRUE,maxdiff=3),
+  diff.options = list(combine="choi",k=0,maxdiff=3),
   imput.options = list(tol=0.0001,maxiter=500,recons=TRUE,no.imput=NULL),
-  global.control = NULL, local.control = NULL)}
+  global.control = NULL, local.control = NULL, quiet = FALSE)}
 \arguments{
   \item{model.code}{A list of objects of class \code{formula}, each describing a single regression model. See \code{Details}.}
   \item{group}{The name of the group factor (optional). If \code{NULL}, no groups are considered.}
@@ -14,17 +14,14 @@ A single group factor may be taken into account.}
   If both \code{time} and \code{group} are \code{NULL}, data are assumed to be temporally ordered.}
   \item{exogenous}{The name of exogenous variables (optional). Exogenous variables may be either quantitative or qualitative and must not appear in the model code.}  
   \item{data}{An object of class \code{data.frame} containing data.}
-  \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to strictly positive quantitative variables. Default is \code{FALSE}.}
+  \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to all strictly positive quantitative variables. Default is \code{FALSE}.}
   %
   \item{diff.options}{A list containing options for the differentiation. The list may consist of any number of components among the following: 
     \itemize{
-    \item{test: }{the unit root test to use, that may be either \code{"adf"} or \code{"kpss"} (see \link{unirootTest}). Default is \code{"adf"};}
-    \item{combine: }{the method to combine p-values of different groups, that may be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest})
+    \item{combine: }{the method to combine p-values of the Augmented Dickey-Fuller test for different groups, that may be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest})
       Ignored if \code{group} is \code{NULL}. Default is \code{"choi"};}
-    \item{k: }{the lag order to calculate the statistic of the Augmented Dickey-Fuller test.
-      Ignored if \code{test}=\code{"kpss"}. Default is 0;}
-    \item{lshort: }{logical. If \code{TRUE}, the short version of the truncation lag parameter is used for the KPSS test.
-     Ignored if \code{test}=\code{"adf"}. Default is \code{TRUE};}
+    \item{k: }{The lag order of the Augmented Dickey-Fuller test. If \code{k=0} (the default), the standard Dickey-Fuller test is performed.
+  If \code{k=NULL}, the lag order is taken as the cubic root of the sample size;}
     \item{maxdiff: }{the maximum differentiation order to apply. If \code{maxdiff}=0, differentiation will not be applied. Default is 3.}
     }}
   %
@@ -44,13 +41,12 @@ A single group factor may be taken into account.}
     \item{max.lead: }{the maximum lead lag for all covariates. If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE};} 
     \item{min.width: }{the minimum lag width for all covariates. It cannot be greater than \code{max.lead}. If not provided, it is assumed to be 0. Ignored if \code{adapt}=\code{FALSE};}
     \item{sign: }{the sign of parameter \eqn{\theta_j} (either '+' for positive or '-' for negative) for all covariates. If not provided, adaptation will disregard the sign of parameter \eqn{\theta_j}. Ignored if \code{adapt}=\code{FALSE};}  
-    \item{selection: }{the criterion to be used for the adaptation of lag shapes, that may be one among \code{'aic'} (the default) to minimise the Akaike Information Criterion (Akaike, 1974), and
-      \code{'bic'} to minimise the Bayesian Information Criterion (Schwarz, 1978).
-      Default is \code{'aic'}.}
+    \item{selection: }{the criterion to be used for the adaptation of lag shapes, that may be one among \code{'bic'} to minimise the Bayesian Information Criterion (Schwarz, 1978) and \code{'aic'} to minimise the Akaike Information Criterion (Akaike, 1974). Default is \code{'bic'}.}
     }}
   
   \item{local.control}{A list containing variable-specific options for the estimation.
   These options prevail on the ones contained in \code{global.control}. See \code{Details}.}
+  \item{quiet}{Logical. If \code{TRUE}, messages on the estimation progress are suppressed. Deafult is \code{FALSE}.}
 }
 \details{
 Each regression model in a distributed-lag linear structural equation model has the form:
@@ -82,11 +78,12 @@ may contain the following operators for lag specification:
   \item{\code{qdec.lag}: }{quadratic (2nd order polynomial) decreasing lag shape;}
   \item{\code{gamma.lag}: }{gamma lag shape.}
   }
-Each operator must have the following three arguments (provided within brackets):
+Each operator must have the following three arguments (provided within brackets and separated by commas):
   \enumerate{
   \item{the name of the covariate to which the lag is applied;}
   \item{parameter \eqn{a_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\delta_j} (for the gamma lag shape);}
-  \item{parameter \eqn{b_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\lambda_j} (for the gamma lag shape).}
+  \item{parameter \eqn{b_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\lambda_j} (for the gamma lag shape);}
+  \item{the group factor (optional). If not provided and argument \code{group} is not \code{NULL}, this is found automatically.}
   }
 For example, \code{quec.lag(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15),
 and \code{gamma.lag(X1,0.75,0.8)} indicates that a gamma lag shape with \eqn{\delta_j=0.75} and \eqn{\lambda_j=0.8} must be applied to variable X1.
@@ -120,10 +117,9 @@ and differentiation, assuming group-specific means and time-invariant covariance
 
 Qualitative variables cannot contain missing values.
 
-Each quantitative variable must have at least a total of 3 observed values and,
+After differentiation,
+each quantitative variable must have at least a total of 3 observed values and,
 if the group factor is specified, at least one observed value per group.
-%
-%Note that differentiation may create an additional number of missing values.
 }
 \value{An object of class \code{dlsem}, with the following components:
   \item{estimate}{A list of objects of class \code{lm}, one for each regression model.}
@@ -131,13 +127,12 @@ if the group factor is specified, at least one observed value per group.
   \item{exogenous}{The names of exogenous variables.}
   \item{group}{The name of the group factor. \code{NULL} is returned if \code{group}=\code{NULL}.}
   \item{log}{The value provided to argument \code{log}.}
-  \item{uniroot}{the results of the uniroot test.}
   \item{ndiff}{The order of differentiation.}
   \item{diff.options}{Options used for the differentiation.}
   \item{imput.options}{Options used for the imputation of missing values.}
   \item{selection}{The criterion used for the adaptation of lag shapes.}
   \item{adaptation}{Variable-specific options used for the adaptation of lag shapes.}
-  \item{Rsq}{The coefficient of determination (R-squared) of each regression model and the overall one.}  
+  \item{Rsq}{The coefficient of determination (R-squared) for each regression model and the overall one.}  
   \item{data.orig}{The dataset provided to argument \code{data}.}
   \item{data.used}{Data used in the estimation, that is after eventual logarithmic transformation and differentiation.}
 S3 methods available for class \code{dlsem} are:
@@ -185,8 +180,8 @@ data(industry)
 
 # Estimation without adaptation of lag shapes
 indus.code <- list(
-  Consum~quec.lag(Job,0,4),
-  Pollution~quec.lag(Job,2,6)+quec.lag(Consum,1,5)
+  Consum~quec.lag(Job,0,5),
+  Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,6)
   )
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
   log=TRUE)
@@ -230,9 +225,8 @@ indus.code_3 <- list(
 # indus.mod_3 <- dlsem(indus.code_3,group="Region",exogenous=c("Population","GDP"),
 #   data=industry,global.control=indus.global,local.control=indus.local,log=TRUE)
 
-# goodness of fit indices
+# comparison of the three models
 ## NOT RUN:
-# lapply(list(QUEC=indus.mod,QDEC=indus.mod_2,GAMMA=indus.mod_3),AIC)
 # lapply(list(QUEC=indus.mod,QDEC=indus.mod_2,GAMMA=indus.mod_3),BIC)
 
 
@@ -288,6 +282,5 @@ for(i in 1:length(auxcode_2)) {
 # agres.mod_2 <- dlsem(agres.code_2,group="COUNTRY",exogenous=context.var,data=agres,
 #  global.control=agres.global,local.control=agres.local,log=T)
 # summary(agres.mod_2)
-# lapply(list(QUEC=agres.mod,GAMMA=agres.mod_2),AIC)
 # lapply(list(QUEC=agres.mod,GAMMA=agres.mod_2),BIC)
 }

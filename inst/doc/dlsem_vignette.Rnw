@@ -35,7 +35,7 @@
 
 \title{Distributed-lag linear structural equation models in \proglang{R}:\\the \pkg{dlsem} package}
 \author{Alessandro Magrini\\Dep. Statistics, Computer Science, Applications\\University of Florence, Italy\\<magrini@disia.unifi.it>}
-\date{\pkg{dlsem} version 2.2 -- 05 March 2018}
+\date{\pkg{dlsem} version 2.3 -- 18 May 2018}
 
 
 \begin{document}
@@ -122,7 +122,8 @@ y_t = \beta_0+\sum_{j=1}^J\sum_{l=0}^{L_j}\beta_{j,l}~x_{j,t-l}+\epsilon_t
 \end{equation}
 where $y_t$ is the value of the response variable at time $t$,
 $x_{j,t-l}$ is the value of the $j$-th covariate at $l$ time lags before $t$,
-and $\epsilon_t$ is the random error at time $t$ uncorrelated with the covariates and with $\epsilon_{t-1}$.
+and $\epsilon_t$ is the random error at time $t$ uncorrelated with the covariates
+and with $\epsilon_k$, $\forall k\not=t$.
 The set $(\beta_{j,0},\beta_{j,1},\ldots,\beta_{j,L_j})$
 is denoted as the \textit{lag shape} of the $j$-th covariate and
 represents its regression coefficient (in the remainder, simply `coefficient')
@@ -161,7 +162,7 @@ the \textit{quadratic decreasing} lag shape:
 and the \textit{gamma} lag shape:
 \begin{equation}\label{eq:gamma}
 \begin{gathered}
-\beta_{j,l} = \theta_j (l+1)^\frac{\delta}{1-\delta}\lambda_j^l \left[\left(\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}\right)^\frac{\delta_j}{1-\delta_j}\lambda_j^{\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}-1}\right]^{-1}\\
+\beta_{j,l} = \theta_j (l+1)^\frac{\delta_j}{1-\delta_j}\lambda_j^l \left[\left(\frac{\delta_j}{(\delta_j-1)\hspace{0.04cm}\text{log}\lambda_j}\right)^\frac{\delta_j}{1-\delta_j}\lambda_j^{\frac{\delta_j}{(\delta_j-1)\hspace{0.02cm}\text{log}\lambda_j}-1}\right]^{-1}\\
 0<\delta_j<1 \hspace{1cm} 0<\lambda_j<1
 \end{gathered}
 \end{equation}
@@ -170,14 +171,14 @@ and symmetric with mode equal to $\theta_j$ at lag $(a_j+b_j)/2$.
 The quadratic decreasing lag shape decreases from value $\theta_j$ at lag $a_j$
 to value $0$ at lag $b_j+1$ according to a quadratic function.
 The gamma lag shape is positively skewed with mode equal to $\theta_j$
-at lag $\frac{\delta_j}{(\delta_j-1)\text{log}(\lambda_j)}$.
+at lag $\frac{\delta_j}{(\delta_j-1)\hspace{0.04cm}\text{log}\lambda_j}$.
 Value $a_j$ is denoted as the \textit{gestation lag},
 value $b_j$ as the \textit{lead lag}, and value $b_j-a_j$ as the \textit{lag width}.
 A static coefficient is obtained if $a_j=b_j=0$.
 Since it is not expressed as a function of $a_j$ and $b_j$,
 the gamma lag shape cannot reduce to a static coefficient,
 but the corresponding values of $a_j$ and $b_j$ may be computed
-through numerical approximation.
+through numerical approximation from the values of $\delta_j$ and $\lambda_j$.
 %
 For these three lag shapes it holds:
 \begin{equation}\label{eq:sign}
@@ -185,7 +186,7 @@ For these three lag shapes it holds:
 \beta_{j,l}>0 \Longleftrightarrow \theta_j>0\\
 \beta_{j,l}<0 \Longleftrightarrow \theta_j<0
 \end{gathered}
-\hspace{1.2cm} \forall~a_j \leq l \leq b_j
+\hspace{1.2cm} \forall l:~a_j \leq l \leq b_j
 \end{equation}
 and we refer to the \textit{lag sign} as the sign of parameter $\theta_j$.
 
@@ -195,9 +196,9 @@ provided that the values of $a_1,\ldots,a_J,b_1,\ldots,b_J$ are known.
 Thus, one may use ordinary least squares to estimate parameters
 $\beta_0,\theta_1,\ldots,\theta_J$ for several models
 with different values of $a_1,\ldots,a_J,b_1,\ldots,b_J$,
-and then select the one with the
-minimum value of the Akaike Information Criterion (AIC, \citealp{akaike74})
-or the Bayesian Information Criterion (BIC, \citealp{schwarz78})\footnote{
+and then select the one with the minimum value of
+%the Akaike Information Criterion (AIC, \citealp{akaike74}) or the
+the Bayesian Information Criterion (BIC, \citealp{schwarz78})\footnote{
 %
 Note that neither the response variable nor the covariates must contain
 a trend in order to obtain unbiased estimates with ordinary least squares \citep{granger74}.
@@ -339,21 +340,22 @@ the \textit{direct} causal effect of $V_i$ on $V_j$ at lag $l$ is equal to
 the coefficient of $V_i$ at lag $l$ in the regression model of $V_j$;
 \item Let $<V_{d_0},\ldots,V_{d_m}>$, $d_0=i$ and $d_m=j$, be a directed path
 composed of $m$ edges connecting $V_i$ to $V_j$,
-and $\mathcal{L}_m$ be the set of all the possible ordered $m$-uples
+and $Q_m^{(l)}$ be the set of all the possible ordered $m$-uples
 of time lags such that their sum is equal to $l$.
 The \textit{indirect} causal effect of $V_i$ on $V_j$ through such path at lag $l$ is equal to:
 \begin{equation}\label{eq:dlsem_indirect}
-e(<V_{d_0},\ldots,V_{d_m}>;d_0=i,d_m=j)=\sum_{(l_1,\ldots,l_m)\in\mathcal{L}_m}\hspace{0.3cm}\prod_{k=1}^m b^{(l_k)}_{d_k|d_{k-1}}
+e(<V_{d_0},\ldots,V_{d_m}>;d_0=i,d_m=j)=\sum_{(q_1,\ldots,q_m)\in Q_m^{(l)}}\hspace{0.3cm}\prod_{k=1}^m b^{(q_k)}_{d_k|d_{k-1}}
 \end{equation}
 where $b^{(l_k)}_{d_k|d_{k-1}}$ is the coefficient of $V_{d_{k-1}}$ at lag $l_k$
 in the regression model of $V_{d_k}$;
 \item the \textit{overall} causal effect of $V_i$ on $V_j$ at lag $l$ is equal to
 the sum of all the pathwise causal effects of $V_i$ on $V_j$ at lag $l$.
 \end{itemize}
-The causal effects just defined are denoted as \textit{instantaneous}
-causal effects, as they are evaluated at a single time lag.
-The \textit{cumulative} causal effect at a pre-specified time lag, say $l$,
-is obtained by summing all the instantaneous causal effects at each time lag up to $l$.
+%The causal effects just defined are denoted as \textit{instantaneous}
+%causal effects, as they are evaluated at a single time lag.
+%The \textit{cumulative} causal effect at a pre-specified time lag, say $l$,
+%is obtained by summing all the %instantaneous
+%causal effects at each time lag up to $l$.
 %
 A \textit{pathwise causal lag shape} is the set of causal effects
 associated to a path at different time lags.
@@ -382,7 +384,7 @@ In order to keep your copy of \pkg{dlsem} up to date, use the command:
 update.packages("dlsem")
 @
 
-The latest version of \pkg{dlsem} is 2.2.
+The latest version of \pkg{dlsem} is 2.3.
 
 
 \section{Illustrative example}
@@ -666,10 +668,12 @@ the name of one or more variables generating the causal effect
 (argument \code{to}).
 Optionally, specific time to which computation should be focused may be provided to argument \code{lag},
 otherwise the whole lag shapes will be considered.
-Also, the user may choose whether the instantaneous 
-(argument \code{cumul} set to \code{FALSE}, the default)
-or the cumulative (argument \code{cumul} set to \code{TRUE})
-causal effect must be returned.
+%Also, the user may choose whether the instantaneous 
+%(argument \code{cumul} set to \code{FALSE}, the default)
+%or the cumulative (argument \code{cumul} set to \code{TRUE})
+%causal effect must be returned.
+Cumulative causal effects may be returned by setting the argument \code{cumul} to \code{TRUE}.
+%
 Only exogenous variables can be indicated as starting or ending variables.
 Note that, due to the properties of the multiple linear regression model,
 causal effects are net of the influence of the group factor and exogenous variables.
@@ -728,14 +732,14 @@ panel of Figure \ref{fig:lagsh}.
 {\includegraphics[width=0.48\textwidth]{figures/lagsh1a.pdf}}\quad
 {\includegraphics[width=0.48\textwidth]{figures/lagsh1b.pdf}}\\
 {\includegraphics[width=0.48\textwidth]{figures/lagsh1c.pdf}}
-\caption{Pathwise causal lag shapes (upper panels) and the overall one (lower panel)
+\caption{The pathwise causal lag shapes (upper panels) and the overall one (lower panel)
 connecting the number of job positions to the amount of greenhouse gas emissions.
 $95\%$ asymptotic confidence intervals are shown in grey.}
 \label{fig:lagsh}
 \end{figure}
 
 
-\subsection{Model comparison}
+\subsection{Comparison among alternative models}
 \label{sub:example5}
 
 We now fit two alternative models for the industrial development problem,
@@ -766,19 +770,20 @@ summary(indus.mod_3)$endogenous
 \normalsize
 
 We see that the three models provide different results.
-Methods \code{AIC} and \code{BIC} for class \code{dlsem} can be used
-to compare them according to AIC and BIC, respectively:
+%Methods \code{AIC} and
+Method \code{BIC} for class \code{dlsem} can be used
+to compare them according to BIC: %AIC and BIC, respectively:
 
 \small
 @
 <<echo=T>>=
-lapply(list(QUEC=indus.mod,QDEC=indus.mod_2,GAMMA=indus.mod_3),AIC)
 lapply(list(QUEC=indus.mod,QDEC=indus.mod_2,GAMMA=indus.mod_3),BIC)
 @
 \normalsize
 
 The model with endpoint-constrained quadratic lag shapes has the best
-fit according to both AIC and BIC.
+fit according to %both AIC and
+BIC.
 Note that the fit for variable \code{Job} is constant in each model
 because it has no endogenous covariates.
 
@@ -786,24 +791,28 @@ because it has no endogenous covariates.
 \section{Final remarks}
 \label{sec:remarks}
 
-Lag shapes included in the package may represent a large number of real-world lag structures:
-unimodal symmetric (with the endpoint-constrained quadratic lag shape),
-unimodal asymmetric (with the gamma lag shape) and
-skewned ones (with the quadratic decreasing lag shape).
-Nevertheless, additional lag shapes with further specific features may be added in future.
+%Lag shapes included in the package may represent a large number of real-world lag structures:
+%unimodal symmetric (with the endpoint-constrained quadratic lag shape),
+%unimodal asymmetric (with the gamma lag shape) and
+%skewned ones (with the quadratic decreasing lag shape).
+%Nevertheless, additional lag shapes with further specific features may be added in the future.
 
-Parameter estimation in DLSEM cannot be performed in a single step
-unless gestation and lead lags are all known.
-Since complete search over all the possible models is infeasible
-for most real-world applications, a heuristic search based on forward
-model selection is currently implemented.
-Further development of the package may be directed towards the
-improvement of the search strategy.
+%Parameter estimation in DLSEM cannot be performed in a single step
+%unless gestation and lead lags are all known.
+%Since complete search over all the possible models is infeasible
+%for most real-world applications, a heuristic search based on forward
+%model selection is currently implemented.
+%Further development of the package may be directed towards the
+%improvement of the search strategy.
 
-Grouped data are currently managed through fixed effects estimation.
-In the future, random effects estimation may be implemented to enhance inference
-whenever the considered groups are a subset of the possible ones,
-or covariates with values constant within groups (second-level covariates) are involved.
+%Grouped data are currently managed through fixed effects estimation.
+%In the future, random effects estimation may be implemented to enhance inference
+%whenever the considered groups are a subset of the possible ones,
+%or covariates with values constant within groups (second-level covariates) are involved.
+
+Important functionalities like random effects estimation and autoregressive lag shapes
+will be implemented in the next releases.
+Also, additional lag shapes with further specific features may be added in the future.
 
 Please, do not hesitate to contact me for questions, feedbacks or bug reports.
 
@@ -811,8 +820,8 @@ Please, do not hesitate to contact me for questions, feedbacks or bug reports.
 \pdfbookmark{References}{sec:refs}
 \begin{thebibliography}{99.}%
 
-\bibitem[Akaike(1974)]{akaike74} H. Akaike (1974). A New Look at the Statistical Identification Model.
-\textit{IEEE Transactions on Automatic Control}, 19: 716-723.
+%\bibitem[Akaike(1974)]{akaike74} H. Akaike (1974). A New Look at the Statistical Identification Model.
+%\textit{IEEE Transactions on Automatic Control}, 19: 716-723.
 
 \bibitem[Almon(1965)]{almon65} S. Almon (1965).
 The Distributed Lag between Capital Appropriations and Net Expenditures.

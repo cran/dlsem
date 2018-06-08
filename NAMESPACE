@@ -1,4 +1,4 @@
-export(dlsem, causalEff, lagPlot, auto.lagPlot, isIndep, unirootTest)
+export(dlsem, causalEff, lagPlot, auto.lagPlot, isIndep, unirootTest, as.graphNEL)
 
 S3method(print, dlsem)
 S3method(summary, dlsem)
@@ -13,6 +13,7 @@ S3method(fitted, dlsem)
 S3method(residuals, dlsem)
 S3method(predict, dlsem)
 S3method(print, summary.dlsem)
+S3method(print, unirootTest)
 
 import(graph, gRbase, Rgraphviz)
 importFrom("grDevices", "dev.off", "pdf")

@@ -21,8 +21,8 @@ The main functions of the package are:
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 2.2\cr
-  Date: \tab 2018-03-05\cr
+  Version: \tab 2.3\cr
+  Date: \tab 2018-05-22\cr
   License: \tab GPL-2
   }
 }

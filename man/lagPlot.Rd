@@ -13,7 +13,7 @@
   the name of the path, indicated as a string made of the names of the variables in the path separated by '*', must be provided to argument \code{path}.
   Argument \code{path} will be ignored if both \code{from} and \code{to} are not \code{NULL}.}
   \item{maxlag}{The maximum lag displayed (optional).}
-  \item{cumul}{Logical. If \code{FALSE} (the default), instantaneous causal effects are returned, otherwise cumulative ones are provided.}
+  \item{cumul}{Logical. If \code{TRUE}, cumulative causal effects are returned. Default is \code{FALSE}.}
   \item{conf}{The confidence level for each edge: only statistically significant edges at such level are considered. Default is 0.95.}
   \item{use.ns}{A logical value indicating whether not statistically significant edges (at level \code{conf}) should be considered or not. If \code{FALSE} (the default), they will be ignored.}
   \item{ylim}{A vector of two numerical values indicating the limits of the y axis (optional). If \code{NULL}, the limits of the y axis are computed automatically.}
@@ -25,8 +25,8 @@
 \examples{
 data(industry)
 indus.code <- list(
-  Consum~quec.lag(Job,0,4),
-  Pollution~quec.lag(Job,2,6)+quec.lag(Consum,1,5)
+  Consum~quec.lag(Job,0,5),
+  Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,6)
   )
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
   log=TRUE)
