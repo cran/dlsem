@@ -21,13 +21,18 @@ causal effects are net of the influence of the group factor and exogenous variab
 }
 \value{A list containing several matrices including point estimates, standard errors and asymptotic confidence intervals (at level \code{conf}) for all the pathwise causal lag shapes and the overall one connecting the starting variables to the ending variable.
 }
-\note{See Section 2 of the vignette for the theory on causal inference in distributed-lag linear structural equation models.
+\note{Value \code{NULL} is returned if one of the following occurs:
+(i) no significant path at confidence level \code{conf} exists connecting the starting variables to the ending variable;
+(ii) the requested path does not exist or is not significant at confidence level \code{conf}.
+Note that the edges between the starting variables and their respective parents are deleted
+as a consequence of intervention (Pearl, 2000, page 24).
+See Section 2 of the vignette for the theory on causal inference in distributed-lag linear structural equation models.
 }
-%\references{
-%J. Pearl (2000). Causality: Models, Reasoning, and Inference. Cambridge University Press. Cambridge, UK. ISBN: 978-0-521-89560-6
+\references{
+J. Pearl (2000). Causality: Models, Reasoning, and Inference. Cambridge University Press. Cambridge, UK. ISBN: 978-0-521-89560-6
 %
 %J. Pearl (2012). The Causal Foundations of Structural Equation Modelling. In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY. ISBN: 978-16-062-3077-0
-%}
+}
 \seealso{\link{dlsem}; \link{lagPlot}.}
 \examples{
 data(industry)

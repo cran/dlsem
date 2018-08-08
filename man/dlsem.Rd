@@ -3,8 +3,8 @@
 \title{Parameter estimation}
 \description{Parameter estimation is performed for a distributed-lag linear structural equation model.
 A single group factor may be taken into account.}
-\usage{dlsem(model.code, group = NULL, time= NULL, exogenous = NULL, data, log = FALSE,
-  diff.options = list(combine="choi",k=0,maxdiff=3),
+\usage{dlsem(model.code, group = NULL, time = NULL, exogenous = NULL, data,
+  log = FALSE, hac = FALSE, diff.options = list(combine="choi",k=0,maxdiff=3),
   imput.options = list(tol=0.0001,maxiter=500,recons=TRUE,no.imput=NULL),
   global.control = NULL, local.control = NULL, quiet = FALSE)}
 \arguments{
@@ -14,36 +14,37 @@ A single group factor may be taken into account.}
   If both \code{time} and \code{group} are \code{NULL}, data are assumed to be temporally ordered.}
   \item{exogenous}{The name of exogenous variables (optional). Exogenous variables may be either quantitative or qualitative and must not appear in the model code.}  
   \item{data}{An object of class \code{data.frame} containing data.}
+  \item{hac}{Logical. If \code{TRUE}, heteroskedasticity and autocorrelation consistent estimation of standard errors (Newey & West, 1978) is applied. Default is \code{FALSE}.}
   \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to all strictly positive quantitative variables. Default is \code{FALSE}.}
   %
   \item{diff.options}{A list containing options for the differentiation. The list may consist of any number of components among the following: 
     \itemize{
-    \item{combine: }{the method to combine p-values of the Augmented Dickey-Fuller test for different groups, that may be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest})
+    \item{\code{combine}: }{the method to combine p-values of the Augmented Dickey-Fuller test for different groups, that may be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest})
       Ignored if \code{group} is \code{NULL}. Default is \code{"choi"};}
-    \item{k: }{The lag order of the Augmented Dickey-Fuller test. If \code{k=0} (the default), the standard Dickey-Fuller test is performed.
+    \item{\code{k}: }{The lag order of the Augmented Dickey-Fuller test. If \code{k=0} (the default), the standard Dickey-Fuller test is performed.
   If \code{k=NULL}, the lag order is taken as the cubic root of the sample size;}
-    \item{maxdiff: }{the maximum differentiation order to apply. If \code{maxdiff}=0, differentiation will not be applied. Default is 3.}
+    \item{\code{maxdiff}: }{the maximum differentiation order to apply. If \code{maxdiff}=0, differentiation will not be applied. Default is 3.}
     }}
   %
   \item{imput.options}{A list containing options for the imputation of missing values through the Expectation-Maximization algorithm (Dempster et al., 1977).
   The list may consist of any number of components among the following:
     \itemize{
-    \item{tol: }{the tolerance threshold. Default is 0.0001;}
-    \item{maxiter: }{the maximum number of iterations. Default is 500. If \code{maxiter}=0, imputation will not be performed;}
-    \item{recons: }{a logical value indicating whether univariate reconstruction of time series should be performed before applying differentiation. Reconstruction is performed using cubic splines and is limited to the observed range of each time series (no extrapolation). It may be useful to avoid further missing values due to differentiation in time series with contiguous missing values. Default is \code{TRUE}.} 
-    \item{no.input: }{the name of variables to which reconstruction and imputation should not be applied.}  
+    \item{\code{tol}: }{the tolerance threshold. Default is 0.0001;}
+    \item{\code{maxiter}: }{the maximum number of iterations. Default is 500. If \code{maxiter}=0, imputation will not be performed;}
+    \item{\code{recons}: }{a logical value indicating whether univariate reconstruction of time series should be performed before applying differentiation. Reconstruction is performed using cubic splines and is limited to the observed range of each time series (no extrapolation). It may be useful to avoid further missing values due to differentiation in time series with contiguous missing values. Default is \code{TRUE}.} 
+    \item{\code{no.input}: }{the name of variables to which reconstruction and imputation should not be applied.}  
     }}
   %
   \item{global.control}{A list containing global options for the estimation. The list may consist of any number of components among the following:
     \itemize{
-    \item{adapt: }{a logical value indicating whether adaptation of lag shapes should be performed for all regression models. Default is \code{FALSE};}
-    \item{max.gestation: }{the maximum gestation lag for all covariates. If not provided, it is assumed to be equal to \code{max.lead} (see below). Ignored if \code{adapt}=\code{FALSE};}
-    \item{max.lead: }{the maximum lead lag for all covariates. If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE};} 
-    \item{min.width: }{the minimum lag width for all covariates. It cannot be greater than \code{max.lead}. If not provided, it is assumed to be 0. Ignored if \code{adapt}=\code{FALSE};}
-    \item{sign: }{the sign of parameter \eqn{\theta_j} (either '+' for positive or '-' for negative) for all covariates. If not provided, adaptation will disregard the sign of parameter \eqn{\theta_j}. Ignored if \code{adapt}=\code{FALSE};}  
-    \item{selection: }{the criterion to be used for the adaptation of lag shapes, that may be one among \code{'bic'} to minimise the Bayesian Information Criterion (Schwarz, 1978) and \code{'aic'} to minimise the Akaike Information Criterion (Akaike, 1974). Default is \code{'bic'}.}
+    \item{\code{adapt}: }{a logical value indicating whether adaptation of lag shapes should be performed for all regression models. Default is \code{FALSE};}
+    \item{\code{min.gestation}: }{the minimum gestation lag for all covariates. If not provided, it is assumed to be equal to 0. Ignored if \code{adapt}=\code{FALSE};}
+    \item{\code{max.gestation}: }{the maximum gestation lag for all covariates. If not provided, it is assumed to be equal to \code{max.lead} (see below). Ignored if \code{adapt}=\code{FALSE};}
+    \item{\code{max.lead}: }{the maximum lead lag for all covariates. If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE};} 
+    \item{\code{min.width}: }{the minimum lag width for all covariates. It cannot be greater than \code{max.lead}. If not provided, it is assumed to be 0. Ignored if \code{adapt}=\code{FALSE};}
+    \item{\code{sign}: }{the sign of parameter \eqn{\theta_j} (either '+' for positive or '-' for negative) for all covariates. If not provided, adaptation will disregard the sign of parameter \eqn{\theta_j}. Ignored if \code{adapt}=\code{FALSE};}  
+    \item{\code{selection}: }{the criterion to be used for the adaptation of lag shapes, that may be one among \code{'bic'} to minimise the Bayesian Information Criterion (Schwarz, 1978) and \code{'aic'} to minimise the Akaike Information Criterion (Akaike, 1974). Default is \code{'bic'}.}
     }}
-  
   \item{local.control}{A list containing variable-specific options for the estimation.
   These options prevail on the ones contained in \code{global.control}. See \code{Details}.}
   \item{quiet}{Logical. If \code{TRUE}, messages on the estimation progress are suppressed. Deafult is \code{FALSE}.}
@@ -74,6 +75,7 @@ For the gamma lag shape:
 Formulas cannot contain qualitative variables or interaction terms (no ':' or '*' symbols), and
 may contain the following operators for lag specification:
   \itemize{
+  %\item{\code{uncons.lag}: }{unconstrained lag shape;}
   \item{\code{quec.lag}: }{quadratic (2nd order polynomial) lag shape with endpoint constraints;}
   \item{\code{qdec.lag}: }{quadratic (2nd order polynomial) decreasing lag shape;}
   \item{\code{gamma.lag}: }{gamma lag shape.}
@@ -81,8 +83,10 @@ may contain the following operators for lag specification:
 Each operator must have the following three arguments (provided within brackets and separated by commas):
   \enumerate{
   \item{the name of the covariate to which the lag is applied;}
-  \item{parameter \eqn{a_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\delta_j} (for the gamma lag shape);}
-  \item{parameter \eqn{b_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\lambda_j} (for the gamma lag shape);}
+  \item{parameter \eqn{a_j} (for %the unconstrained and
+  2nd order polynomial lag shapes), or parameter \eqn{\delta_j} (for the gamma lag shape);}
+  \item{parameter \eqn{b_j} (for %the unconstrained and
+  2nd order polynomial lag shapes), or parameter \eqn{\lambda_j} (for the gamma lag shape);}
   \item{the group factor (optional). If not provided and argument \code{group} is not \code{NULL}, this is found automatically.}
   }
 For example, \code{quec.lag(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15),
@@ -94,20 +98,20 @@ The group factor and exogenous variables must not appear in any formula.
 
 Argument \code{local.control} must be a named list containing one or more among the following components:
   \itemize{
-  %\item{\code{L}: }{a named vector of non-negative integer values including the highest lag with non-zero autocorrelation for the indicated regression models.
-  %If greater than 0, the Newey-West correction of the covariance matrix of estimates (Newey and West, 1987) is used.}
   \item{\code{adapt}: }{a named vector of logical values, where each component must have
 the name of one endogenous variable and indicate whether adaptation of lag shapes should be
 performed for the regression model of that variable.}
-  \item{\code{max.gestation}: }{\code{max.gestation}: a named list. Each component of the list must have the
-name of one endogenous variable and be a named vector.
+  \item{\code{min.gestation}: }{a named list. Each component of the list must have
+the name of one endogenous variable and be a named vector.
 Each component of the named vector must have the name of one covariate in the regression
-model of the endogenous variable above and include the maximum gestation lag for its lag shape.}
-  \item{\code{max.lead}: }{the same as \code{max.gestation}, with the exception that
+model of the endogenous variable above and include the minimum gestation lag for its lag shape.}
+  \item{\code{max.gestation}: }{the same as \code{min.gestation}, with the exception that
+the named vector must include the maximum gestation lag.}
+  \item{\code{max.lead}: }{the same as \code{min.gestation}, with the exception that
 the named vector must include the maximum lead lag.}
-  \item{\code{min.width}: }{the same as \code{max.gestation}, with the exception that
+  \item{\code{min.width}: }{the same as \code{min.gestation}, with the exception that
 the named vector must include the minimum lag width.}
-  \item{\code{sign}: }{the same as \code{max.gestation}, with the exception that
+  \item{\code{sign}: }{the same as \code{min.gestation}, with the exception that
 the named vector must include the lag sign (either \code{'+'} for positive or \code{'-'} for negative).}
   Local control options have no default values, and global ones are applied in their absence.
   If some local control options conflict with global ones, only the former are applied.
@@ -147,6 +151,7 @@ S3 methods available for class \code{dlsem} are:
     \item {\code{style=0}: }{all edges are shown in black disregarding statistical significance of causal effects}.
     }}
   \item{nobs}{returns the number of observations for each regression model.}
+  \item{npar}{returns the number of parameters for each regression model.}
   \item{coef}{returns parameters \eqn{\theta_j (j=1,\ldots,J)} for each regression model.}
   \item{vcov}{returns the covariance matrix of estimates for each regression model.}
   \item{logLik}{returns the log-likelihood for each regression model.}
@@ -162,7 +167,7 @@ S3 methods available for class \code{dlsem} are:
   }
 }
 \references{
-%W. K. Newey, and K. D. West (1978). A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. \emph{Econometrica}, 55(3), 703-708.}
+W. K. Newey, and K. D. West (1978). A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. \emph{Econometrica}, 55(3), 703-708.
 
 H. Akaike (1974). A New Look at the Statistical Identification Model. \emph{IEEE Transactions on Automatic Control}, 19, 716-723. DOI: 10.1109/TAC.1974.1100705
 
@@ -183,15 +188,15 @@ indus.code <- list(
   Consum~quec.lag(Job,0,5),
   Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,6)
   )
-indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
-  log=TRUE)
+indus.mod <- dlsem(indus.code,group="Region",time="Year",exogenous=c("Population","GDP"),
+  data=industry,log=TRUE)
 
 # Adaptation of lag shapes (estimation takes some seconds more)
 indus.global <- list(adapt=TRUE,max.gestation=3,max.lead=15,min.width=5,sign="+")
 indus.local <- list()
 ## NOT RUN:
-# indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
-#   global.control=indus.global,local.control=indus.local,log=TRUE)
+# indus.mod <- dlsem(indus.code,group="Region",time="Year",exogenous=c("Population","GDP"),
+#   data=industry,global.control=indus.global,local.control=indus.local,log=TRUE)
 
 # Summary of estimation
 summary(indus.mod)
@@ -212,7 +217,7 @@ indus.code_2 <- list(
   Pollution~qdec.lag(Job,0,15)+qdec.lag(Consum,0,15)
   )
 ## NOT RUN:
-# indus.mod_2 <- dlsem(indus.code_2,group="Region",exogenous=c("Population","GDP"),
+# indus.mod_2 <- dlsem(indus.code_2,group="Region",time="Year",exogenous=c("Population","GDP"),
 #   data=industry,global.control=indus.global,local.control=indus.local,log=TRUE)
 
 # Model 3: gamma lag shapes
@@ -222,7 +227,7 @@ indus.code_3 <- list(
   Pollution~gamma.lag(Job,0.5,0.5)+gamma.lag(Consum,0.5,0.5)
   )
 ## NOT RUN:
-# indus.mod_3 <- dlsem(indus.code_3,group="Region",exogenous=c("Population","GDP"),
+# indus.mod_3 <- dlsem(indus.code_3,group="Region",time="Year",exogenous=c("Population","GDP"),
 #   data=industry,global.control=indus.global,local.control=indus.local,log=TRUE)
 
 # comparison of the three models
@@ -264,8 +269,8 @@ for(i in 1:length(auxcode)) {
   agres.code[[i]] <- formula(auxcode[i])
   }
 ## NOT RUN:
-# agres.mod <- dlsem(agres.code,group="COUNTRY",exogenous=context.var,data=agres,
-#   global.control=agres.global,local.control=agres.local,log=TRUE)
+# agres.mod <- dlsem(agres.code,group="COUNTRY",time="YEAR",exogenous=context.var,
+#   data=agres,global.control=agres.global,local.control=agres.local,log=TRUE)
 # summary(agres.mod)
 
 ## Gamma lag shapes (estimation takes a dozen of minutes)
@@ -279,8 +284,8 @@ for(i in 1:length(auxcode_2)) {
   agres.code_2[[i]] <- formula(auxcode_2[i])
   }
 ## NOT RUN:
-# agres.mod_2 <- dlsem(agres.code_2,group="COUNTRY",exogenous=context.var,data=agres,
-#  global.control=agres.global,local.control=agres.local,log=T)
+# agres.mod_2 <- dlsem(agres.code_2,group="COUNTRY",time="YEAR",exogenous=context.var,
+#  data=agres,global.control=agres.global,local.control=agres.local,log=T)
 # summary(agres.mod_2)
 # lapply(list(QUEC=agres.mod,GAMMA=agres.mod_2),BIC)
 }

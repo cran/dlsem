@@ -35,7 +35,7 @@
 
 \title{Distributed-lag linear structural equation models in \proglang{R}:\\the \pkg{dlsem} package}
 \author{Alessandro Magrini\\Dep. Statistics, Computer Science, Applications\\University of Florence, Italy\\<magrini@disia.unifi.it>}
-\date{\pkg{dlsem} version 2.3 -- 18 May 2018}
+\date{\pkg{dlsem} version 2.4 -- 08 August 2018}
 
 
 \begin{document}
@@ -104,8 +104,7 @@ In Section \ref{sec:install}, instructions for the installation
 of the \pkg{dlsem} package are provided.
 In Section \ref{sec:example}, the practical use of \pkg{dlsem}
 is illustrated through a simple impact assessment problem.
-Section \ref{sec:remarks} includes final remarks and considerations
-on future development of the package.
+Section \ref{sec:remarks} includes final remarks and considerations on future development of the package.
 
 
 \section{Theory}
@@ -137,11 +136,11 @@ limitations by forcing the coefficients for lagged instances
 of the same covariate to follow a polynomial of order $Q$:
 \begin{equation}\label{eq:almon}
 \beta_{j,l} = \begin{cases}
-  \phi_0 & l=0\\
-  \sum_{q=0}^Q \phi_q l^q & \text{otherwise}
+  \phi_{j,0} & l=0\\
+  \sum_{q=0}^Q \phi_{j,q} l^q & \text{otherwise}
   \end{cases}
 \end{equation}
-For instance, for $q=2$ we have that $\beta_{j,l} =\phi_0+\phi_1 l+\phi_2 l^2$.
+For instance, for $q=2$ we have that $\beta_{j,l} =\phi_{j,0}+\phi_{j,1} l+\phi_{j,2} l^2$.
 Unfortunately, the Almon's polynomial lag shape may show multiple modes
 and coefficients with different signs, thus entailing problems of interpretation.
 Constrained lag shapes \citep[Chapters 9-10]{judge85} overcome this issue.
@@ -174,11 +173,11 @@ The gamma lag shape is positively skewed with mode equal to $\theta_j$
 at lag $\frac{\delta_j}{(\delta_j-1)\hspace{0.04cm}\text{log}\lambda_j}$.
 Value $a_j$ is denoted as the \textit{gestation lag},
 value $b_j$ as the \textit{lead lag}, and value $b_j-a_j$ as the \textit{lag width}.
-A static coefficient is obtained if $a_j=b_j=0$.
-Since it is not expressed as a function of $a_j$ and $b_j$,
-the gamma lag shape cannot reduce to a static coefficient,
-but the corresponding values of $a_j$ and $b_j$ may be computed
-through numerical approximation from the values of $\delta_j$ and $\lambda_j$.
+A static lag shape is obtained if $a_j=b_j=0$.
+The gamma lag shape is not expressed as a function of $a_i$ and $b_i$,
+thus it cannot reduce exactly to a static lag shape,
+but numerical approximation can be used to find the couples of
+values of $\delta_i$ and $\lambda_i$ satisfying given values of $a_i$ and $b_i$.
 %
 For these three lag shapes it holds:
 \begin{equation}\label{eq:sign}
@@ -201,7 +200,7 @@ and then select the one with the minimum value of
 the Bayesian Information Criterion (BIC, \citealp{schwarz78})\footnote{
 %
 Note that neither the response variable nor the covariates must contain
-a trend in order to obtain unbiased estimates with ordinary least squares \citep{granger74}.
+a unit root in order to obtain unbiased estimates with ordinary least squares \citep{granger74}.
 A reasonable procedure is to sequentially apply differentiation to all
 variables until the Augmented Dickey-Fuller test \citep{dickey81}
 rejects the hypothesis of unit root for all of them.
@@ -277,9 +276,6 @@ p(V_j=v_j \mid \text{do}(V_i=v_i))=\sum_{\pi_i} p(V_j=v_j \mid V_i=v_i,\Pi_i=\pi
 \end{equation}
 where $\Pi_i$ is the parent set of $V_i$.
 
-
-%\paragraph{Linear Markovian structural causal models}
-%
 In a linear parametric formulation of SCMs (linear Markovian SCMs),
 each factor $p(v_j \mid \pi_j)$ of the joint probability distribution
 in Formula \ref{eq:markov} is the linear regression model where $V_j$ is
@@ -302,9 +298,9 @@ $<V_i,\ldots,V_j>$ connecting $V_i$ to $V_j$,
 called \textit{indirect} causal effect of $V_i$ on $V_j$ through $<V_i,\ldots,V_j>$,
 is equal to (see, for example, \citealp{wright34}):
 \begin{equation}
-e(<V_i,\ldots,V_j>)=\prod_{k:~V_k \in <V_i,\ldots,V_j>\wedge k\not=i} b_{k|k-1}
+e(<V_i,\ldots,V_j>)=\prod_{k:~V_k \in <V_i,\ldots,V_j>\wedge k\not=i} \beta_{k|k-1}
 \end{equation}
-where $b_{k|k-1}$ is the coefficient of $V_{k-1}$ in the regression model of $V_k$.
+where $\beta_{k|k-1}$ is the coefficient of $V_{k-1}$ in the regression model of $V_k$.
 The direct causal effect of $V_i$ on $V_j$
 and all the indirect causal effects of $V_i$ on $V_j$
 are denoted as \textit{pathwise} causal effects of $V_i$ on $V_j$; 
@@ -313,11 +309,10 @@ the sum of all the pathwise causal effects of $V_i$ on $V_j$.
 \end{itemize}
 For example, in the linear Markovian SCM associated to the DAG in Figure \ref{fig:dagsam},
 there are two directed paths connecting $V_1$ to $V_4$:
-$<V_1,V_2,V_4>$ with pathwise causal effect $b_{2|1}\cdot b_{4|2}$,
-and $<V_1,V_3,V_4>$ with pathwise causal effect $b_{3|1}\cdot b_{4|3}$.
+$<V_1,V_2,V_4>$ with pathwise causal effect $\beta_{2|1}\cdot \beta_{4|2}$,
+and $<V_1,V_3,V_4>$ with pathwise causal effect $\beta_{3|1}\cdot \beta_{4|3}$.
 Thus, the overall causal effect of $V_1$ on $V_4$ is equal to
-%$\text{E}(V_4 \mid \text{do}(\Delta V_1=1))$
-$b_{2|1}\cdot b_{4|2}+b_{3|1}\cdot b_{4|3}$.
+$\beta_{2|1}\cdot \beta_{4|2}+\beta_{3|1}\cdot \beta_{4|3}$.
 
 
 \paragraph{Distributed-lag linear structural equation models}
@@ -344,19 +339,13 @@ and $Q_m^{(l)}$ be the set of all the possible ordered $m$-uples
 of time lags such that their sum is equal to $l$.
 The \textit{indirect} causal effect of $V_i$ on $V_j$ through such path at lag $l$ is equal to:
 \begin{equation}\label{eq:dlsem_indirect}
-e(<V_{d_0},\ldots,V_{d_m}>;d_0=i,d_m=j)=\sum_{(q_1,\ldots,q_m)\in Q_m^{(l)}}\hspace{0.3cm}\prod_{k=1}^m b^{(q_k)}_{d_k|d_{k-1}}
+e(<V_{d_0},\ldots,V_{d_m}>;d_0=i,d_m=j)=\sum_{(q_1,\ldots,q_m)\in Q_m^{(l)}}\hspace{0.3cm}\prod_{k=1}^m b_{d_k|d_{k-1},q_k}
 \end{equation}
-where $b^{(l_k)}_{d_k|d_{k-1}}$ is the coefficient of $V_{d_{k-1}}$ at lag $l_k$
+where $b_{d_k|d_{k-1},q_k}$ is the coefficient of $V_{d_{k-1}}$ at lag $q_k$
 in the regression model of $V_{d_k}$;
 \item the \textit{overall} causal effect of $V_i$ on $V_j$ at lag $l$ is equal to
 the sum of all the pathwise causal effects of $V_i$ on $V_j$ at lag $l$.
 \end{itemize}
-%The causal effects just defined are denoted as \textit{instantaneous}
-%causal effects, as they are evaluated at a single time lag.
-%The \textit{cumulative} causal effect at a pre-specified time lag, say $l$,
-%is obtained by summing all the %instantaneous
-%causal effects at each time lag up to $l$.
-%
 A \textit{pathwise causal lag shape} is the set of causal effects
 associated to a path at different time lags.
 An \textit{overall causal lag shape} is the set of the
@@ -384,7 +373,7 @@ In order to keep your copy of \pkg{dlsem} up to date, use the command:
 update.packages("dlsem")
 @
 
-The latest version of \pkg{dlsem} is 2.3.
+The latest version of \pkg{dlsem} is 2.4.
 
 
 \section{Illustrative example}
@@ -484,6 +473,8 @@ components:
 \item \code{adapt}: a logical value indicating if adaptation of lag shapes must be performed,
 that is parameters of lag shapes must be chosen on the basis of fit to data.
 Default is \code{FALSE}, meaning no adaptation;
+\item \code{min.gestation}: the minimum gestation lag for all lag shapes.
+If not provided, it is taken as equal to 0;
 \item \code{max.gestation}: the maximum gestation lag for all lag shapes.
 If not provided, it is taken as equal to \code{max.lead} (see below);
 \item \code{max.lead}: the maximum lead lag for all lag shapes.
@@ -499,15 +490,17 @@ Local control options must be a named list containing one or more among the foll
 \item \code{adapt}: a named vector of logical values, where each component must have
 the name of one endogenous variable and indicate if adaptation of lag shapes must be
 performed for the regression model of that variable;
-\item \code{max.gestation}: a named list. Each component of the list must have the
+\item \code{min.gestation}: a named list. Each component of the list must have the
 name of one endogenous variable and be a named vector.
 Each component of the named vector must have the name of one covariate in the regression
-model of the endogenous variable above and include the maximum gestation lag for its lag shape;
-\item \code{max.lead}: the same as \code{max.gestation}, with the exception that
+model of the endogenous variable above and include the minimum gestation lag for its lag shape;
+\item \code{max.gestation}: the same as \code{min.gestation}, with the exception that
+the named vector must include the maximum gestation lag;
+\item \code{max.lead}: the same as \code{min.gestation}, with the exception that
 the named vector must include the maximum lead lag;
-\item \code{min.width}: the same as \code{max.gestation}, with the exception that
+\item \code{min.width}: the same as \code{min.gestation}, with the exception that
 the named vector must include the minimum lag width;
-\item \code{sign}: the same as \code{max.gestation}, with the exception that
+\item \code{sign}: the same as \code{min.gestation}, with the exception that
 the named vector must include the lag sign (either \code{'+'} for positive or \code{'-'} for negative).
 \end{itemize}
 Local control options have no default values, and global ones are applied in their absence.
@@ -668,10 +661,6 @@ the name of one or more variables generating the causal effect
 (argument \code{to}).
 Optionally, specific time to which computation should be focused may be provided to argument \code{lag},
 otherwise the whole lag shapes will be considered.
-%Also, the user may choose whether the instantaneous 
-%(argument \code{cumul} set to \code{FALSE}, the default)
-%or the cumulative (argument \code{cumul} set to \code{TRUE})
-%causal effect must be returned.
 Cumulative causal effects may be returned by setting the argument \code{cumul} to \code{TRUE}.
 %
 Only exogenous variables can be indicated as starting or ending variables.
@@ -791,28 +780,11 @@ because it has no endogenous covariates.
 \section{Final remarks}
 \label{sec:remarks}
 
-%Lag shapes included in the package may represent a large number of real-world lag structures:
-%unimodal symmetric (with the endpoint-constrained quadratic lag shape),
-%unimodal asymmetric (with the gamma lag shape) and
-%skewned ones (with the quadratic decreasing lag shape).
-%Nevertheless, additional lag shapes with further specific features may be added in the future.
+Lag shapes included in the package may represent a large number of real-world lag structures,
+nevertheless new lag shapes with further specific features may be added in the future.
 
-%Parameter estimation in DLSEM cannot be performed in a single step
-%unless gestation and lead lags are all known.
-%Since complete search over all the possible models is infeasible
-%for most real-world applications, a heuristic search based on forward
-%model selection is currently implemented.
-%Further development of the package may be directed towards the
-%improvement of the search strategy.
-
-%Grouped data are currently managed through fixed effects estimation.
-%In the future, random effects estimation may be implemented to enhance inference
-%whenever the considered groups are a subset of the possible ones,
-%or covariates with values constant within groups (second-level covariates) are involved.
-
-Important functionalities like random effects estimation and autoregressive lag shapes
-will be implemented in the next releases.
-Also, additional lag shapes with further specific features may be added in the future.
+Further popular functionalities for linear models will be implemented in the next releases,
+like random effects estimation, two-stage least squares and autoregressive lag shapes.
 
 Please, do not hesitate to contact me for questions, feedbacks or bug reports.
 

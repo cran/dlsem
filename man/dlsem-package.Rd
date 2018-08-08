@@ -21,12 +21,12 @@ The main functions of the package are:
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 2.3\cr
-  Date: \tab 2018-05-22\cr
+  Version: \tab 2.4\cr
+  Date: \tab 2018-08-08\cr
   License: \tab GPL-2
   }
 }
-\author{Alessandro Magrini <magrini@disia.unifi.it>}
+\author{Alessandro Magrini <alessandro.magrini@unifi.it>}
 \references{
 G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985). The Theory and Practice of Econometrics. John Wiley \& Sons, 2nd ed., New York, US-NY. ISBN: 978-0-471-89530-5
 

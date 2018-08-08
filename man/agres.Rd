@@ -9,7 +9,7 @@
   \describe{
     \item{\code{COUNTRY}}{Code of the country. Belgium and Luxembourg are merged together with code \code{BL}.}
     \item{\code{YEAR}}{Year.}
-    \item{\code{GDP}}{Gross domestic product (international dollars).}
+    \item{\code{GDP}}{Gross domestic product (million euro PPS).}
     \item{\code{EMPL_AGR}}{Persons employed in Agriculture (count).}
     \item{\code{UAA}}{Utilized agricultural area (hectares).}
     \item{\code{PATENT_OTHER}}{Mechanical, chemical and environment-related patent applications (count).}

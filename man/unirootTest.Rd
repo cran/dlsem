@@ -2,20 +2,23 @@
 \alias{unirootTest}
 \title{Unit root test}
 \description{The Augmented Dickey-Fuller test is performed on a set of quantitative variables. A single group factor may be taken into account.}
-\usage{unirootTest(x, group = NULL, time = NULL, data, combine = "choi", k = 0)}
+\usage{unirootTest(x = NULL, group = NULL, time = NULL, data, combine = "choi", k = 0,
+  log = FALSE)}
 \arguments{
-  \item{x}{A vector including the name of the quantitative variables to be tested.}
+  \item{x}{A vector including the name of the quantitative variables to be tested.
+  If \code{NULL} (the default), all the quantitative variables contained in \code{data} will be tested.}
   \item{group}{The name of the group factor (optional). If \code{NULL}, no groups are considered.}
   \item{time}{The name of the time factor (optional). If \code{time} is \code{NULL} and \code{group} is not \code{NULL}, data are assumed to be temporally ordered within each group.
   If both \code{time} and \code{group} are \code{NULL}, data are assumed to be temporally ordered.}
-  \item{data}{An object of class \code{data.frame} containing the variables to be differenced,
+  \item{data}{An object of class \code{data.frame} containing the variables to be tested,
   the group factor if \code{group} is not \code{NULL}, and the time factor if \code{time} is not \code{NULL}.}
   \item{combine}{The method to combine p-values of different groups, that may be either \code{"choi"} (Choi, 2001) or \code{"demetrescu"} (Demetrescu, 2006).
   Ignored if \code{group} is \code{NULL}. Default is \code{"choi"}.}
   \item{k}{The lag order to calculate the statistic of the Augmented Dickey-Fuller test. If \code{k=0} (the default), the standard Dickey-Fuller test is performed.
   If \code{k=NULL}, the lag order is taken as the cubic root of the sample size.}
+  \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to all strictly positive quantitative variables. Default is \code{FALSE}.}
   }
-\value{An object of class \code{unirootTest}, consisting of a list with one component for each quantitative variable. Each list contains the following components:
+\value{An object of class \code{unirootTest}, consisting of a list with one component for each variable tested. Each list contains the following components:
   \item{statistic}{The value of the test statistic.}
   \item{n}{The total number of observations if \code{group} is \code{NULL}, otherwise the number of observations per group.}
   \item{z.value}{The z-value of the test.}
@@ -34,5 +37,5 @@ D. A. Dickey, and W. A. Fuller (1981). Likelihood Ratio Statistics for Autoregre
 %\seealso{}
 \examples{
 data(industry)
-unirootTest(c("Job","Consum","GDP"),group="Region",data=industry)
+unirootTest(c("Job","Consum","GDP"),group="Region",time="Year",data=industry)
 }

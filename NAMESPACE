@@ -1,4 +1,4 @@
-export(dlsem, causalEff, lagPlot, auto.lagPlot, isIndep, unirootTest, as.graphNEL)
+export(dlsem, causalEff, lagPlot, auto.lagPlot, isIndep, unirootTest, vcovHAC, quec.lag, qdec.lag, uncons.lag, almon.lag, as.graphNEL)
 
 S3method(print, dlsem)
 S3method(summary, dlsem)
@@ -14,12 +14,14 @@ S3method(residuals, dlsem)
 S3method(predict, dlsem)
 S3method(print, summary.dlsem)
 S3method(print, unirootTest)
+S3method(vcov, hac)
+S3method(summary, hac)
 
-import(graph, gRbase, Rgraphviz)
+import(graph, Rgraphviz)
 importFrom("grDevices", "dev.off", "pdf")
 importFrom("graphics", "abline", "axis", "box", "grid", "legend","mtext", "par", "points", "polygon")
 importFrom("methods", "new")
 importFrom("stats", "coefficients", "coef", "nobs", "cov", "vcov", "formula","lm", "model.matrix", "logLik",
   "AIC", "BIC", "residuals", "fitted", "quantile", "predict", "pnorm", "qnorm", "qgamma", "rnorm", "rt",
-  "rchisq", "sd", "var", "anova", "deviance", "spline", "approx", "embed", "na.omit")
+  "rchisq", "sd", "var", "anova", "deviance", "spline", "approx", "embed", "na.omit", "ar", "pt", "summary.lm")
 importFrom("utils", "flush.console")

@@ -20,6 +20,10 @@
   \item{title}{The title of the plot (optional). If \code{NULL}, a default title is used.}
 }
 %\value{}
+\note{Value \code{NULL} is returned if one of the following occurs:
+(i) no significant path at confidence level \code{conf} exists connecting the starting variables to the ending variable;
+(ii) the requested path does not exist or is not significant at confidence level \code{conf}.
+}
 %\references{}
 \seealso{\link{dlsem}; \link{causalEff}; \link{lagPlot}.}
 \examples{
