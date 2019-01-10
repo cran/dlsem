@@ -35,7 +35,7 @@
 
 \title{Distributed-lag linear structural equation models in \proglang{R}:\\the \pkg{dlsem} package}
 \author{Alessandro Magrini\\Dep. Statistics, Computer Science, Applications\\University of Florence, Italy\\<magrini@disia.unifi.it>}
-\date{\pkg{dlsem} version 2.4 -- 08 August 2018}
+\date{\pkg{dlsem} version 2.4.1 -- 11 January 2019}
 
 
 \begin{document}
@@ -84,10 +84,10 @@ for causal inference in contemporary applied sciences.
 Markovian SCMs are a special case where the joint probability distribution
 of the considered variables can be factored according to a directed acyclic graph.
 %
-\textit{Distributed-lag linear structural equation models} (DLSEMs) are
+Distributed-lag linear structural equation models (DLSEMs) are
 Markovian SCMs, where each factor of the joint probability distribution
-is a distributed-lag linear regression model
-(see, for example, \citealp[Chapters 9-10]{judge85}).
+is a distributed-lag linear regression model.
+They were introduced for the first time by \citealp{magrini18} in the context of lag exposure assessment.
 %
 DLSEMs account for temporal delays in the dependence relationships among
 the considered variables and allow to perform dynamic causal inference
@@ -143,7 +143,7 @@ of the same covariate to follow a polynomial of order $Q$:
 For instance, for $q=2$ we have that $\beta_{j,l} =\phi_{j,0}+\phi_{j,1} l+\phi_{j,2} l^2$.
 Unfortunately, the Almon's polynomial lag shape may show multiple modes
 and coefficients with different signs, thus entailing problems of interpretation.
-Constrained lag shapes \citep[Chapters 9-10]{judge85} overcome this issue.
+Constrained lag shapes (see, for example, \citep{magrini18}) overcome this issue.
 Package \pkg{dlsem} includes the \textit{endpoint-constrained quadratic} lag shape:
 \begin{equation}\label{eq:quec}
 \beta_{j,l} = \begin{cases}
@@ -285,8 +285,9 @@ in Figure \ref{fig:dagsam}, $p(v_4 \mid v_2,v_3)$
 is the linear regression model where $V_4$ is the response
 variable and $V_2$ and $V_3$ are the covariates.
 
-In a linear Markovian SCM, the computation of causal effects involves
-the coefficients of the regression models only, without the need of Formula \ref{eq:markov_ce}.
+As shown by \citealp{magrini18}, the computation of causal effects
+in a linear Markovian SCM involves the coefficients of the regression models only,
+without the need of Formula \ref{eq:markov_ce}.
 Let $\text{do}(\Delta V_i=1)$ be an intervention changing the value of $V_i$ by a unit.
 Under such intervention:
 \begin{itemize}
@@ -319,8 +320,8 @@ $\beta_{2|1}\cdot \beta_{4|2}+\beta_{3|1}\cdot \beta_{4|3}$.
 %
 Distributed-lag linear structural equation models (DLSEMs) are
 Markovian SCMs where each factor of the joint probability distribution
-in Formula \ref{eq:markov} is a distributed-lag linear regression model
-(see, for example, \citealp[Chapters 9-10]{judge85}).
+in Formula \ref{eq:markov} is a distributed-lag linear regression model.
+They were introduced for the first time by \citealp{magrini18} in the context of lag exposure assessment.
 %
 The DAG of a DLSEM would involve all the possible temporal instances
 of each variable in $\boldsymbol{V}$.
@@ -373,7 +374,7 @@ In order to keep your copy of \pkg{dlsem} up to date, use the command:
 update.packages("dlsem")
 @
 
-The latest version of \pkg{dlsem} is 2.4.
+The latest version of \pkg{dlsem} is 2.4.1.
 
 
 \section{Illustrative example}
@@ -431,13 +432,13 @@ In each formula, the response and the covariates must be quantitative variables\
 Qualitative variables may be included only as exogenous variables,
 as described in Subsection \ref{sub:example3}.
 %
-}, and operators \code{quec.lag}$(\cdot)$, \code{qdec.lag}$(\cdot)$ and \code{gamma.lag}$(\cdot)$
+}, and operators \code{quec.lag}$(\cdot)$, \code{qdec.lag}$(\cdot)$ and \code{gamm.lag}$(\cdot)$
 may be employed to specify, respectively, an endpoint-constrained quadratic,
 a quadratic decreasing or a gamma lag shape.
 Operators \code{quec.lag}$(\cdot)$ and \code{qdec.lag}$(\cdot)$ have three arguments:
 the name of the covariate to which the lag shape is applied,
 the gestation lag ($a_j$) and the lead lag ($b_j$).
-Operator \code{gamma.lag}$(\cdot)$ has three arguments:
+Operator \code{gamm.lag}$(\cdot)$ has three arguments:
 the name of the covariate to which the lag shape is applied,
 parameter $\delta_j$ and parameter $\lambda_j$.
 If none of these two operators is applied to a covariate, it is assumed that
@@ -749,8 +750,8 @@ summary(indus.mod_2)$endogenous
 # model 3: gamma lag shapes
 indus.code_3 <- list(
   Job ~ 1,
-  Consum~gamma.lag(Job,0.5,0.5),
-  Pollution~gamma.lag(Job,0.5,0.5)+gamma.lag(Consum,0.5,0.5)
+  Consum~gamm.lag(Job,0.5,0.5),
+  Pollution~gamm.lag(Job,0.5,0.5)+gamm.lag(Consum,0.5,0.5)
   )
 indus.mod_3 <- dlsem(indus.code_3,group="Region",exogenous=c("Population","GDP"),
   data=industry,global.control=indus.global,local.control=indus.local,log=T)
@@ -790,7 +791,7 @@ Please, do not hesitate to contact me for questions, feedbacks or bug reports.
 
 
 \pdfbookmark{References}{sec:refs}
-\begin{thebibliography}{99.}%
+\begin{thebibliography}{9}
 
 %\bibitem[Akaike(1974)]{akaike74} H. Akaike (1974). A New Look at the Statistical Identification Model.
 %\textit{IEEE Transactions on Automatic Control}, 19: 716-723.
@@ -810,9 +811,9 @@ Maximum Likelihood from Incomplete Data via the EM Algorithm.
 Spurious Regressions in Econometrics.
 \textit{Journal of Econometrics}, 2(2), 111-120.
 
-\bibitem[Judge \textit{et al.}(1985)]{judge85} G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985).
-The Theory and Practice of Econometrics.
-John Wiley \& Sons, 2nd ed., New York, US-NY.
+%\bibitem[Judge \textit{et al.}(1985)]{judge85} G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985).
+%The Theory and Practice of Econometrics.
+%John Wiley \& Sons, 2nd ed., New York, US-NY.
 
 \bibitem[Haavelmo(1943)]{haavelmo43} T. Haavelmo (1943). The Statistical Implications of a System of Simultaneous Equations.
 \textit{Econometrica}, 11(1): 1-12.
@@ -825,9 +826,9 @@ In: T. C. Koopmans (ed.), Statistical Inference in Dynamic Economic Models, page
 Unit Root Tests in Panel Data: Asymptotic and Finite-Sample Properties.
 \textit{Journal of Econometrics}, 108: 1-24.
 
-\bibitem[Pearl(2012)]{pearl12} J. Pearl (2012).
-The Causal Foundations of Structural Equation Modelling.
-In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, pages 68-91. Guilford Press, New York, US-NY. 
+\bibitem[Magrini(2018)]{magrini18} A. Magrini (2018).
+Linear Markovian Models for Lag Exposure Assessment.
+\textit{Biometrical Letters}, 55(2): 179-195.
 
 \bibitem[Pearl(2000)]{pearl00} J. Pearl (2000).
 Causality: Models, Reasoning, and Inference.

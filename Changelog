@@ -3,9 +3,16 @@ dlsem (2.4)
 * fixed the bug in lagPlot() for gamma lag shapes
 * fixed the bug in causalEff() for multiple starting variables
 * methods lagPlot() and causalEff() now return NULL instead of an error in case of inexisting path
-* lag shape transformations are now visible to the user
+* lag shape transformations are visible to the user
 * added the minimum gestation lag option in dlsem()
 * added the gestation and the lead lags in the summary
 * added the 'npar' method for class 'dlsem'
 * added the vcovHAC() method for class 'lm' and 'dlsem'
 * added the HAC estimate of standard errors in method dlsem()
+
+
+dlsem (2.4.1)
+
+* fixed the bug in the visualization of the cumulative coefficient in lagPlot()
+* changed the call to the gamma lag transformation from gamma.lag() into gamm.lag()
+* gamm.lag() is visible to the user

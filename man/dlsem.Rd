@@ -78,7 +78,7 @@ may contain the following operators for lag specification:
   %\item{\code{uncons.lag}: }{unconstrained lag shape;}
   \item{\code{quec.lag}: }{quadratic (2nd order polynomial) lag shape with endpoint constraints;}
   \item{\code{qdec.lag}: }{quadratic (2nd order polynomial) decreasing lag shape;}
-  \item{\code{gamma.lag}: }{gamma lag shape.}
+  \item{\code{gamm.lag}: }{gamma lag shape.}
   }
 Each operator must have the following three arguments (provided within brackets and separated by commas):
   \enumerate{
@@ -90,8 +90,9 @@ Each operator must have the following three arguments (provided within brackets 
   \item{the group factor (optional). If not provided and argument \code{group} is not \code{NULL}, this is found automatically.}
   }
 For example, \code{quec.lag(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15),
-and \code{gamma.lag(X1,0.75,0.8)} indicates that a gamma lag shape with \eqn{\delta_j=0.75} and \eqn{\lambda_j=0.8} must be applied to variable X1.
-See Judge et al. (1985, Chapters 9-10) for more details.
+and \code{gamm.lag(X1,0.75,0.8)} indicates that a gamma lag shape with \eqn{\delta_j=0.75} and \eqn{\lambda_j=0.8} must be applied to variable X1.
+See Magrini (2018) for more details.
+%See Judge et al. (1985, Chapters 9-10) for more details.
 
 The formula of regression models with no endogenous covariates may be omitted from argument \code{model.code}.
 The group factor and exogenous variables must not appear in any formula.
@@ -121,8 +122,7 @@ and differentiation, assuming group-specific means and time-invariant covariance
 
 Qualitative variables cannot contain missing values.
 
-After differentiation,
-each quantitative variable must have at least a total of 3 observed values and,
+After differentiation, each quantitative variable must have at least a total of 3 observed values and,
 if the group factor is specified, at least one observed value per group.
 }
 \value{An object of class \code{dlsem}, with the following components:
@@ -162,7 +162,7 @@ S3 methods available for class \code{dlsem} are:
   \item{predict}{returns predicted values.
   If k-th order differentiation was applied, predicted values represent variations
   (on the original scale if \code{log}=\code{FALSE},
-  percentage variations if \code{log}=\code{TRUE}) with respect to k periods before.
+  percentage variations if \code{log}=\code{TRUE}) with respect to k time lags before.
   Optionally, a data frame from which to predict may be provided to argument \code{newdata}.
   }
 }
@@ -173,7 +173,7 @@ H. Akaike (1974). A New Look at the Statistical Identification Model. \emph{IEEE
 
 A. P. Dempster, N. M. Laird, and D. B. Rubin (1977). Maximum Likelihood from Incomplete Data via the EM Algorithm. \emph{Journal of the Royal Statistical Society}, Series B, 39(1): 1-38.
 
-G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985). The Theory and Practice of Econometrics. John Wiley & Sons, 2nd ed., New York, US-NY.  ISBN: 978-0-471-89530-5
+%G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985). The Theory and Practice of Econometrics. John Wiley & Sons, 2nd ed., New York, US-NY.  ISBN: 978-0-471-89530-5
 
 %P. Schmidt (1974). An Argument for the Usefulness of the Gamma Distributed Lag Model. \emph{International Economic Review}, 15(1).
 
@@ -223,8 +223,8 @@ indus.code_2 <- list(
 # Model 3: gamma lag shapes
 indus.code_3 <- list(
   Job ~ 1,
-  Consum~gamma.lag(Job,0.5,0.5),
-  Pollution~gamma.lag(Job,0.5,0.5)+gamma.lag(Consum,0.5,0.5)
+  Consum~gamm.lag(Job,0.5,0.5),
+  Pollution~gamm.lag(Job,0.5,0.5)+gamm.lag(Consum,0.5,0.5)
   )
 ## NOT RUN:
 # indus.mod_3 <- dlsem(indus.code_3,group="Region",time="Year",exogenous=c("Population","GDP"),
@@ -273,11 +273,11 @@ for(i in 1:length(auxcode)) {
 #   data=agres,global.control=agres.global,local.control=agres.local,log=TRUE)
 # summary(agres.mod)
 
-## Gamma lag shapes (estimation takes a dozen of minutes)
+## Gamma lag shapes (estimation takes some minutes)
 auxcode_2 <- c(paste(investment.var,"~1",sep=""),
-  paste(research.var,"~",paste("gamma.lag(",investment.var,",0.5,0.5)",
+  paste(research.var,"~",paste("gamm.lag(",investment.var,",0.5,0.5)",
     collapse="+",sep=""),sep=""),
-  paste(impact.var,"~",paste("gamma.lag(",c(investment.var,research.var),",0.5,0.5)",
+  paste(impact.var,"~",paste("gamm.lag(",c(investment.var,research.var),",0.5,0.5)",
     collapse="+",sep=""),sep=""))
 agres.code_2 <- list()
 for(i in 1:length(auxcode_2)) {

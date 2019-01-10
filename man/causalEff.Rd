@@ -25,11 +25,13 @@ causal effects are net of the influence of the group factor and exogenous variab
 (i) no significant path at confidence level \code{conf} exists connecting the starting variables to the ending variable;
 (ii) the requested path does not exist or is not significant at confidence level \code{conf}.
 Note that the edges between the starting variables and their respective parents are deleted
-as a consequence of intervention (Pearl, 2000, page 24).
-See Section 2 of the vignette for the theory on causal inference in distributed-lag linear structural equation models.
+as a consequence of intervention. %(Pearl, 2000, page 24).
+See Magrini (2018) for technical details on causal inference in distributed-lag linear structural equation models.
 }
 \references{
-J. Pearl (2000). Causality: Models, Reasoning, and Inference. Cambridge University Press. Cambridge, UK. ISBN: 978-0-521-89560-6
+A. Magrini (2018). Linear Markovian Models for Lag Exposure Assessment. Biometrical Letters, 55(2): 179-195. DOI: 10.2478/bile-2018-0012.
+
+%J. Pearl (2000). Causality: Models, Reasoning, and Inference. Cambridge University Press. Cambridge, UK. ISBN: 978-0-521-89560-6
 %
 %J. Pearl (2012). The Causal Foundations of Structural Equation Modelling. In: R. H. Hoyle (ed.), Handbook of Structural Equation Modelling, Chapter 5. Guilford Press, New York, US-NY. ISBN: 978-16-062-3077-0
 }
