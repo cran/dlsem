@@ -1,4 +1,4 @@
-export(dlsem, causalEff, lagPlot, auto.lagPlot, isIndep, unirootTest, vcovHAC, quec.lag, qdec.lag, gamm.lag, uncons.lag, almon.lag, as.graphNEL)
+export(dlsem, causalEff, lagPlot, auto.lagPlot, isIndep, unirootTest, vcovHAC, quec.lag, qdec.lag, gamm.lag, as.graphNEL)
 
 S3method(print, dlsem)
 S3method(summary, dlsem)

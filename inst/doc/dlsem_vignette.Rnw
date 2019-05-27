@@ -35,7 +35,7 @@
 
 \title{Distributed-lag linear structural equation models in \proglang{R}:\\the \pkg{dlsem} package}
 \author{Alessandro Magrini\\Dep. Statistics, Computer Science, Applications\\University of Florence, Italy\\<magrini@disia.unifi.it>}
-\date{\pkg{dlsem} version 2.4.1 -- 11 January 2019}
+\date{\pkg{dlsem} version 2.4.2 -- 30 May 2019}
 
 
 \begin{document}
@@ -374,7 +374,7 @@ In order to keep your copy of \pkg{dlsem} up to date, use the command:
 update.packages("dlsem")
 @
 
-The latest version of \pkg{dlsem} is 2.4.1.
+The latest version of \pkg{dlsem} is 2.4.2.
 
 
 \section{Illustrative example}
@@ -580,8 +580,7 @@ Augmented Dickey-Fuller test proposed by \cite{levin02} is used instead.
 }, and each missing value is replaced by its conditional mean
 computed through the Expectation-Maximization algorithm \citep{dempster77}\footnote{
 %
-The computation is performed after eventual logarithmic transformation and differentiation,
-assuming group-specific means and time-invariant covariance matrix.
+%The computation is performed after eventual logarithmic transformation and differentiation, assuming group-specific means and time-invariant covariance matrix.
 Qualitative variables cannot contain missing values.
 Each quantitative variable must have at least 3 observed values
 if the group factor is not specified,

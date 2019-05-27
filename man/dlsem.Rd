@@ -3,19 +3,22 @@
 \title{Parameter estimation}
 \description{Parameter estimation is performed for a distributed-lag linear structural equation model.
 A single group factor may be taken into account.}
-\usage{dlsem(model.code, group = NULL, time = NULL, exogenous = NULL, data,
-  log = FALSE, hac = FALSE, diff.options = list(combine="choi",k=0,maxdiff=3),
-  imput.options = list(tol=0.0001,maxiter=500,recons=TRUE,no.imput=NULL),
+\usage{dlsem(model.code, group = NULL, time = NULL, seas = NULL, exogenous = NULL, data,
+  log = FALSE, hac = FALSE, gammaOptim = TRUE,
+  diff.options = list(combine="choi",k=0,maxdiff=3),
+  imput.options = list(tol=0.0001,maxiter=500,maxlag=3,no.imput=NULL),
   global.control = NULL, local.control = NULL, quiet = FALSE)}
 \arguments{
   \item{model.code}{A list of objects of class \code{formula}, each describing a single regression model. See \code{Details}.}
   \item{group}{The name of the group factor (optional). If \code{NULL}, no groups are considered.}
-  \item{time}{The name of the time factor (optional). If \code{time} is \code{NULL} and \code{group} is not \code{NULL}, data are assumed to be temporally ordered within each group.
+  \item{seas}{The name of the variable indicating the seasonal period (optional). If provided, deseasonalization is performed through ordinary least squares with dummy variables. Default is \code{NULL}.}
+  \item{time}{The name of the variable indicating the date time (optional). If \code{time} is \code{NULL} and \code{group} is not \code{NULL}, data are assumed to be temporally ordered within each group.
   If both \code{time} and \code{group} are \code{NULL}, data are assumed to be temporally ordered.}
   \item{exogenous}{The name of exogenous variables (optional). Exogenous variables may be either quantitative or qualitative and must not appear in the model code.}  
   \item{data}{An object of class \code{data.frame} containing data.}
-  \item{hac}{Logical. If \code{TRUE}, heteroskedasticity and autocorrelation consistent estimation of standard errors (Newey & West, 1978) is applied. Default is \code{FALSE}.}
   \item{log}{Logical. If \code{TRUE}, logarithmic transformation is applied to all strictly positive quantitative variables. Default is \code{FALSE}.}
+  \item{hac}{Logical. If \code{TRUE}, heteroskedasticity and autocorrelation consistent estimation of standard errors (Newey & West, 1978) is applied. Default is \code{FALSE}.}
+  \item{gammaOptim}{Logical. If \code{TRUE}, a restricted space is explored during the adaptation of gamma lag shapes. Such space includes lag shapes with euclidean distance greater than 0.05. Default is \code{TRUE}.}
   %
   \item{diff.options}{A list containing options for the differentiation. The list may consist of any number of components among the following: 
     \itemize{
@@ -31,17 +34,17 @@ A single group factor may be taken into account.}
     \itemize{
     \item{\code{tol}: }{the tolerance threshold. Default is 0.0001;}
     \item{\code{maxiter}: }{the maximum number of iterations. Default is 500. If \code{maxiter}=0, imputation will not be performed;}
-    \item{\code{recons}: }{a logical value indicating whether univariate reconstruction of time series should be performed before applying differentiation. Reconstruction is performed using cubic splines and is limited to the observed range of each time series (no extrapolation). It may be useful to avoid further missing values due to differentiation in time series with contiguous missing values. Default is \code{TRUE}.} 
-    \item{\code{no.input}: }{the name of variables to which reconstruction and imputation should not be applied.}  
+    \item{\code{maxlag}: }{The maximum autoregressive order to consider in the imputation. Default is 3.} 
+    \item{\code{no.input}: }{the name of variables to which imputation should not be applied.}  
     }}
   %
   \item{global.control}{A list containing global options for the estimation. The list may consist of any number of components among the following:
     \itemize{
     \item{\code{adapt}: }{a logical value indicating whether adaptation of lag shapes should be performed for all regression models. Default is \code{FALSE};}
-    \item{\code{min.gestation}: }{the minimum gestation lag for all covariates. If not provided, it is assumed to be equal to 0. Ignored if \code{adapt}=\code{FALSE};}
-    \item{\code{max.gestation}: }{the maximum gestation lag for all covariates. If not provided, it is assumed to be equal to \code{max.lead} (see below). Ignored if \code{adapt}=\code{FALSE};}
-    \item{\code{max.lead}: }{the maximum lead lag for all covariates. If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE};} 
-    \item{\code{min.width}: }{the minimum lag width for all covariates. It cannot be greater than \code{max.lead}. If not provided, it is assumed to be 0. Ignored if \code{adapt}=\code{FALSE};}
+    \item{\code{min.gestation}: }{the minimum gestation lag for all covariates. If not provided, it is assumed to be equal to 0. Ignored for gamma lag shapes or if \code{adapt}=\code{FALSE};}
+    \item{\code{max.gestation}: }{the maximum gestation lag for all covariates. If not provided, it is assumed to be equal to \code{max.lead} (see below). Ignored for gamma lag shapes or if \code{adapt}=\code{FALSE};}
+    \item{\code{max.lead}: }{the maximum lead lag for all covariates. If not provided, it is computed accordingly to the sample size. Ignored for gamma lag shapes or if \code{adapt}=\code{FALSE};}
+    \item{\code{min.width}: }{the minimum lag width for all covariates. It cannot be greater than \code{max.lead}. If not provided, it is assumed to be 0. Ignored for gamma lag shapes or if \code{adapt}=\code{FALSE};}
     \item{\code{sign}: }{the sign of parameter \eqn{\theta_j} (either '+' for positive or '-' for negative) for all covariates. If not provided, adaptation will disregard the sign of parameter \eqn{\theta_j}. Ignored if \code{adapt}=\code{FALSE};}  
     \item{\code{selection}: }{the criterion to be used for the adaptation of lag shapes, that may be one among \code{'bic'} to minimise the Bayesian Information Criterion (Schwarz, 1978) and \code{'aic'} to minimise the Akaike Information Criterion (Akaike, 1974). Default is \code{'bic'}.}
     }}
@@ -75,7 +78,6 @@ For the gamma lag shape:
 Formulas cannot contain qualitative variables or interaction terms (no ':' or '*' symbols), and
 may contain the following operators for lag specification:
   \itemize{
-  %\item{\code{uncons.lag}: }{unconstrained lag shape;}
   \item{\code{quec.lag}: }{quadratic (2nd order polynomial) lag shape with endpoint constraints;}
   \item{\code{qdec.lag}: }{quadratic (2nd order polynomial) decreasing lag shape;}
   \item{\code{gamm.lag}: }{gamma lag shape.}
@@ -83,10 +85,8 @@ may contain the following operators for lag specification:
 Each operator must have the following three arguments (provided within brackets and separated by commas):
   \enumerate{
   \item{the name of the covariate to which the lag is applied;}
-  \item{parameter \eqn{a_j} (for %the unconstrained and
-  2nd order polynomial lag shapes), or parameter \eqn{\delta_j} (for the gamma lag shape);}
-  \item{parameter \eqn{b_j} (for %the unconstrained and
-  2nd order polynomial lag shapes), or parameter \eqn{\lambda_j} (for the gamma lag shape);}
+  \item{parameter \eqn{a_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\delta_j} (for the gamma lag shape);}
+  \item{parameter \eqn{b_j} (for 2nd order polynomial lag shapes), or parameter \eqn{\lambda_j} (for the gamma lag shape);}
   \item{the group factor (optional). If not provided and argument \code{group} is not \code{NULL}, this is found automatically.}
   }
 For example, \code{quec.lag(X1,3,15)} indicates that a quadratic lag shape with endpoint constraints must be applied to variable X1 in the interval (3,15),
@@ -117,13 +117,12 @@ the named vector must include the lag sign (either \code{'+'} for positive or \c
   Local control options have no default values, and global ones are applied in their absence.
   If some local control options conflict with global ones, only the former are applied.
   }
-Imputation of missing values is performed after eventual logarithmic transformation
-and differentiation, assuming group-specific means and time-invariant covariance matrix.
+
+The adaptation of gamma lag shapes is performed through a grid search on several pairs of \eqn{\delta_j} and \eqn{\lambda_j}, ignoring the constraints on the lag length and considering a number of time lags equal to 2/3 the sample size.
 
 Qualitative variables cannot contain missing values.
 
-After differentiation, each quantitative variable must have at least a total of 3 observed values and,
-if the group factor is specified, at least one observed value per group.
+%After differentiation, each quantitative variable must have at least a total of 3 observed values and, if the group factor is specified, at least one observed value per group.
 }
 \value{An object of class \code{dlsem}, with the following components:
   \item{estimate}{A list of objects of class \code{lm}, one for each regression model.}

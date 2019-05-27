@@ -68,45 +68,45 @@ indus.local <- list(
 
 
 ###################################################
-### code chunk number 9: dlsem_vignette.Rnw:599-601
+### code chunk number 9: dlsem_vignette.Rnw:598-600
 ###################################################
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),
   data=industry,global.control=indus.global,local.control=indus.local,log=T)
 
 
 ###################################################
-### code chunk number 10: dlsem_vignette.Rnw:615-616
+### code chunk number 10: dlsem_vignette.Rnw:614-615
 ###################################################
 summary(indus.mod)
 
 
 ###################################################
-### code chunk number 11: dlsem_vignette.Rnw:634-635 (eval = FALSE)
+### code chunk number 11: dlsem_vignette.Rnw:633-634 (eval = FALSE)
 ###################################################
 ## plot(indus.mod)
 
 
 ###################################################
-### code chunk number 12: dlsem_vignette.Rnw:677-678
+### code chunk number 12: dlsem_vignette.Rnw:676-677
 ###################################################
 causalEff(indus.mod,from="Job",to="Pollution",cumul=T)
 
 
 ###################################################
-### code chunk number 13: dlsem_vignette.Rnw:700-702 (eval = FALSE)
+### code chunk number 13: dlsem_vignette.Rnw:699-701 (eval = FALSE)
 ###################################################
 ## lagPlot(indus.mod,path="Job*Pollution")
 ## lagPlot(indus.mod,path="Job*Consum*Pollution")
 
 
 ###################################################
-### code chunk number 14: dlsem_vignette.Rnw:709-710 (eval = FALSE)
+### code chunk number 14: dlsem_vignette.Rnw:708-709 (eval = FALSE)
 ###################################################
 ## lagPlot(indus.mod,from="Job",to="Pollution")
 
 
 ###################################################
-### code chunk number 15: dlsem_vignette.Rnw:740-758
+### code chunk number 15: dlsem_vignette.Rnw:739-757
 ###################################################
 # model 2: quadratic decreasing lag shapes
 indus.code_2 <- list(
@@ -129,7 +129,7 @@ summary(indus.mod_3)$endogenous
 
 
 ###################################################
-### code chunk number 16: dlsem_vignette.Rnw:769-770
+### code chunk number 16: dlsem_vignette.Rnw:768-769
 ###################################################
 lapply(list(QUEC=indus.mod,QDEC=indus.mod_2,GAMMA=indus.mod_3),BIC)
 

@@ -16,3 +16,14 @@ dlsem (2.4.1)
 * fixed the bug in the visualization of the cumulative coefficient in lagPlot()
 * changed the call to the gamma lag transformation from gamma.lag() into gamm.lag()
 * gamm.lag() is visible to the user
+
+
+dlsem (2.4.2)
+
+* added the deseasonalization procedure into dlsem()
+* the imputation procedure into dlsem() is now performed before differentiation and takes into
+  account of the relevant autoregressive terms
+* changed the algorithm for the adaptation of gamma lag shapes:
+  now a grid search on several pairs of delta and lambda is performed, ignoring the constraints
+  on the lag length and considering a number of time lags equal to 2/3 the sample size
+* added the option 'gammaOptim' into dlsem() to speed up the adaptation of gamma lag shapes
