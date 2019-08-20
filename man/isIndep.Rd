@@ -8,7 +8,7 @@
   \item{var1}{The name of the first variable.}
   \item{var2}{The name of the second variable.}
   \item{given}{A vector containing the names of conditioning variables. If \code{NULL}, marginal independence is checked.}
-  \item{conf}{The confidence level for each edge: only eadges with statistically significant causal effect at such level are considered. Default is 0.95.}
+  \item{conf}{The confidence level for each edge: only edges with statistically significant causal effect at such confidence are considered. Default is 0.95.}
   \item{use.ns}{A logical value indicating whether edges without statistically significant causal effect (at level \code{conf}) should be considered or not. If \code{FALSE} (the default), they will be ignored.}
 }
 \value{Logical}
@@ -23,7 +23,7 @@ Dependence is a necessary but not sufficient condition for causation: see the di
 data(industry)
 indus.code <- list(
   Consum~quec.lag(Job,0,5),
-  Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,6)
+  Pollution~quec.lag(Job,2,9)+quec.lag(Consum,1,7)
   )
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
   log=TRUE)

@@ -16,9 +16,10 @@
 data(industry)
 indus.code <- list(
   Consum~quec.lag(Job,0,5),
-  Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,6)
+  Pollution~quec.lag(Job,2,9)+quec.lag(Consum,1,7)
   )
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
   log=TRUE)
-auto.lagPlot(indus.mod,plotDir=getwd())
+## NOT RUN:
+# auto.lagPlot(indus.mod,plotDir=getwd())
 }

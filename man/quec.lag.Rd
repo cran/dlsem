@@ -2,22 +2,24 @@
 \alias{quec.lag}
 \alias{qdec.lag}
 \alias{gamm.lag}
-\title{Lag shape transformation for model formulas}
-\description{Lag shape transformation to be used in model formulas.}
-\usage{quec.lag(x, a, b, x.group = NULL)
-qdec.lag(x, a, b, x.group = NULL)
-gamm.lag(x, delta, lambda, x.group = NULL, f=2/3)
+\title{Lag shape constructors}
+\description{Lag shape constructors to be used in model formulas.}
+\usage{quec.lag(x, a, b, x.group = NULL, nlag=NULL)
+qdec.lag(x, a, b, x.group = NULL, nlag=NULL)
+gamm.lag(x, delta, lambda, x.group = NULL, nlag=NULL)
 }
 \arguments{
   \item{x}{The name of the variable.}
   \item{a}{The gestation lag.}
   \item{b}{The lead lag.}
   \item{delta, lambda}{Delta and lambda parameters for the gamma lag shape (only for \code{gamm.lag}).}
-  \item{f}{The ratio number of lags considered to number of observations (only for \code{gamm.lag}).}
+  \item{nlag}{The number of lags considered. If \code{NULL} or less than the lead lag, it is set equal to the lead lag.}
   \item{x.group}{The name of the group factor (optional).}
 }
 %\value{}
-%\note{}
+\note{The constructor \code{gamma.lag()} is deprecated and it will be replaced by \code{gamm.lag()}.
+%The lead lag of a gamma lag shape is determined numerically.
+}
 %\references{}
 %\seealso{\link{dlsem}.}
 \examples{

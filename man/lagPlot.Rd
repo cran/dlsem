@@ -1,6 +1,6 @@
 \name{lagPlot}
 \alias{lagPlot}
-\title{Plot lag shapes}
+\title{Plot of lag shapes}
 \description{A pathwise or an overall causal lag shape is displayed.}
 \usage{lagPlot(x, from = NULL, to = NULL, path = NULL, maxlag = NULL, cumul = FALSE,
   conf = 0.95, use.ns = FALSE, ylim = NULL, title = NULL)}
@@ -14,7 +14,7 @@
   Argument \code{path} will be ignored if both \code{from} and \code{to} are not \code{NULL}.}
   \item{maxlag}{The maximum lag displayed (optional).}
   \item{cumul}{Logical. If \code{TRUE}, cumulative causal effects are returned. Default is \code{FALSE}.}
-  \item{conf}{The confidence level for each edge: only statistically significant edges at such level are considered. Default is 0.95.}
+  \item{conf}{The confidence level for each edge: only statistically significant edges at such confidence are considered. Default is 0.95.}
   \item{use.ns}{A logical value indicating whether not statistically significant edges (at level \code{conf}) should be considered or not. If \code{FALSE} (the default), they will be ignored.}
   \item{ylim}{A vector of two numerical values indicating the limits of the y axis (optional). If \code{NULL}, the limits of the y axis are computed automatically.}
   \item{title}{The title of the plot (optional). If \code{NULL}, a default title is used.}
@@ -25,12 +25,12 @@
 (ii) the requested path does not exist or is not significant at confidence level \code{conf}.
 }
 %\references{}
-\seealso{\link{dlsem}; \link{causalEff}; \link{lagPlot}.}
+\seealso{\link{dlsem}; \link{lagShapes}; \link{causalEff}.}
 \examples{
 data(industry)
 indus.code <- list(
   Consum~quec.lag(Job,0,5),
-  Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,6)
+  Pollution~quec.lag(Job,2,9)+quec.lag(Consum,1,7)
   )
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
   log=TRUE)
