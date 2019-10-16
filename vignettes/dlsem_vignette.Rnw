@@ -35,7 +35,7 @@
 
 \title{Distributed-lag linear structural equation models in \proglang{R}:\\the \pkg{dlsem} package}
 \author{Alessandro Magrini\\Dep. Statistics, Computer Science, Applications\\University of Florence, Italy\\<magrini@disia.unifi.it>}
-\date{\pkg{dlsem} version 2.4.3 -- 20 August 2019}
+\date{\pkg{dlsem} version 2.4.4 -- 16 October 2019}
 
 
 \begin{document}
@@ -375,7 +375,7 @@ In order to keep your copy of \pkg{dlsem} up to date, use the command:
 update.packages("dlsem")
 @
 
-The latest version of \pkg{dlsem} is 2.4.3.
+The latest version of \pkg{dlsem} is 2.4.4.
 
 
 \section{Illustrative example}
@@ -767,20 +767,18 @@ summary(indus.mod_3)$endogenous
 
 Here the option \code{quiet} was set to \code{TRUE} to suppress messages on the estimation progress.
 We see that the three models provide different results.
-%Methods \code{AIC} and
-Method \code{BIC} for class \code{dlsem} can be used
-to compare them according to the Bayesian Information Criterion:
+Method \code{compareModels} can be used to compare them according to information criteria:
 
 \small
 @
 <<echo=T>>=
-cbind(QUEC=BIC(indus.mod),QDEC=BIC(indus.mod_2),GAMMA=BIC(indus.mod_3))
+compareModels(list(indus.mod,indus.mod_2,indus.mod_3))
 @
 \normalsize
 
-The model with endpoint-constrained quadratic lag shapes has
-the lower BIC and thus the best fit to data.
-Note that the fit for variable \code{Job} is constant in each model
+The model with endpoint-constrained quadratic lag shapes has the lowest value
+of each information criterion, and thus the best fit to data.
+Note that information criteria for variable \code{Job} are the same in each model
 because it has no endogenous covariates.
 
 
@@ -789,11 +787,10 @@ because it has no endogenous covariates.
 
 Lag shapes included in the package may represent a large number of real-world lag structures,
 nevertheless new lag shapes with further specific features may be added in the future.
+Also, further functionalities for linear models for time series data
+are going to be implemented in the next releases.
 
-Further functionalities for linear models will be implemented in the next releases.
-%like random effects estimation, two-stage least squares and autoregressive lag shapes.
-
-Please, do not hesitate to contact me for questions, feedbacks or bug reports.
+Please, do not hesitate to contact me for suggestions, questions, feedbacks or bug reports.
 
 
 \pdfbookmark{References}{sec:refs}

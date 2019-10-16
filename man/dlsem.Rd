@@ -119,6 +119,7 @@ the named vector must include the lag sign (either \code{'+'} for positive or \c
   }
 }
 \value{An object of class \code{dlsem}, with the following components:
+  \itemize{
   \item{estimate}{A list of objects of class \code{lm}, one for each regression.}
   \item{call}{A list containing the call for each regression after eventual adaptation of lag shapes.}
   \item{model.code}{The model code after eventual adaptation of lag shapes.}
@@ -151,12 +152,9 @@ S3 methods available for class \code{dlsem} are:
   \item{confint}{returns confidence intervals for each regression.}
   \item{vcov}{returns the covariance matrix of estimates for each regression.}
   \item{logLik}{returns the log-likelihood for each regression.}
-  \item{BIC}{returns local and global Bayesian Information Criterion.}
-  \item{AIC}{returns local and global Akaike Information Criterion.}
-  \item{AICc}{returns local and global corrected Akaike Information Criterion.}
-  \item{fitted}{returns fitted values.}
-  \item{residuals}{returns residuals.}
-  \item{predict}{returns predicted values. Optionally, a data frame from which to predict may be provided to argument \code{newdata}.
+  \item{fitted}{returns the fitted values.}
+  \item{residuals}{returns the residuals.}
+  \item{predict}{returns the predicted values. Optionally, a data frame from which to predict may be provided to argument \code{newdata}.}
   }
 }
 \references{
@@ -174,7 +172,7 @@ A. P. Dempster, N. M. Laird, and D. B. Rubin (1977). Maximum Likelihood from Inc
 
 %G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statistics}, 6, 461-464. DOI: 10.1214/aos/1176344136
 }
-\seealso{\link{unirootTest}; \link{causalEff}.}
+\seealso{\link{unirootTest}; \link{causalEff}; \link{compareModels}.}
 \examples{
 data(industry)
 
@@ -226,7 +224,7 @@ indus.code_3 <- list(
 
 # comparison of the three models
 ## NOT RUN:
-# cbind(QUEC=BIC(indus.mod),QDEC=BIC(indus.mod_2),GAMM=BIC(indus.mod_3))
+# compare.dlsem(indus.mod,indus.mod_2,indus.mod_3))
 
 
 ### A more complex model
@@ -281,5 +279,5 @@ for(i in 1:length(auxcode_2)) {
 # agres.mod_2 <- dlsem(agres.code_2,group="COUNTRY",time="YEAR",exogenous=context.var,
 #  data=agres,global.control=agres.global,local.control=agres.local,log=TRUE)
 # summary(agres.mod_2)$endogenous
-# cbind(QUEC=BIC(agres.mod),GAMM=BIC(agres.mod_2))
+# compare.dlsem(list(agres.mod,agres.mod_2))
 }

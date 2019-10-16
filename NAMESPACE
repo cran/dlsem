@@ -1,4 +1,4 @@
-export(dlsem, lagShapes, causalEff, lagPlot, auto.lagPlot, autoCode, residualPlot, isIndep, unirootTest, vcovHAC, quec.lag, qdec.lag, gamm.lag, as.graphNEL)
+export(dlsem, lagShapes, causalEff, compareModels, lagPlot, auto.lagPlot, autoCode, residualPlot, isIndep, unirootTest, vcovHAC, quec.lag, qdec.lag, gamm.lag, as.graphNEL)
 
 S3method(print, dlsem)
 S3method(summary, dlsem)
@@ -8,8 +8,6 @@ S3method(coef, dlsem)
 S3method(vcov, dlsem)
 S3method(confint, dlsem)
 S3method(logLik, dlsem)
-S3method(AIC, dlsem)
-S3method(BIC, dlsem)
 S3method(fitted, dlsem)
 S3method(residuals, dlsem)
 S3method(predict, dlsem)
@@ -24,7 +22,6 @@ importFrom("grDevices", "dev.off", "pdf", "n2mfrow")
 importFrom("graphics", "abline", "axis", "box", "grid", "legend","mtext", "par", "points", "polygon")
 importFrom("methods", "new")
 importFrom("stats", "coefficients", "coef", "nobs", "cov", "vcov", "formula","lm", "model.matrix", "logLik",
-  "AIC", "BIC", "residuals", "fitted", "quantile", "predict", "confint", "pnorm", "qnorm", "qgamma", "rnorm", "rt", "pt",
-  "rchisq", "sd", "var", "anova", "deviance", "spline", "approx", "embed", "na.omit", "ar", "summary.lm",
-  "acf", "extractAIC", "qqline", "qqnorm")
+  "AIC", "pnorm", "pt", "qnorm", "qt", "spline", "residuals", "fitted", "quantile", "predict", "confint",
+  "sd", "var", "approx", "embed", "na.omit", "ar", "summary.lm", "acf", "extractAIC", "qqline", "qqnorm")
 importFrom("utils", "flush.console")

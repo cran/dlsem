@@ -1,3 +1,9 @@
+dlsem (2.4.4)
+
+* fixed an error in the computation of the standard error of cumulative lag shapes
+* added the method compareModels() for class 'dlsem' in place of methods AIC(), AICc() and BIC().
+
+
 dlsem (2.4.3)
 
 * fixed an error in the methods causalEff() and lagPlot() when the lag shape is not specified

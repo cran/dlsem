@@ -129,8 +129,8 @@ summary(indus.mod_3)$endogenous
 
 
 ###################################################
-### code chunk number 16: dlsem_vignette.Rnw:776-777
+### code chunk number 16: dlsem_vignette.Rnw:774-775
 ###################################################
-cbind(QUEC=BIC(indus.mod),QDEC=BIC(indus.mod_2),GAMMA=BIC(indus.mod_3))
+compareModels(list(indus.mod,indus.mod_2,indus.mod_3))
 
 

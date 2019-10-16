@@ -150,13 +150,9 @@ gamm.lag <- function(x,delta,lambda,x.group=NULL,nlag=NULL) {
 # check if a variable is quantitative (internal use only)
 isQuant <- function(x) {
   if(is.numeric(x)) {
-    T
+    if(identical(sort(unique(na.omit(x))),c(0,1))) F else T
     } else {
-    if(!is.factor(x) && sum(!is.na(x))==0) {
-      T
-      } else {
-      F
-      }
+    F
     }
   }
 
@@ -210,33 +206,39 @@ scanForm <- function(x,warn=F) {
 
 # lead lag of a gamma lag shape (internal use only)
 gamlead <- function(delta,lambda,tol=1e-4) {
-  xa <- 0  #####
-  auxmax <- ceiling(qgamma(0.99,1/(1-delta),-log(lambda))+xa)
-  xgrid <- 0:auxmax
-  b <- lagwei(c(delta,lambda),xgrid,"gamm.lag")
-  #auxb <- b/(max(b))
-  auxb <- b/sum(b)
-  auxind <- which(abs(auxb)>tol)
-  if(length(auxind)>0) {
-    max(xgrid[auxind])
-    } else {
-    1
+  m <- ceiling(delta/((delta-1)*log(lambda)))
+  res <- m
+  b <- lagwei(c(delta,lambda),res,"gamm.lag")
+  ind <- 1
+  while(b>tol && ind<10*m) {
+    res <- res+1
+    b <- lagwei(c(delta,lambda),res,"gamm.lag")
+    ind <- ind+1
     }
+  res
   }
 
 # default gamma lag shape (internal use only)
 gammaDefault <- function(maxlag) {
   G <- matrix(
-  c(0.99, 0.94,
-    0.40, 0.03,
-    0.45, 0.10,
-    0.27, 0.19,
-    0.48, 0.26,
-    0.37, 0.33,
-    0.44, 0.38,
-    0.43, 0.43,
-    0.42, 0.47),byrow=T,ncol=2)
-  if(maxlag<10) {
+  c(0.115, 0.005,
+    0.05, 0.02,
+    0.46, 0.04,
+    0.42, 0.08,
+    0.18, 0.13,
+    0.32, 0.17,
+    0.35, 0.21,
+    0.35, 0.25,
+    0.47, 0.28,
+    0.51, 0.31,
+    0.38, 0.35,
+    0.47, 0.37,
+    0.48, 0.40,
+    0.48, 0.42,
+    0.43, 0.45,
+    0.53, 0.46,
+    0.51, 0.48),byrow=T,ncol=2)
+  if(maxlag<18) {
     G[max(1,maxlag),]
     } else {
     c(0.5,0.5)
@@ -245,7 +247,7 @@ gammaDefault <- function(maxlag) {
 
 # generate gamma parameters (internal use only)
 gammaParGen <- function(by) {
-  xseq <- seq(0.05,0.95,by=by)
+  xseq <- seq(0+by,1-by,by=by)
   auxmat <- as.matrix(expand.grid(xseq,xseq))
   limmat <- c()
   for(i in 1:nrow(auxmat)) {
@@ -275,8 +277,9 @@ searchGrid <- function(mings,maxgs,minwd,maxld,lag.type,gammaMat) {
 creatForm <- function(y,X,group,type,theta,nlag) {
   xnam <- c()
   if(length(X)>0) {
-    for(i in 1:length(X)) {
-      ilab <- X[i]
+    nomi <- setdiff(names(theta),group)
+    for(i in 1:length(nomi)) {
+      ilab <- nomi[i]
       if(type[ilab]=="none") {
         xnam[i] <- ilab
         } else {
@@ -542,7 +545,6 @@ dlaglm <- function(formula,group,data,adapt,no.select,min.gestation,max.gestatio
               #
               if(length(ixlab)>0 && ixlab %in% ixall) { 
                 bhat0[j] <- est0[ixlab]
-                #bic0[j] <- extractAIC(mod0,k=log(nobs(mod0)))[2]
                 bic0[j] <- sum(residuals(mod0)^2)
                 } else {
                 bhat0[j] <- NA
@@ -637,12 +639,15 @@ doHAC <- function(x,group) {
     glev <- x$xlevels[[group]]
     if(length(glev)<2) stop("The group factor must have at least 2 unique values",call.=F)
     gnam <- paste(group,glev,sep="")
-    if("(Intercept)" %in% colnames(Xmat)) gnam[1] <- "(Intercept)"
     Wsum <- matrix(0,nrow=ncol(Xmat),ncol=ncol(Xmat))
     W <- matrix(0,nrow=p,ncol=p)
     maxlag <- c()
     for(i in 1:length(gnam)) {
-      iind <- names(which(Xmat[,gnam[i]]==1))
+      if(gnam[i] %in% colnames(Xmat)) {
+        iind <- names(which(Xmat[,gnam[i]]==1))
+        } else {
+        iind <- names(which(apply(Xmat[,gnam[setdiff(1:length(gnam),i)]],1,sum)==0))
+        }
       maxlag[i] <- ar(res[iind])$order
       W <- W+W_hac(Xmat[iind,],res[iind],maxlag[i])
       }
@@ -670,7 +675,7 @@ summary.hac <- function(object,...)  {
 # confint method for class 'hac'
 confint.hac <- function(object,parm,level=0.95,...) {
   summ <- summary(object)$coefficients
-  quan <- qnorm((1+level)/2)
+  quan <- qt((1+level)/2,object$df.residual)
   res <- cbind(summ[,1]-quan*summ[,2],summ[,1]+quan*summ[,2])
   colnames(res) <- paste(100*c(1-level,1+level)/2," %",sep="")
   res
@@ -776,7 +781,7 @@ adft <- function(x,k) {
   }
 
 # apply differentiation (internal use only)
-applyDiff <- function(x,group,data,k,detrend=F) {
+applyDiff <- function(x,group,data,k) {
   #
   deltaFun <- function(z,k) {
     if(k>0 & k<length(z)) {
@@ -792,22 +797,11 @@ applyDiff <- function(x,group,data,k,detrend=F) {
       }
     }
   #
-  detrendFun <- function(z) {
-    m0 <- lm(z~I(1:length(z)))
-    p <- summary(m0)$coefficients[2,4]
-    if(p<0.05) {
-      m0$residuals+m0$coefficients[1]
-      } else {
-      z
-      }
-    }
-  #
   diffdat <- data
   if(is.null(group)) {
     for(w in 1:length(x)) {
       if(isQuant(data[,x[w]])) {
         wdat <- data[,x[w]]
-        if(detrend==T) wdat <- detrendFun(wdat)
         diffdat[,x[w]] <- deltaFun(wdat,k[w])      
         }
       }
@@ -819,7 +813,6 @@ applyDiff <- function(x,group,data,k,detrend=F) {
       for(w in 1:length(x)) {
         if(isQuant(data[,x[w]])) {
           wdat <- data[auxind,x[w]]
-          if(detrend==T) wdat <- detrendFun(wdat)
           diffdat[auxind,x[w]] <- deltaFun(wdat,k[w])
           }
         }
@@ -1768,34 +1761,10 @@ impoptAdj <- function(x) {
 
 # preprocessing (internal use only)
 preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,quiet) {
-  #if(!identical(class(data),"data.frame")) stop("Argument 'data' must be a data.frame",call.=F)
   if(!is.null(group)) {
-  #  if(is.na(group)) group <- NULL
-  #  if(length(group)!=1) stop("Argument 'group' must be of length 1",call.=F)
-  #  if((group %in% colnames(data))==F) stop("Variable '",group,"' provided to argument 'group' not found in data",call.=F)
-  #  if(group %in% x) stop("Variable '",group,"' is provided to both arguments 'x' and 'group'",call.=F)
-  #  if(group %in% time) stop("Variable '",group,"' is provided to both arguments 'group' and 'time'",call.=F)
     data[,group] <- factor(data[,group])
     gruppi <- levels(data[,group])
-  #  if(length(gruppi)<2) stop("The group factor must have at least 2 unique values",call.=F)
-  #  if(min(table(data[,group]))<3) stop("There must be at least 3 observations per group",call.=F)
-  #  } else {
-  #  if(nrow(data)<3) stop("There must be at least 3 observations",call.=F)  
     }
-  #if(!is.null(time)) {
-  #  if(is.na(time)) time <- NULL
-  #  if(length(time)!=1) stop("Argument 'time' must be of length 1",call.=F)
-  #  if((time %in% colnames(data))==F) stop("Variable '",time,"' provided to argument 'time' not found in data",call.=F)
-  #  if(time %in% x) stop("Variable '",time,"' is provided to both arguments 'x' and 'time'",call.=F)
-  #  if(time %in% group) stop("Variable '",time,"' is provided to both arguments 'group' and 'time'",call.=F)
-  #  if(isTimeVar(data[,time])==F) stop("The time variable is neither numeric nor a date",call.=F)
-  #  if(is.null(group)) {
-  #    if(sum(duplicated(data[,time]))>0) stop("The time variable has duplicated values",call.=F)
-  #    } else {
-  #    timesplit <- split(data[,time],data[,group])
-  #    if(sum(sapply(timesplit,function(z){sum(duplicated(z))}))>0) stop("The time variable has duplicated values",call.=F)  
-  #    }
-  #  }
   if(!is.null(seas)) {
     if(length(seas)!=1) stop("Argument 'seas' must be of length 1",call.=F)
     if((seas %in% colnames(data))==F) stop("Variable '",seas,"' provided to argument 'seas' not found in data",call.=F)
@@ -1904,8 +1873,6 @@ preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,qui
       } else {
       if(quiet==F && imput.options$maxiter==0) cat("Imputation not performed","\n")  
       }
-    } else {
-    #if(quiet==F) cat("Data are complete","\n")  
     }
   # differentiation
   difftest <- setdiff(nodenam,xfact)
@@ -1915,7 +1882,7 @@ preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,qui
       fine <- 0
       if(quiet==F) cat("Checking unit roots ...")
       flush.console()
-      data <- applyDiff(x=difftest,group=group,data=data,k=rep(0,length(difftest)),detrend=T)
+      data <- applyDiff(x=difftest,group=group,data=data,k=rep(0,length(difftest)))
       while(fine==0) {
         auxp <- c()
         urtList <- urtFun(x=difftest,group=group,time=NULL,data=data,combine=diff.options$combine,log=F)
@@ -1935,7 +1902,7 @@ preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,qui
         if(nUR>0) {
           if(ndiff<diff.options$maxdiff) {
             ndiff <- ndiff+1
-            data <- applyDiff(x=difftest,group=group,data=data,k=rep(1,length(difftest)),detrend=F)                                        
+            data <- applyDiff(x=difftest,group=group,data=data,k=rep(1,length(difftest)))                                        
             } else {
             fine <- 1
             }
@@ -1947,7 +1914,7 @@ preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,qui
       urtList <- NULL
       }
     } else {
-    data <- applyDiff(x=difftest,group=group,data=data,k=rep(ndiff,length(difftest)),detrend=T)
+    data <- applyDiff(x=difftest,group=group,data=data,k=rep(ndiff,length(difftest)))
     }
   if(quiet==F) {
     cat('\r')
@@ -1971,7 +1938,6 @@ collCheck <- function(y,x,group,data) {
   }
 
 # fit a dlsem
-#dlsem <- function(model.code,group=NULL,time=NULL,exogenous=NULL,data,hac=TRUE,gamma.by=0.05,global.control=NULL,local.control=NULL,quiet=FALSE) {
 dlsem <- function(model.code,group=NULL,time=NULL,seas=NULL,exogenous=NULL,data,
   log=FALSE,hac=TRUE,gamma.by=0.05,global.control=NULL,local.control=NULL,
   diff.options=list(combine="choi",maxdiff=2,ndiff=NULL),
@@ -1980,18 +1946,13 @@ dlsem <- function(model.code,group=NULL,time=NULL,seas=NULL,exogenous=NULL,data,
   if(!is.list(model.code) || length(model.code)==0 || sum(sapply(model.code,class)!="formula")>0) stop("Argument 'model code' must be a list of formulas",call.=F)
   if(!identical(class(data),"data.frame")) stop("Argument 'data' must be an object of class 'data.frame'",call.=F)  
   #nameOfData <- deparse(substitute(data))
-  #
-  #if(("ndiff" %in% names(attributes(data)))==F) {
-  #  cat("Data have not been preprocessed. Type 'y' or 'yes' to continue anyway.","\n")
-  #  wres <- scan(what="character",n=1,quiet=T)
-  #  if(length(wres)==0||(wres %in% c("y","yes"))==F) stop("Use preProcess() for preprocessing data before running dlsem()",call.=F)
-  #  }
-  #
   if(!is.null(group) && length(group)!=1) stop("Argument 'group' must be of length 1",call.=F)
   if(!is.null(group) && is.na(group)) group <- NULL
   if(!is.null(group)) {
     if(length(group)!=1) stop("Argument 'group' must be of length 1",call.=F)
     if((group %in% colnames(data))==F) stop("Variable '",group,"' provided to argument 'group' not found in data",call.=F)
+    if(group %in% exogenous) stop("Variable '",group,"' is provided to both arguments 'group' and 'exogenous'",call.=F)
+    if(group %in% seas) stop("Variable '",group,"' is provided to both arguments 'group' and 'seas'",call.=F)
     gruppi <- levels(factor(data[,group]))
     if(length(gruppi)<2) stop("The group factor must have at least 2 unique values",call.=F)
     data[,group] <- factor(data[,group])
@@ -2005,6 +1966,8 @@ dlsem <- function(model.code,group=NULL,time=NULL,seas=NULL,exogenous=NULL,data,
     if(length(time)!=1) stop("Argument 'time' must be of length 1",call.=F)
     if((time %in% colnames(data))==F) stop("Variable '",time,"' provided to argument 'time' not found in data",call.=F)
     if(time %in% group) stop("Variable '",time,"' is provided to both arguments 'group' and 'time'",call.=F)
+    if(time %in% exogenous) stop("Variable '",time,"' is provided to both arguments 'time' and 'exogenous'",call.=F)
+    if(time %in% seas) stop("Variable '",time,"' is provided to both arguments 'time' and 'seas'",call.=F)
     if(isTimeVar(data[,time])==F) stop("The time variable is neither numeric nor a date",call.=F)
     if(is.null(group)) {
       if(sum(duplicated(data[,time]))>0) stop("The time variable has duplicated values",call.=F)
@@ -2328,12 +2291,6 @@ summary.dlsem <- function(object,...) {
     glev <- paste(object$group,xcat[[object$group]],sep="")
     }
   estim <- object$estimate
-  #fitI <- c()
-  #fitI[1] <- RsqCalc(estim)["(global)"]
-  #fitI[2] <- BIC(object)["(global)"]
-  #fitI[3] <- AIC(object)["(global)"]
-  #fitI[4] <- AICc(object)["(global)"]
-  #names(fitI) <- c("Rsq","BIC","AIC","AICc")
   summList <- summList_e <- summList_g <- vector("list",length=length(estim))
   names(summList) <- names(summList_e) <- names(summList_g) <- names(estim)
   summS <- data.frame(matrix(nrow=length(estim),ncol=2))
@@ -2411,14 +2368,6 @@ print.summary.dlsem <- function(x,...) {
   cat("\n","\n")
   cat("R-SQUARED","\n")
   print(x$Rsq)
-  #
-  #fitI <- x$gof
-  #cat("\n","\n")
-  #cat("GOODNESS OF FIT","\n","\n")
-  #cat("R-squared: ",round(fitI[1],4),"\n",sep="")
-  #cat("BIC: ",fitI[2],"\n",sep="")
-  #cat("AIC: ",fitI[3],"\n",sep="")
-  #cat("AICc: ",fitI[4],"\n",sep="")  
   }
 
 # nobs method for class 'dlsem'
@@ -2453,37 +2402,86 @@ AICc_fun <- function(object) {
   auxaic[2]+2*npar*(npar+1)/(nobs(object)-npar-1)
   }
 
-# AICc method for class 'dlsem'
-AICc <- function(object) {
-  if("dlsem" %in% class(object)) {
-    res <- sapply(object$estimate,AICc_fun)
-    OUT <- c(res,sum(res))
-    names(OUT) <- c(names(res),"(global)")
-    OUT
-    } else {
-    AICc_fun(object)
+## AICc method for class 'dlsem'
+#AICc <- function(object) {
+#  if("dlsem" %in% class(object)) {
+#    res <- sapply(object$estimate,AICc_fun)
+#    OUT <- c(res,sum(res))
+#    names(OUT) <- c(names(res),"(global)")
+#    OUT
+#    } else {
+#    AICc_fun(object)
+#    }
+#  }
+
+## AIC method for class 'dlsem'
+#AIC.dlsem <- function(object,...) {
+#  res <- sapply(object$estimate,function(z){extractAIC(z,k=2)[2]})
+#  OUT <- c(res,sum(res))
+#  names(OUT) <- c(names(res),"(global)")
+#  OUT
+#  }
+
+## BIC method for class 'dlsem'
+#BIC.dlsem <- function(object,...) {
+#  res <- sapply(object$estimate,function(z){extractAIC(z,k=log(nobs(z)))[2]})
+#  OUT <- c(res,sum(res))
+#  names(OUT) <- c(names(res),"(global)")
+#  OUT
+#  }
+
+# compute the minimum common lag (auxiliary)
+mincomlag <- function(x,tol=1e-4) {
+  res <- c()
+  for(i in 1:length(x$call)) {
+    iscan <- scanForm(x$call[[i]])
+    auxq <- which(iscan$ltype %in% c("quec.lag","qdec.lag"))
+    auxg <- which(iscan$ltype=="gamm.lag")
+    ires <- c()
+    if(length(auxq)>0) {
+      ires <- c(ires,sapply(iscan$lpar[auxq],function(y){y[2]}))
+      }
+    if(length(auxg)>0) {
+      ires <- c(ires,sapply(iscan$lpar[auxg],function(y){gamlead(y[1],y[2])}))
+      }
+    if(length(ires)>0) {
+      res[i] <- max(ires)
+      } else {
+      res[i] <- 0
+      }
     }
+  res
   }
 
-# AIC method for class 'dlsem'
-AIC.dlsem <- function(object,...) {
-  res <- sapply(object$estimate,function(z){extractAIC(z,k=2)[2]})
-  OUT <- c(res,sum(res))
-  names(OUT) <- c(names(res),"(global)")
-  OUT
-  }
-
-# BIC method for class 'dlsem'
-BIC.dlsem <- function(object,...) {
-  res <- sapply(object$estimate,function(z){extractAIC(z,k=log(nobs(z)))[2]})
-  OUT <- c(res,sum(res))
-  names(OUT) <- c(names(res),"(global)")
-  OUT
+# compare several models
+compareModels <- function(x) {
+  if(!identical(class(x),"list") || length(x)<2 || sum(sapply(x,function(y){!identical(class(y),"dlsem")}))>0) stop("The argument must be a list of 2 or more objects of class 'dlsem'",call.=F)
+  for(i in 2:length(x)) {
+    if(!identical(x[[i-1]]$data,x[[i]]$data)) stop("The models were estimated from different data",call.=F)
+    }
+  auxnlag <- lapply(x,mincomlag)
+  nlag <- max(unlist(auxnlag))
+  res <- data.frame(matrix(nrow=length(x),ncol=5))
+  colnames(res) <- c("logLik","p","AIC","AICc","BIC")
+  rownames(res) <- names(x)
+  for(i in 1:length(x)) {
+    ignam <- x[[i]]$group
+    icall <- x[[i]]$call
+    iIC <- rep(0,5)
+    for(j in 1:length(icall)) {
+      ijscan <- scanForm(icall[[j]])
+      ijform <- creatForm(ijscan$y,ijscan$X,ignam,ijscan$ltype,ijscan$lpar,nlag)
+      ijmod <- doLS(ijform,ignam,x[[i]]$data)
+      ijaic <- extractAIC(ijmod)
+      iIC <- iIC+c(logLik(ijmod)[1],ijaic[1],ijaic[2],AICc_fun(ijmod),extractAIC(ijmod,k=log(nobs(ijmod)))[2])
+      }
+    res[i,] <- iIC
+    }
+  res
   }
 
 # format fitted or residuals (internal use only)
 formatFit <- function(x,n) {
-  id_o <- as.numeric(names(x))
   res <- rep(NA,n)
   names(res) <- 1:n
   res[names(x)] <- x
@@ -2538,7 +2536,6 @@ predict.dlsem <- function(object,newdata=NULL,...) {
 RsqCalc <- function(xfit) {
   Rsq <- n <- c()
   for(i in 1:length(xfit)) {
-    #n[i] <- nobs(xfit[[i]])
     n[i] <- xfit[[i]]$df.residual
     Rsq[i] <- summary(xfit[[i]])$'r.squared'
     }
@@ -3053,11 +3050,16 @@ findlag2sum <- function(x,lag) {
 
 # table for cumulative lag shape (internal use only)
 cumulCalc <- function(x) {
+  #serr <- x[which.max(abs(x[,1])),2]
+  #wei <- x[,1]/max(abs(x[,1]))
+  se_cum <- c()
+  for(i in 1:nrow(x)) {
+    #se_cum[i] <- sqrt(sum(wei[1:i]^2))*serr
+    se_cum[i] <- sqrt(sum(x[1:i,2]^2))
+    }
   res <- x
   res[,1] <- cumsum(x[,1])
-  quan <- qnorm(0.975)
-  ci_dx <- cumsum(x[,1]+quan*x[,2])
-  res[,2] <- (ci_dx-res[,1])/quan
+  res[,2] <- se_cum
   res
   }   
 
