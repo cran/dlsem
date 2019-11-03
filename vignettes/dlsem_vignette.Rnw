@@ -35,7 +35,7 @@
 
 \title{Distributed-lag linear structural equation models in \proglang{R}:\\the \pkg{dlsem} package}
 \author{Alessandro Magrini\\Dep. Statistics, Computer Science, Applications\\University of Florence, Italy\\<magrini@disia.unifi.it>}
-\date{\pkg{dlsem} version 2.4.4 -- 16 October 2019}
+\date{\pkg{dlsem} version 2.4.5 -- 04 November 2019}
 
 
 \begin{document}
@@ -201,10 +201,7 @@ and select the one with the minimum residual sum of squares\footnote{
 Note that neither the response variable nor the covariates must contain
 a unit root in order to obtain unbiased estimates with ordinary least squares \citep{granger74}.
 A reasonable procedure is to sequentially apply differentiation to all
-variables until the Augmented Dickey-Fuller test \citep{dickey81}
-rejects the hypothesis of unit root for all of them.
-%Also note that during the estimation procedure the number of observationsis held constant to the highest possible one,in order to allow a proper comparison among the candidate regressions. For instance, if the highest lead lag to be tested is 10, then the first 10 observations are dropped for all the lag shapes, even if the lead leag is less than 10.
-%
+variables until they are made stationary according to a unit root test.
 }.
 
 \paragraph{Structural causal models}
@@ -375,7 +372,7 @@ In order to keep your copy of \pkg{dlsem} up to date, use the command:
 update.packages("dlsem")
 @
 
-The latest version of \pkg{dlsem} is 2.4.4.
+The latest version of \pkg{dlsem} is 2.4.5.
 
 
 \section{Illustrative example}
@@ -575,12 +572,14 @@ strictly positive quantitative variables by setting argument
 \code{log} to \code{TRUE},
 in order to interpret each coefficient as an elasticity
 (percentage increase in the value of the response variable for $1\%$ increase in the value of a covariate).
-Before parameter estimation, differentiation is performed until the
-hypothesis of unit root is rejected by the Augmented Dickey-Fuller test
-for all quantitative variables\footnote{
+Before parameter estimation, differentiation is performed until
+all the time series are made stationary.
+By default, the Kwiatkowski-Phillips-Schmidt-Shin (KPSS, \citealp{kwiatkowski92}) test is performed if the number of periods is less than 100,
+otherwise the Augmented Dickey-Fuller (ADF, \citealp{dickey81}) test is used.
+\footnote{
 %
-If the group factor is specified, the panel version of the
-Augmented Dickey-Fuller test proposed by \cite{levin02} is used instead.
+If the group factor is specified, group-specific p-values are combined
+according to the method proposed by \citep{demetrescu06}.
 %
 }, and each missing value is replaced by its conditional mean
 computed through the Expectation-Maximization algorithm \citep{dempster77}\footnote{
@@ -776,10 +775,10 @@ compareModels(list(indus.mod,indus.mod_2,indus.mod_3))
 @
 \normalsize
 
-The model with endpoint-constrained quadratic lag shapes has the lowest value
-of each information criterion, and thus the best fit to data.
-Note that information criteria for variable \code{Job} are the same in each model
-because it has no endogenous covariates.
+The model with endpoint-constrained quadratic lag shapes has the lowest
+value of each information criterion, and thus the best fit to data.
+Note that information criteria for variable \code{Job} are the same in
+each model because it has no endogenous covariates.
 
 
 \section{Final remarks}
@@ -790,7 +789,7 @@ nevertheless new lag shapes with further specific features may be added in the f
 Also, further functionalities for linear models for time series data
 are going to be implemented in the next releases.
 
-Please, do not hesitate to contact me for suggestions, questions, feedbacks or bug reports.
+Please, do not hesitate to contact me for questions, feedbacks or bug reports.
 
 
 \pdfbookmark{References}{sec:refs}
@@ -803,6 +802,10 @@ Please, do not hesitate to contact me for suggestions, questions, feedbacks or b
 The Distributed Lag between Capital Appropriations and Net Expenditures.
 \textit{Econometrica}, 33, 178-196.
 
+\bibitem[Demetrescu \textit{et al.}(2006)]{demetrescu06} M. Demetrescu, U. Hassler, and A. Tarcolea.
+Combining significance of correlated statistics with application to panel data.
+\textit{Oxford Bulletin of Economics and Statistics}, 68(5), 647-663.
+
 \bibitem[Dempster \textit{et al.}(1977)]{dempster77} A. P. Dempster, N. M. Laird, and D. B. Rubin (1977).
 Maximum Likelihood from Incomplete Data via the EM Algorithm.
 \textit{Journal of the Royal Statistical Society}, Series B, 39(1): 1-38.
@@ -814,10 +817,6 @@ Maximum Likelihood from Incomplete Data via the EM Algorithm.
 Spurious Regressions in Econometrics.
 \textit{Journal of Econometrics}, 2(2), 111-120.
 
-%\bibitem[Judge \textit{et al.}(1985)]{judge85} G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985).
-%The Theory and Practice of Econometrics.
-%John Wiley \& Sons, 2nd ed., New York, US-NY.
-
 \bibitem[Haavelmo(1943)]{haavelmo43} T. Haavelmo (1943). The Statistical Implications of a System of Simultaneous Equations.
 \textit{Econometrica}, 11(1): 1-12.
 
@@ -825,9 +824,8 @@ Spurious Regressions in Econometrics.
 Measuring the Equation Systems of Dynamic Economics.
 In: T. C. Koopmans (ed.), Statistical Inference in Dynamic Economic Models, pages 53-237. John Wiley \& Sons, New York, US-NY.
 
-\bibitem[Levin \textit{et al.}(2002)]{levin02} A. Levin, C. Lin, and C. J. Chub (2002).
-Unit Root Tests in Panel Data: Asymptotic and Finite-Sample Properties.
-\textit{Journal of Econometrics}, 108: 1-24.
+\bibitem[Kwiatkowski \textit{et al.}(1950)]{kwiatkowski92}
+D. Kwiatkowski, P. C. B. Phillips, P. Schmidt and Y. Shin (1992). Testing the null hypothesis of stationarity against the alternative of a unit root. \textit{Journal of Econometrics}, 54(1-3): 159-178.
 
 \bibitem[Magrini \textit{et al.}(2019)]{magrini19} A. Magrini, F. Bartolini, A. Coli, B. Pacini (2019). A structural equation model to assess the
 impact of agricultural research expenditure on multiple dimensions. Quality and Quantity, 53(4):
@@ -853,4 +851,3 @@ Cambridge University Press. Cambridge, UK.
 
 
 \end{document}
-

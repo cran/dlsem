@@ -20,8 +20,8 @@ The main functions of the package are:
   \tabular{ll}{
   Package: \tab dlsem\cr
   Type: \tab Package\cr
-  Version: \tab 2.4.4\cr
-  Date: \tab 2019-10-16\cr
+  Version: \tab 2.4.5\cr
+  Date: \tab 2019-11-04\cr
   License: \tab GPL-2
   }
 }

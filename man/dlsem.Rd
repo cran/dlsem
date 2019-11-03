@@ -5,7 +5,7 @@
 A single group factor may be taken into account.}
 \usage{dlsem(model.code, group = NULL, time = NULL, seas = NULL, exogenous = NULL, data,
   log = FALSE, hac = TRUE, gamma.by = 0.05, global.control = NULL, local.control = NULL, 
-  diff.options = list(combine="choi",maxdiff=2,ndiff=NULL),
+  diff.options = list(test=NULL,maxdiff=2,ndiff=NULL),
   imput.options = list(tol=0.0001,maxiter=500,maxlag=2,no.imput=NULL), quiet = FALSE)}
 \arguments{
   \item{model.code}{A list of objects of class \code{formula}, each describing a single regression. See \code{Details}.}
@@ -24,7 +24,7 @@ A single group factor may be taken into account.}
     \item{\code{adapt}: }{a logical value indicating whether adaptation of lag shapes should be performed for all the regressions. Default is \code{FALSE};}
     \item{\code{min.gestation}: }{the minimum gestation lag for all the covariates. If not provided, it is assumed to be equal to 0. Ignored for gamma lag shapes or if \code{adapt}=\code{FALSE};}
     \item{\code{max.gestation}: }{the maximum gestation lag for all the covariates. If not provided, it is assumed to be equal to \code{max.lead} (see below). Ignored for gamma lag shapes or if \code{adapt}=\code{FALSE};}
-    \item{\code{max.lead}: }{the maximum lead lag for all the covariates. If not provided, it is computed accordingly to the sample size. Ignored if \code{adapt}=\code{FALSE}. Note that the lead lag for a gamma lag shape is approximated numerically;}
+    \item{\code{max.lead}: }{the maximum lead lag for all the covariates. If not provided, it is computed accordingly to the number of periods. Ignored if \code{adapt}=\code{FALSE}. Note that the lead lag for a gamma lag shape is approximated numerically;}
     \item{\code{min.width}: }{the minimum lag width for all the covariates. It cannot be greater than \code{max.lead}. If not provided, it is assumed to be 0. Ignored if \code{adapt}=\code{FALSE}. For a gamma lag shape, the minimum lag width is taken as equal to the minimum lead lag.}
     \item{\code{sign}: }{the sign of parameter \eqn{\theta_j} (either '+' for positive or '-' for negative) for all the covariates. If not provided, adaptation will disregard the sign of parameter \eqn{\theta_j}. Ignored if \code{adapt}=\code{FALSE}.}
     }}
@@ -34,8 +34,7 @@ A single group factor may be taken into account.}
   %
   \item{diff.options}{A list containing options for the differentiation. The list may consist of any number of components among the following: 
     \itemize{
-    \item{\code{combine}: }{the method to combine p-values of the Augmented Dickey-Fuller test for different groups, that may be either \code{"choi"} or \code{"demetrescu"} (see \link{unirootTest})
-      Ignored if \code{group} is \code{NULL}. Default is \code{"choi"};}
+    \item{\code{test}: }{the unit root test to apply, that may be either \code{"kpss"} for KPSS test or \code{"adf"} for ADF test (see \link{unirootTest}). If \code{NULL} (the default), the choice is for the KPSS test if the number of periods is less than 100, otherwise the ADF test is used.}
     \item{\code{maxdiff}: }{the maximum differentiation order to apply. If \code{maxdiff}=0, differentiation will not be applied. Default is 3;}
     \item{\code{ndiff}: }{the order of differentiation to apply (without performing unit root test). If \code{ndiff}=\code{NULL}, differentiation will be applied according to unit root test. Default is \code{NULL}.}
     }}
@@ -73,8 +72,7 @@ For the gamma lag shape:
 \deqn{\beta_{j,l} = \theta_j (l+1)^\frac{\delta}{1-\delta}\lambda_j^l \left[\left(\frac{\delta_j}{(\delta_j-1)\log(\lambda_j)}\right)^\frac{\delta_j}{1-\delta_j}\lambda_j^{\frac{\delta_j}{(\delta_j-1)\log(\lambda_j)}-1}\right]^{-1}}
 \deqn{0<\delta_j<1 \hspace{1cm} 0<\lambda_j<1}
 
-Formulas cannot contain qualitative variables or interaction terms (no ':' or '*' symbols), and
-may contain the following operators for lag specification:
+Formulas may contain the following operators for lag specification:
   \itemize{
   \item{\code{quec.lag}: }{quadratic (2nd order polynomial) lag shape with endpoint constraints;}
   \item{\code{qdec.lag}: }{quadratic (2nd order polynomial) decreasing lag shape;}
@@ -94,8 +92,9 @@ See Magrini (2018) for more details.
 
 If \code{adapt} is \code{TRUE} for a regression, only the first argument is required to the operators for lag specification. For example, the expression \code{quec.lag(X1)} is sufficient.
 
-The formula of regressions with no endogenous covariates may be omitted from argument \code{model.code}.
+Formulas cannot contain qualitative variables, interaction terms (no ':' or '*' symbols) or operators besides the ones for lag specification listed above.
 The group factor and exogenous variables must not appear in any formula.
+The formula of regressions with no endogenous covariates may be omitted.
 
 Argument \code{local.control} must be a named list containing one or more among the following components:
   \itemize{
@@ -121,8 +120,9 @@ the named vector must include the lag sign (either \code{'+'} for positive or \c
 \value{An object of class \code{dlsem}, with the following components:
   \itemize{
   \item{estimate}{A list of objects of class \code{lm}, one for each regression.}
-  \item{call}{A list containing the call for each regression after eventual adaptation of lag shapes.}
-  \item{model.code}{The model code after eventual adaptation of lag shapes.}
+  \item{model.code}{The model code, eventually after adaptation of the lag shapes.}
+    \item{call}{A list containing the call for each regression, eventually after adaptation of lag shapes.}
+    \item{lag.par}{A list containing the parameters of the lag shapes for each regression, eventually after adaptation.}
   \item{exogenous}{The names of exogenous variables.}
   \item{group}{The name of the group factor. \code{NULL} is returned if \code{group}=\code{NULL}.}
   \item{time}{The name of the variable indicating the date time. \code{NULL} is returned if \code{time}=\code{NULL}.}
@@ -160,17 +160,11 @@ S3 methods available for class \code{dlsem} are:
 \references{
 W. K. Newey, and K. D. West (1978). A Simple, Positive Semi-Definite, Heteroskedasticity and Autocorrelation Consistent Covariance Matrix. \emph{Econometrica}, 55(3), 703-708.
 
-%H. Akaike (1974). A New Look at the Statistical Identification Model. \emph{IEEE Transactions on Automatic Control}, 19, 716-723. DOI: 10.1109/TAC.1974.1100705
-
-J. E. Cavanaugh (1997), Unifying the derivations of the Akaike and corrected Akaike information criteria. \emph{Statistics & Probability Letters}, 31, 201-208.
-
 A. P. Dempster, N. M. Laird, and D. B. Rubin (1977). Maximum Likelihood from Incomplete Data via the EM Algorithm. \emph{Journal of the Royal Statistical Society}, Series B, 39(1): 1-38.
 
 %G. G. Judge, W. E. Griffiths, R. C. Hill, H. Lutkepohl, and T. C. Lee (1985). The Theory and Practice of Econometrics. John Wiley & Sons, 2nd ed., New York, US-NY.  ISBN: 978-0-471-89530-5
 
 %P. Schmidt (1974). An Argument for the Usefulness of the Gamma Distributed Lag Model. \emph{International Economic Review}, 15(1).
-
-%G. Schwarz (1978). Estimating the Dimension of a Model. \emph{Annals of Statistics}, 6, 461-464. DOI: 10.1214/aos/1176344136
 }
 \seealso{\link{unirootTest}; \link{causalEff}; \link{compareModels}.}
 \examples{
@@ -179,13 +173,13 @@ data(industry)
 # Estimation without adaptation of lag shapes
 indus.code <- list(
   Consum~quec.lag(Job,0,5),
-  Pollution~quec.lag(Job,2,9)+quec.lag(Consum,1,7)
+  Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,7)
   )
 indus.mod <- dlsem(indus.code,group="Region",time="Year",exogenous=c("Population","GDP"),
   data=industry,log=TRUE)
 
 # Adaptation of lag shapes (estimation takes some seconds more)
-indus.global <- list(adapt=TRUE,max.gestation=3,max.lead=15,min.width=5,sign="+")
+indus.global <- list(adapt=TRUE,max.gestation=5,max.lead=15,min.width=3,sign="+")
 ## NOT RUN:
 # indus.mod <- dlsem(indus.code,group="Region",time="Year",exogenous=c("Population","GDP"),
 #   data=industry,global.control=indus.global,log=TRUE)
@@ -224,7 +218,7 @@ indus.code_3 <- list(
 
 # comparison of the three models
 ## NOT RUN:
-# compare.dlsem(indus.mod,indus.mod_2,indus.mod_3))
+# compareModels(list(indus.mod,indus.mod_2,indus.mod_3))
 
 
 ### A more complex model
@@ -239,11 +233,11 @@ levels(agres$POLICY) <- c("no","yes")
 context.var <- c("GDP","EMPL_AGR","UAA","PATENT_OTHER","POLICY")
 investment.var <- c("GBAORD_AGR","BERD_AGR")
 research.var <- c("RD_EDU_AGR","PATENT_AGR")
-impact.var <-  c("ENTR_INCOME_AGR","PPI_AGR")
+impact.var <-  c("GVA_AGR","PPI_AGR")
 agres.var <- c(context.var,investment.var,research.var,impact.var)
 
 # Constraints on lag shapes
-agres.global <- list(adapt=TRUE,max.gestation=5,min.width=3,sign="+")
+agres.global <- list(adapt=TRUE,max.gestation=5,max.lead=15,sign="+")
 agres.local <- list(
   sign=list(
     PPI_AGR=c(GBAORD_AGR="-",BERD_AGR="-",RD_EDU_AGR="-",PATENT_AGR="-")
@@ -279,5 +273,5 @@ for(i in 1:length(auxcode_2)) {
 # agres.mod_2 <- dlsem(agres.code_2,group="COUNTRY",time="YEAR",exogenous=context.var,
 #  data=agres,global.control=agres.global,local.control=agres.local,log=TRUE)
 # summary(agres.mod_2)$endogenous
-# compare.dlsem(list(agres.mod,agres.mod_2))
+# compareModels(list(agres.mod,agres.mod_2))
 }

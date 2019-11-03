@@ -147,6 +147,34 @@ gamm.lag <- function(x,delta,lambda,x.group=NULL,nlag=NULL) {
   res
   }
 
+# unconstrained transformation (internal use only)
+uncons.lag <- function(x,nlag=0,x.group=NULL) {
+  if(is.null(x.group)) {
+    if(nlag>0) {
+      res <- x
+      for(i in 1:nlag) {
+        res <- cbind(res,c(rep(NA,i),x[1:(length(x)-i)]))
+        }
+      colnames(res) <- 0:nlag
+      } else {
+      res <- x
+      }
+    } else {
+    res <- c()  
+    gruppi <- levels(factor(x.group))
+    for(i in 1:length(gruppi)) {
+      auxind <- which(x.group==gruppi[i])
+      ires <- idat <- x[auxind]
+      for(j in 1:nlag) {
+        ires <- cbind(ires,c(rep(NA,j),idat[1:(length(auxind)-j)]))
+        }
+      res <- rbind(res,ires)
+      }
+    colnames(res) <- 0:nlag
+    }
+  res
+  }
+
 # check if a variable is quantitative (internal use only)
 isQuant <- function(x) {
   if(is.numeric(x)) {
@@ -498,7 +526,13 @@ dlaglm <- function(formula,group,data,adapt,no.select,min.gestation,max.gestatio
         iminwd <- min.width[xtest[i]]
         imaxld <- max.lead[xtest[i]]
         icons <- searchGrid(imings,imaxgs,iminwd,imaxld,lagType[xtest[i]],gammaMat)
-        if(lagType[[i]]=="gamm.lag" && nrow(icons)==0) icons <- gammaDefault(imaxld)
+        if(lagType[[xtest[i]]]=="gamm.lag") {
+          igamdef <- gammaDefault(imaxld)
+          if(nrow(icons)==0) icons <- igamdef
+          bestPar[[xtest[i]]] <- igamdef
+          } else {
+          bestPar[[xtest[i]]] <- c(imings,imaxld)
+          }
         consList[[i]] <- icons
         }
       names(consList) <- xtest
@@ -518,7 +552,7 @@ dlaglm <- function(formula,group,data,adapt,no.select,min.gestation,max.gestatio
           for(i in 1:ntest) {
             auxcons <- consList[[xtest[i]]]
             if(nrow(auxcons)==0) auxcons <- matrix(lagPar[[xtest[i]]],nrow=1)
-            bic0 <- bhat0 <- c()
+            mse0 <- bhat0 <- c()
             for(j in 1:nrow(auxcons)) {
               nitt <- nitt+1
               iperc <- round(100*nitt/nittTot)
@@ -532,11 +566,13 @@ dlaglm <- function(formula,group,data,adapt,no.select,min.gestation,max.gestatio
                 }
               #
               testType <- lagType
-              testType[setdiff(xtest,xtest[i])] <- "none"  #####
-              testPar <- bestPar               
+              #testType[setdiff(xtest,xtest[i])] <- "none"  #####
+              testPar <- bestPar
               testPar[[xtest[i]]] <- auxcons[j,]
               #
               form0 <- creatForm(y,names(testPar),group,testType,testPar,max.lead[xtest[i]])  #####
+              #form0 <- creatForm(y,names(testPar),group,testType,testPar,NULL)
+              #
               mod0 <- doLS(formula=form0,group=group,data=data)
               est0 <- mod0$coefficients
               ixall <- names(est0)
@@ -545,10 +581,10 @@ dlaglm <- function(formula,group,data,adapt,no.select,min.gestation,max.gestatio
               #
               if(length(ixlab)>0 && ixlab %in% ixall) { 
                 bhat0[j] <- est0[ixlab]
-                bic0[j] <- sum(residuals(mod0)^2)
+                mse0[j] <- mean(residuals(mod0)^2)
                 } else {
                 bhat0[j] <- NA
-                bic0[j] <- Inf
+                mse0[j] <- Inf
                 }
               }
             isign <- sign[xtest[i]]
@@ -560,15 +596,15 @@ dlaglm <- function(formula,group,data,adapt,no.select,min.gestation,max.gestatio
                 auxsign <- which(bhat0<0)                  
                 }
               if(length(auxsign)>0) {
-                auxbest <- auxsign[which.min(bic0[auxsign])]
+                auxbest <- auxsign[which.min(mse0[auxsign])]
                 } else {
-                auxbest <- which.min(bic0)
+                auxbest <- which.min(mse0)
                 }
               } else {
-              auxbest <- which.min(bic0)
+              auxbest <- which.min(mse0)
               }
             currentPar[[xtest[i]]] <- auxcons[auxbest,]
-            currentBIC[xtest[i]] <- bic0[auxbest]
+            currentBIC[xtest[i]] <- mse0[auxbest]
             }
           xnew <- names(currentBIC)[which.min(currentBIC)]
           bestPar[[xnew]] <- currentPar[[xnew]]
@@ -625,7 +661,7 @@ vcovHAC <- function(x,group=NULL) {
 doHAC <- function(x,group) {
   Xmat <- model.matrix(x)
   Smat <- summary(x)$cov.unscaled
-  Xmat <- Xmat[,colnames(Smat)]  ## delete collinear terms
+  Xmat <- Xmat[,colnames(Smat),drop=F]  ## delete collinear terms
   n <- nrow(Xmat)
   p <- ncol(Xmat)
   res <- x$residuals
@@ -741,45 +777,6 @@ lagEff <- function(model,x,cumul,lag) {
   out
   }
 
-# adf test (internal use only)
-adft <- function(x,k) {
-  k <- k+1
-  x <- as.vector(x,mode="double")
-  y <- diff(x)
-  n <- length(y)
-  z <- embed(y,k)
-  yt <- z[,1]
-  xt1 <- x[k:n]
-  tt <- k:n
-  if(k>1) {
-    yt1 <- z[,2:k,drop=F]
-    res <- lm(yt~xt1+tt+yt1)
-    } else {
-    res <- lm(yt~xt1+tt)
-    }
-  res.sum <- summary(res)$coefficients
-  if(nrow(res.sum)>=2) {
-    STAT <- res.sum[2,1]/res.sum[2,2]
-    table <- -1*cbind(c(4.38, 4.15, 4.04, 3.99, 3.98, 3.96), c(3.95, 
-      3.8, 3.73, 3.69, 3.68, 3.66), c(3.6, 3.5, 3.45, 3.43, 
-      3.42, 3.41), c(3.24, 3.18, 3.15, 3.13, 3.13, 3.12), c(1.14, 
-      1.19, 1.22, 1.23, 1.24, 1.25), c(0.8, 0.87, 0.9, 0.92, 
-      0.93, 0.94), c(0.5, 0.58, 0.62, 0.64, 0.65, 0.66), c(0.15, 
-      0.24, 0.28, 0.31, 0.32, 0.33))
-    tablen <- dim(table)[2]
-    tableT <- c(25, 50, 100, 250, 500, 1e+05)
-    tablep <- c(0.01, 0.025, 0.05, 0.1, 0.9, 0.95, 0.975, 0.99)
-    tableipl <- numeric(tablen)
-    for(i in (1:tablen)) {
-      tableipl[i] <- approx(tableT,table[,i],n,rule=2)$y
-      }
-    PVAL <- approx(tableipl,tablep,STAT,rule=2)$y
-    } else {
-    STAT <- PVAL <- NA
-    }
-  list(statistic=STAT,p.value=PVAL,'lag.order'=k-1)
-  }
-
 # apply differentiation (internal use only)
 applyDiff <- function(x,group,data,k) {
   #
@@ -847,7 +844,7 @@ isTimeVar <- function(x) {
   }
 
 # unit root test
-unirootTest <- function(x=NULL,group=NULL,time=NULL,data,combine="choi",log=FALSE) {
+unirootTest <- function(x=NULL,group=NULL,time=NULL,data,test=NULL,log=FALSE) {
   if(!identical(class(data),"data.frame")) stop("Argument 'data' must be a data.frame",call.=F)
   if(!is.null(x)) { 
     x2del <- c()
@@ -879,9 +876,11 @@ unirootTest <- function(x=NULL,group=NULL,time=NULL,data,combine="choi",log=FALS
     data[,group] <- factor(data[,group])
     gruppi <- levels(data[,group])
     if(length(gruppi)<2) stop("The group factor must have at least 2 unique values",call.=F)
-    if(min(table(data[,group]))<3) stop("There must be at least 3 observations per group",call.=F)
+    n <- min(table(data[,group]))
+    if(n<3) stop("There must be at least 3 observations per group",call.=F)
     } else {
-    if(nrow(data)<3) stop("There must be at least 3 observations",call.=F)  
+    n <- nrow(data)
+    if(n<3) stop("There must be at least 3 observations",call.=F)  
     }
   if(!is.null(time)) {
     if(is.na(time)) time <- NULL
@@ -897,9 +896,10 @@ unirootTest <- function(x=NULL,group=NULL,time=NULL,data,combine="choi",log=FALS
       if(sum(sapply(timesplit,function(z){sum(duplicated(z))}))>0) stop("The time variable has duplicated values",call.=F)  
       }
     }
-  if(length(combine)!=1 || (combine %in% c("choi","demetrescu"))==F) {
-    warning("Invalid value for argument 'combine': 'choi' is assumed",call.=F)
-    combine <- "choi"
+  if(is.null(test)) {
+    test <- ifelse(n<100,"kpss","adf")
+    } else {
+    if((test %in% c("kpss","adf"))==F) stop("Argument 'test' must be one among 'kpss' or 'adf'",call.=F)  
     }
   if(identical(log,T)) {
     for(i in 1:length(x)) {
@@ -924,11 +924,11 @@ unirootTest <- function(x=NULL,group=NULL,time=NULL,data,combine="choi",log=FALS
         }
       }
     }
-  urtFun(x,group,time,data,combine,log)
+  urtFun(x,group,time,data,test,log)
   }
   
 # interface for unit root test (internal use only)
-urtFun <- function(x,group,time,data,combine,log) {
+urtFun <- function(x,group,time,data,test,log) {
   if(!is.null(group)) {
     g.id <- as.numeric(data[,group])
     glab <- levels(data[,group])
@@ -945,50 +945,133 @@ urtFun <- function(x,group,time,data,combine,log) {
     }
   res <- vector("list",length=length(x))
   for(i in 1:length(x)) {
-    if(is.null(group)) {
-      ikmax <- trunc((length(na.omit(data[,x[i]]))-1)^(1/3))
+    if(test=="adf") {
+      if(is.null(group)) {
+        ikmax <- trunc((length(na.omit(data[,x[i]]))-1)^(1/3))
+        } else {
+        ik <- table(na.omit(data[,c(x[i],group)])[,group])
+        ikmax <- sapply(ik,function(z){trunc((z-1)^(1/3))})
+        }
+      res[[i]] <- doURT(data[,x[i]],g.id=g.id,test="adf",glab=glab,par=ikmax)
       } else {
-      ik <- table(na.omit(data[,c(x[i],group)])[,group])
-      ikmax <- sapply(min(ik),function(z){trunc((z-1)^(1/3))})
+      res[[i]] <- doURT(data[,x[i]],g.id=g.id,test="kpss",glab=glab,par=c(F,T))  #####
       }
-    res[[i]] <- autoADF(data[,x[i]],g.id=g.id,combine=combine,glab=glab,kmax=ikmax)
     }
   names(res) <- x
-  if(!is.null(group)) attr(res,"combine") <- combine else attr(res,"combine") <- NULL
+  if(!is.null(group)) attr(res,"group") <- group
+  attr(res,"test") <- test
   class(res) <- "unirootTest"
   res
   }
 
-# automated ADF test (auxiliary)
-autoADF <- function(x,g.id,combine,glab,kmax) {
-  k <- kmax
-  t0 <- doADF(x,g.id,combine,glab,k)
-  while(is.na(t0$z.value)||(abs(t0$z.value)>1.6 & k>0)) {
-    k <- k-1
-    t0 <- doADF(x,g.id,combine,glab,k)
+# adf test (internal use only)
+adft <- function(x,kmax) {
+  #
+  doADF <- function(k) {
+    y <- diff(x)
+    n <- length(y)
+    k <- k+1
+    z <- embed(y,k)
+    yt <- z[,1]
+    xt1 <- x[k:n]
+    tt <- k:n
+    if(k>1) {
+      yt1 <- z[,2:k,drop=F]
+      res <- lm(yt~xt1+tt+yt1)
+      } else {
+      res <- lm(yt~xt1+tt)
+      }
+    res.sum <- summary(res)$coefficients
+    if(nrow(res.sum)>=2) {
+      STAT <- res.sum[2,1]/res.sum[2,2]
+      table <- -1*cbind(c(4.38, 4.15, 4.04, 3.99, 3.98, 3.96),
+                        c(3.95, 3.8, 3.73, 3.69, 3.68, 3.66),
+                        c(3.6, 3.5, 3.45, 3.43, 3.42, 3.41),
+                        c(3.24, 3.18, 3.15, 3.13, 3.13, 3.12),
+                        c(1.14, 1.19, 1.22, 1.23, 1.24, 1.25),
+                        c(0.8, 0.87, 0.9, 0.92, 0.93, 0.94),
+                        c(0.5, 0.58, 0.62, 0.64, 0.65, 0.66),
+                        c(0.15, 0.24, 0.28, 0.31, 0.32, 0.33))
+      tablen <- dim(table)[2]
+      tableT <- c(25, 50, 100, 250, 500, 1e+05)
+      tablep <- c(0.01, 0.025, 0.05, 0.1, 0.9, 0.95, 0.975, 0.99)
+      tableipl <- numeric(tablen)
+      for(i in (1:tablen)) {
+        tableipl[i] <- approx(tableT,table[,i],n,rule=2)$y
+        }
+      PVAL <- approx(tableipl,tablep,STAT,rule=2)$y
+      } else {
+      STAT <- PVAL <- NA
+      }
+    c(STAT,PVAL)
     }
-  t0
+  #
+  k <- kmax
+  res <- doADF(k)
+  while(is.na(res[1])||(abs(res[1])>1.6 & k>0)) {
+    k <- k-1
+    res <- doADF(k)
+    }
+  list(statistic=res[1],lag.order=k,p.value=res[2])
   }
 
-# function for ADF test (internal use only)  
-doADF <- function(x,g.id,combine,glab,k) {
+# kpss test (internal use only)
+kpsst <- function (x,trend,lshort) {
+  n <- length(x)
+  if(trend==T) {
+    t <- 1:n
+    e <- residuals(lm(x ~ t))
+    table <- c(0.216, 0.176, 0.146, 0.119)
+    } else {
+    e <- residuals(lm(x ~ 1))
+    table <- c(0.739, 0.574, 0.463, 0.347)
+    }
+  tablep <- c(0.01, 0.025, 0.05, 0.1)
+  s <- cumsum(e)
+  eta <- sum(s^2)/(n^2)
+  s2 <- sum(e^2)/n
+  if(lshort==T) {
+    l <- trunc(4*(n/100)^0.25)
+    } else {
+    l <- trunc(12*(n/100)^0.25)
+    }
+  k <- 0
+  for(i in 1:l) {
+    ik <- 0
+    for(j in (i+1):n) {
+      ik <- ik+e[j]*e[j-i]
+      }
+    k <- k+(1-i/(l+1))*ik
+    }
+  STAT <- eta/(s2+2*k/n)
+  PVAL <- approx(table,tablep,STAT,rule=2)$y
+  list(statistic=STAT,lag.order=l,p.value=PVAL)
+  }
+
+# function for uniroot test (internal use only)  
+doURT <- function(x,g.id,test,glab,par) {
   gruppi <- sort(unique(g.id))
-  auxstat <- auxp <- nwm <- c()
+  auxord <- auxstat <- auxp <- nwm <- c()
+  h0 <- ifelse(test=="adf","unit root","stationarity")
   options(warn=-1)
   for(i in 1:length(gruppi)) {
     auxind <- which(g.id==gruppi[i])
     auxdat <- na.omit(x[auxind])
     nwm[i] <- length(auxdat)
     if(length(auxdat)>4 && var(auxdat)>0) {
-      auxadf <- adft(auxdat,k=k)
-      auxstat[i] <- auxadf$statistic
-      auxp[i] <- auxadf$p.value
+      if(test=="adf") {
+        auxurt <- adft(auxdat,kmax=par[i])
+        } else {
+        auxurt <- kpsst(auxdat,trend=par[1],lshort=par[2])  
+        }
+      auxstat[i] <- auxurt$statistic
+      auxp[i] <- auxurt$p.value
+      auxord[i] <- auxurt$lag.order
       } else {
-      auxstat[i] <- NA
-      auxp[i] <- NA
+      auxstat[i] <- auxp[i] <- auxord[i] <- NA
       }
     }
-  if(length(auxstat)>1) names(auxstat) <- names(nwm) <- glab
+  if(length(auxstat)>1) names(auxstat) <- names(nwm) <- names(auxord) <- glab
   if(length(auxp)>0) {
     auxpStar <- auxp[which(auxp<1)]
     if(length(auxpStar)>0) {
@@ -996,19 +1079,16 @@ doADF <- function(x,g.id,combine,glab,k) {
       logp <- qnorm(auxpStar)
       rhat <- 1-var(logp)
       rstar <- max(rhat,-1/(m-1))
-      if(combine=="demetrescu") {
-        auxz <- sum(logp)/sqrt(m*(1+(m-1)*(rstar+0.2*sqrt(2/(m+1))*(1-rstar))))
-        } else if(combine=="choi") {
-        auxz <- sum(logp)/sqrt(m)
-        }
+      auxz <- sum(logp)/sqrt(m*(1+(m-1)*(rstar+0.2*sqrt(2/(m+1))*(1-rstar))))
+      #auxz <- sum(logp)/sqrt(m)
       auxpval <- 2*pnorm(-abs(auxz))
       } else {
       auxz <- NA
       auxpval <- NA
       }
-    res <- list(statistic=auxstat,lag.order=k,n=nwm,z.value=auxz,p.value=auxpval)
+    res <- list(statistic=auxstat,lag.order=auxord,n=nwm,null=h0,z.value=auxz,p.value=auxpval)
     } else {
-    res <- list(statistic=NULL,lag.order=k,n=nwm,z.value=NULL,p.value=NULL)
+    res <- list(statistic=NULL,p=auxp,lag.order=auxord,n=nwm,null=h0,z.value=NULL,p.value=NULL)
     }
   options(warn=0)
   res
@@ -1016,17 +1096,11 @@ doADF <- function(x,g.id,combine,glab,k) {
 
 # print method for class 'unirootTest'
 print.unirootTest <- function(x,...) {
-  if(!is.null(attr(x,"combine"))) {
-    if(attr(x,"combine")=="choi") {
-      auxcom <- "Choi"
-      } else {
-      auxcom <- "Demetrescu"
-      }
-    auxp <- paste(" with ",auxcom,"'s p-values",sep="")
+  if(attr(x,"test")=="adf") {
+    cat("ADF test (null hypothesis is unit root)","\n")
     } else {
-    auxp <- ""
+    cat("KPSS test (null hypothesis is stationarity)","\n")
     }
-  cat("ADF test",auxp," (null hypothesis is unit root)",sep="","\n")
   res <- sapply(x,function(z){z$p.value})
   print(round(res,4))
   }
@@ -1379,6 +1453,7 @@ lagPlot <- function(x,from=NULL,to=NULL,path=NULL,maxlag=NULL,cumul=FALSE,conf=0
   if(is.null(path)) {                        
     auxpa <- causalEff(x,from=from,to=to,lag=NULL,cumul=cumul,conf=conf,use.ns=use.ns)$overall
     } else {
+    path <- gsub(" ","",path)
     auxstr <- strsplit(path,"\\*")[[1]]
     pathchk <- setdiff(auxstr,names(x$estimate))
     if(length(pathchk)>0) stop("Unknown variable '",pathchk[1],"' in the path",call.=F)
@@ -1400,7 +1475,7 @@ lagPlot <- function(x,from=NULL,to=NULL,path=NULL,maxlag=NULL,cumul=FALSE,conf=0
       #  }
       auxpa <- NULL
       }
-    }     
+    }
   if(!is.null(auxpa)) {
     yaux <- rbind(rep(0,ncol(auxpa)),auxpa)
     rownames(yaux) <- c(-1:(nrow(yaux)-2))
@@ -1626,6 +1701,15 @@ checkName <- function(x) {
   res
   }
 
+# find operator in a variable name (internal use only)
+findOp <- function(x) {
+  if(gregexpr("\\(",x)[[1]][1]>0) {
+    strsplit(x,"\\(")[[1]][1]
+    } else {
+    NULL 
+    }
+  }
+
 # automated full model code
 autoCode <- function(var.names,lag.type="quec.lag") {
   if(length(var.names)<2) stop("Argument 'var.names' must be at least of length 2",call.=F)
@@ -1649,23 +1733,23 @@ diffoptAdj <- function(x) {
   warn1 <- warn2 <- 0
   if(!is.null(x) && !is.list(x)) warn2 <- warn2+1
   nomi <- names(x)
-  unknam <- setdiff(nomi,c("combine","maxdiff","ndiff"))
+  unknam <- setdiff(nomi,c("test","maxdiff","ndiff"))
   if(length(unknam)>0) {
     x <- x[setdiff(nomi,unknam)]
     warning("Some components with unknown names in argument 'diff.options' were ignored",call.=F)
     }
   # 
-  if("combine" %in% nomi) {
-    combine <- x$combine
-    if(is.null(combine)) combine <- "choi"
-    if(length(combine)>1) warn1 <- warn1+1
-    combine <- combine[1]
-    if((combine %in% c("choi","demetrescu"))==F) {
-      combine <- "choi"
+  if("test" %in% nomi) {
+    test <- x$test
+    if(is.null(test)) test <- NULL
+    if(length(test)>1) warn1 <- warn1+1
+    test <- test[1]
+    if(!is.null(test) && (test %in% c("kpss","adf"))==F) {
+      test <- NULL
       warn2 <- warn2+1
       }
     } else {
-    combine <- "choi"  
+    test <- NULL  
     }
   #
   if("maxdiff" %in% nomi) {
@@ -1695,7 +1779,7 @@ diffoptAdj <- function(x) {
   #
   if(warn1>0) warning("Some components in argument 'diff.options' had length >1 and only the first element was used",call.=F)
   if(warn2>0) warning("Some invalid or uncoherent components in argument 'diff.options' were adjusted",call.=F)
-  list(combine=combine,maxdiff=maxdiff,ndiff=ndiff)
+  list(test=test,maxdiff=maxdiff,ndiff=ndiff)
   }
 
 # adjust imput options (internal use only)
@@ -1760,7 +1844,7 @@ impoptAdj <- function(x) {
   }
 
 # preprocessing (internal use only)
-preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,quiet) {
+preProcess <- function(x=NULL,group=NULL,time=NULL,seas=NULL,data,log=F,diff.options=NULL,imput.options=NULL,quiet=F) {
   if(!is.null(group)) {
     data[,group] <- factor(data[,group])
     gruppi <- levels(data[,group])
@@ -1787,6 +1871,14 @@ preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,qui
   if(length(quiet)!=1 || !is.logical(quiet)) stop("Argument 'quiet' must be a logical value",call.=F)
   #
   diff.options <- diffoptAdj(diff.options)
+  if(is.null(diff.options$test)) {
+    if(is.null(group)) {
+      n <- nrow(data)
+      } else {
+      n <- min(table(data[,group]))  
+      }
+    diff.options$test <- ifelse(n>100,"adf","kpss")
+    }
   ndiff <- diff.options$ndiff
   imput.options <- impoptAdj(imput.options)
   #
@@ -1808,7 +1900,6 @@ preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,qui
       if(sum(is.na(data[,nodenam[i]]))>0) stop("Variable ",nodenam[i]," is qualitative and contains missing values",sep="",call.=F)
       xfact <- c(xfact,nodenam[i])
       data[,nodenam[i]] <- factor(data[,nodenam[i]])
-      if(quiet==F) warning("Logarithmic transformation not applied to variable '",nodenam[i],"'",call.=F) 
       }
     }
   # deseasonalization
@@ -1880,12 +1971,12 @@ preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,qui
     ndiff <- 0
     if(length(difftest)>0 & diff.options$maxdiff>0) {
       fine <- 0
-      if(quiet==F) cat("Checking unit roots ...")
+      if(quiet==F) cat("Checking stationarity ...")
       flush.console()
       data <- applyDiff(x=difftest,group=group,data=data,k=rep(0,length(difftest)))
       while(fine==0) {
         auxp <- c()
-        urtList <- urtFun(x=difftest,group=group,time=NULL,data=data,combine=diff.options$combine,log=F)
+        urtList <- urtFun(x=difftest,group=group,time=NULL,data=data,test=diff.options$test,log=F)
         for(i in 1:length(difftest)) {
           ipvl <- urtList[[i]]$p.value
           if(is.null(ipvl)) {
@@ -1898,7 +1989,11 @@ preProcess <- function(x,group,time,seas,data,log,diff.options,imput.options,qui
               }
             }
           }
-        nUR <- length(which(auxp>0.05))
+        if(diff.options$test=="adf") {
+          nUR <- length(which(auxp>0.05))
+          } else {
+          nUR <- length(which(auxp<0.05))
+          }
         if(nUR>0) {
           if(ndiff<diff.options$maxdiff) {
             ndiff <- ndiff+1
@@ -1940,7 +2035,7 @@ collCheck <- function(y,x,group,data) {
 # fit a dlsem
 dlsem <- function(model.code,group=NULL,time=NULL,seas=NULL,exogenous=NULL,data,
   log=FALSE,hac=TRUE,gamma.by=0.05,global.control=NULL,local.control=NULL,
-  diff.options=list(combine="choi",maxdiff=2,ndiff=NULL),
+  diff.options=list(test=NULL,maxdiff=2,ndiff=NULL),
   imput.options=list(tol=0.0001,maxiter=500,maxlag=2,no.imput=NULL),quiet=FALSE) {
   #
   if(!is.list(model.code) || length(model.code)==0 || sum(sapply(model.code,class)!="formula")>0) stop("Argument 'model code' must be a list of formulas",call.=F)
@@ -2004,20 +2099,32 @@ dlsem <- function(model.code,group=NULL,time=NULL,seas=NULL,exogenous=NULL,data,
     if(checkName(ynam)==F) stop("'",ynam,"' is not a valid variable name",call.=F)
     #
     if((ynam %in% colnames(data))==F) {
-      stop("Variable '",ynam,"' not found in data",call.=F)  #####
+      auxop <- findOp(ynam)
+      if(is.null(auxop)) {
+        stop("Variable '",ynam,"' not found in data",call.=F)
+        } else {
+        stop("Operator ",auxop,"() not allowed in 'model.code'",call.=F) 
+        }
       }
     #
     ipar <- names(iscan$ltype)
     if(length(ipar)==0) ipar <- character(0)
     pset[[i]] <- ipar
-    names(model.code)[i] <- names(pset)[i] <- ynam 
+    names(model.code)[i] <- names(pset)[i] <- ynam
     if(length(ipar)>0) {
       if(!is.null(group)) {
         if(group %in% ipar) stop("Variable '",group,"' is defined as a group factor and appears in 'model.code'",call.=F) 
         }
       #
       auxfun <- setdiff(ipar,colnames(data))
-      if(length(auxfun)>0) stop("Variable '",auxfun[1]," not found in data",call.=F)  #####
+      if(length(auxfun)>0) {
+        auxop <- findOp(auxfun[1])
+        if(is.null(auxop)) {
+          stop("Variable '",auxfun[1]," not found in data",call.=F)
+          } else {
+          stop("Operator ",auxop,"() not allowed in 'model.code'",call.=F) 
+          }
+        }
       #
       auxexo <- intersect(ipar,exogenous)
       if(length(auxexo)>0) stop("Variable '",auxexo[1],"' appears both in 'model.code' and in 'exogenous'",call.=F)
@@ -2074,7 +2181,7 @@ dlsem <- function(model.code,group=NULL,time=NULL,seas=NULL,exogenous=NULL,data,
   ndiff <- attr(data,"ndiff")
   if(is.null(ndiff)) ndiff <- 0
   nomi <- c()
-  optList <- callList <- codeList <- vector("list",length=length(model.code))
+  optList <- callList <- lparList <- codeList <- vector("list",length=length(model.code))
   if(quiet==F) cat("Starting estimation ...")
   flush.console()
   for(i in 1:length(model.code)) {
@@ -2133,9 +2240,15 @@ dlsem <- function(model.code,group=NULL,time=NULL,seas=NULL,exogenous=NULL,data,
     #
     if(iad==T) optList[[i]] <- list(adapt=iad,min.gestation=iming,max.gestation=iges,min.width=iwd,max.lead=ilead,sign=isg)
     imod <- dlaglm(iform,group=group,data=data,adapt=iad,no.select=exogenous,min.gestation=iming,max.gestation=iges,min.width=iwd,max.lead=ilead,sign=isg,ndiff=ndiff,gamma.by=gamma.by,mess=imess,nblank=inbl)
-    callList[[i]] <- imod$call$formula
+    callList[[i]] <- icall <- imod$call$formula
+    iscan <- scanForm(icall)
     ixnam <- setdiff(names(iscan$ltype),c(group,time,exogenous))
     codeList[[i]] <- creatForm(nomi[i],ixnam,NULL,iscan$ltype[ixnam],iscan$lpar[ixnam],NULL)
+    if(length(ixnam)>0) {
+      ilpar <- data.frame(iscan$ltype[ixnam],do.call(rbind,iscan$lpar[ixnam]))
+      colnames(ilpar) <- c("type","par1","par2")
+      lparList[[i]] <- ilpar
+      }
     if(hac==T) {
       imod$vcov <- vcovHAC(imod,group=group)
       class(imod) <- c("hac","lm")
@@ -2144,7 +2257,7 @@ dlsem <- function(model.code,group=NULL,time=NULL,seas=NULL,exogenous=NULL,data,
       }
     estL[[i]] <- imod
     }
-  names(optList) <- nomi
+  names(optList) <- names(lparList) <- nomi
   if(quiet==F) {
     blchar <- ""
     if(iad==F) {
@@ -2198,7 +2311,7 @@ dlsem <- function(model.code,group=NULL,time=NULL,seas=NULL,exogenous=NULL,data,
       }
     }
   # output
-  out <- list(estimate=estL,call=callList,model.code=codeList,exogenous=exogenous,group=group,time=time,
+  out <- list(estimate=estL,model.code=codeList,call=callList,lag.par=lparList,exogenous=exogenous,group=group,time=time,
     log=attr(data,"log"),ndiff=attr(data,"ndiff"),data=data[,c(group,time,nodenam)],
     fitted=fitOK,residuals=epsOK,Rsq=RsqCalc(estL),autocorr=acOrder,hac=hac,adaptation=optList)
   class(out) <- "dlsem"
@@ -2319,7 +2432,7 @@ summary.dlsem <- function(object,...) {
       }
     summS[i,] <- c(summary(estim[[i]])$sigma,estim[[i]]$df.residual)
     }
-  OUT <- list(endogenous=summList,exogenous=summList_e,group=summList_g,errors=summS,Rsq=object$Rsq)
+  OUT <- list(endogenous=summList,exogenous=summList_e,intercepts=summList_g,errors=summS,Rsq=object$Rsq)
   class(OUT) <- "summary.dlsem"
   OUT
   }
@@ -2352,11 +2465,11 @@ print.summary.dlsem <- function(x,...) {
   fitI <- x$gof
   cat("\n")
   cat("INTERCEPTS","\n")
-  if(sum(sapply(x$group,is.null))==0) {
+  if(sum(sapply(x$intercepts,is.null))==0) {
     cat("\n")
-    for(i in 1:length(x$group)) {
-      cat("Response: ",names(x$group)[i],sep="","\n")
-      print(x$group[[i]])
+    for(i in 1:length(x$intercepts)) {
+      cat("Response: ",names(x$intercepts)[i],sep="","\n")
+      print(x$intercepts[[i]])
       cat("\n")
       }
     } else {
@@ -2430,28 +2543,28 @@ AICc_fun <- function(object) {
 #  OUT
 #  }
 
-# compute the minimum common lag (auxiliary)
-mincomlag <- function(x,tol=1e-4) {
-  res <- c()
-  for(i in 1:length(x$call)) {
-    iscan <- scanForm(x$call[[i]])
-    auxq <- which(iscan$ltype %in% c("quec.lag","qdec.lag"))
-    auxg <- which(iscan$ltype=="gamm.lag")
-    ires <- c()
-    if(length(auxq)>0) {
-      ires <- c(ires,sapply(iscan$lpar[auxq],function(y){y[2]}))
-      }
-    if(length(auxg)>0) {
-      ires <- c(ires,sapply(iscan$lpar[auxg],function(y){gamlead(y[1],y[2])}))
-      }
-    if(length(ires)>0) {
-      res[i] <- max(ires)
-      } else {
-      res[i] <- 0
-      }
-    }
-  res
-  }
+## compute the minimum common lag (auxiliary)
+#mincomlag <- function(x,tol=1e-4) {
+#  res <- c()
+#  for(i in 1:length(x$call)) {
+#    iscan <- scanForm(x$call[[i]])
+#    auxq <- which(iscan$ltype %in% c("quec.lag","qdec.lag"))
+#    auxg <- which(iscan$ltype=="gamm.lag")
+#    ires <- c()
+#    if(length(auxq)>0) {
+#      ires <- c(ires,sapply(iscan$lpar[auxq],function(y){y[2]}))
+#      }
+#    if(length(auxg)>0) {
+#      ires <- c(ires,sapply(iscan$lpar[auxg],function(y){gamlead(y[1],y[2])}))
+#      }
+#    if(length(ires)>0) {
+#      res[i] <- max(ires)
+#      } else {
+#      res[i] <- 0
+#      }
+#    }
+#  res
+#  }
 
 # compare several models
 compareModels <- function(x) {
@@ -2459,25 +2572,51 @@ compareModels <- function(x) {
   for(i in 2:length(x)) {
     if(!identical(x[[i-1]]$data,x[[i]]$data)) stop("The models were estimated from different data",call.=F)
     }
-  auxnlag <- lapply(x,mincomlag)
-  nlag <- max(unlist(auxnlag))
-  res <- data.frame(matrix(nrow=length(x),ncol=5))
-  colnames(res) <- c("logLik","p","AIC","AICc","BIC")
-  rownames(res) <- names(x)
+  nomi <- names(x[[1]]$estimate)
+  resL <- lapply(x,function(y){y$residuals})
+  isNA <- do.call(cbind,lapply(resL,function(y){apply(y,1,function(z){1*(sum(is.na(z))>0)})}))
+  ind <- which(apply(isNA,1,sum)==0)
+  n <- length(ind)
+  ic <- data.frame(matrix(nrow=length(x),ncol=5))
+  colnames(ic) <- c("logLik","p","AIC","AICc","BIC")
+  rownames(ic) <- names(x)  
   for(i in 1:length(x)) {
-    ignam <- x[[i]]$group
-    icall <- x[[i]]$call
-    iIC <- rep(0,5)
-    for(j in 1:length(icall)) {
-      ijscan <- scanForm(icall[[j]])
-      ijform <- creatForm(ijscan$y,ijscan$X,ignam,ijscan$ltype,ijscan$lpar,nlag)
-      ijmod <- doLS(ijform,ignam,x[[i]]$data)
-      ijaic <- extractAIC(ijmod)
-      iIC <- iIC+c(logLik(ijmod)[1],ijaic[1],ijaic[2],AICc_fun(ijmod),extractAIC(ijmod,k=log(nobs(ijmod)))[2])
+    inpar <- sapply(x[[i]]$estimate,function(y){extractAIC(y)[1]})
+    ires <- resL[[i]]
+    inam <- names(x[[i]]$estimate)
+    irss <- c()
+    for(j in 1:length(inam)) {
+      irss[j] <- sum(ires[ind,inam[j]]^2)
       }
-    res[i,] <- iIC
+    is2 <- irss/(n-inpar)
+    ilogL <- -log(sqrt(2*pi*is2))-irss/(2*is2)
+    ic[i,1] <- sum(ilogL)
+    ic[i,2] <- sum(inpar)
     }
-  res
+  ic[,3] <- -2*ic[,1]+2*ic[,2]
+  ic[,4] <- -2*ic[,1]+2*ic[,2]*(ic[,2]+1)/(n-ic[,2]-1)
+  ic[,5] <- -2*ic[,1]+ic[,2]*log(n)
+  ic
+  #
+  #auxnlag <- lapply(x,mincomlag)
+  #nlag <- max(unlist(auxnlag))
+  #res <- data.frame(matrix(nrow=length(x),ncol=5))
+  #colnames(res) <- c("logLik","p","AIC","AICc","BIC")
+  #rownames(res) <- names(x)
+  #for(i in 1:length(x)) {
+  #  ignam <- x[[i]]$group
+  #  icall <- x[[i]]$call
+  #  iIC <- rep(0,5)
+  #  for(j in 1:length(icall)) {
+  #    ijscan <- scanForm(icall[[j]])
+  #    ijform <- creatForm(ijscan$y,ijscan$X,ignam,ijscan$ltype,ijscan$lpar,nlag)
+  #    ijmod <- doLS(ijform,ignam,x[[i]]$data)
+  #    ijaic <- extractAIC(ijmod)
+  #    iIC <- iIC+c(logLik(ijmod)[1],ijaic[1],ijaic[2],AICc_fun(ijmod),extractAIC(ijmod,k=log(nobs(ijmod)))[2])
+  #    }
+  #  res[i,] <- iIC
+  #  }
+  #res
   }
 
 # format fitted or residuals (internal use only)

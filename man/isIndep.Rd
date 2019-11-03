@@ -23,7 +23,7 @@ Dependence is a necessary but not sufficient condition for causation: see the di
 data(industry)
 indus.code <- list(
   Consum~quec.lag(Job,0,5),
-  Pollution~quec.lag(Job,2,9)+quec.lag(Consum,1,7)
+  Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,7)
   )
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
   log=TRUE)

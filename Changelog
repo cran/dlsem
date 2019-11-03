@@ -1,7 +1,14 @@
+dlsem (2.4.5)
+
+* added the KPSS test
+* the KPSS is set as the default unit root test in dlsem() if the sample size is less than 100
+* removed the Choi's method for combining multiple group p-values of the unit root test. The Demetrescu's method is the one in use.
+
+
 dlsem (2.4.4)
 
 * fixed an error in the computation of the standard error of cumulative lag shapes
-* added the method compareModels() for class 'dlsem' in place of methods AIC(), AICc() and BIC().
+* added the method compareModels() for class 'dlsem' in place of methods AIC(), AICc() and BIC()
 
 
 dlsem (2.4.3)

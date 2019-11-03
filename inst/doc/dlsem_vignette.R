@@ -2,32 +2,32 @@
 ### Encoding: ISO8859-1
 
 ###################################################
-### code chunk number 1: dlsem_vignette.Rnw:366-367 (eval = FALSE)
+### code chunk number 1: dlsem_vignette.Rnw:363-364 (eval = FALSE)
 ###################################################
 ## install.packages("dlsem")
 
 
 ###################################################
-### code chunk number 2: dlsem_vignette.Rnw:374-375 (eval = FALSE)
+### code chunk number 2: dlsem_vignette.Rnw:371-372 (eval = FALSE)
 ###################################################
 ## update.packages("dlsem")
 
 
 ###################################################
-### code chunk number 3: dlsem_vignette.Rnw:407-408
+### code chunk number 3: dlsem_vignette.Rnw:404-405
 ###################################################
 require(dlsem)
 
 
 ###################################################
-### code chunk number 4: dlsem_vignette.Rnw:413-415
+### code chunk number 4: dlsem_vignette.Rnw:410-412
 ###################################################
 data(industry)
 summary(industry)
 
 
 ###################################################
-### code chunk number 5: dlsem_vignette.Rnw:461-466
+### code chunk number 5: dlsem_vignette.Rnw:458-463
 ###################################################
 indus.code <- list(
   Job ~ 1,
@@ -37,14 +37,14 @@ indus.code <- list(
 
 
 ###################################################
-### code chunk number 6: dlsem_vignette.Rnw:526-528
+### code chunk number 6: dlsem_vignette.Rnw:523-525
 ###################################################
 indus.global <- list(adapt=T,max.gestation=3,max.lead=15,min.width=5,sign="+")
 indus.local <- list()
 
 
 ###################################################
-### code chunk number 7: dlsem_vignette.Rnw:535-543
+### code chunk number 7: dlsem_vignette.Rnw:532-540
 ###################################################
 indus.global <- list()
 indus.local <- list(
@@ -57,7 +57,7 @@ indus.local <- list(
 
 
 ###################################################
-### code chunk number 8: dlsem_vignette.Rnw:548-554
+### code chunk number 8: dlsem_vignette.Rnw:545-551
 ###################################################
 indus.global <- list(adapt=T,min.width=5)
 indus.local <- list(
@@ -68,45 +68,45 @@ indus.local <- list(
 
 
 ###################################################
-### code chunk number 9: dlsem_vignette.Rnw:604-606
+### code chunk number 9: dlsem_vignette.Rnw:603-605
 ###################################################
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),
   data=industry,global.control=indus.global,local.control=indus.local,log=T)
 
 
 ###################################################
-### code chunk number 10: dlsem_vignette.Rnw:621-622
+### code chunk number 10: dlsem_vignette.Rnw:620-621
 ###################################################
 summary(indus.mod)
 
 
 ###################################################
-### code chunk number 11: dlsem_vignette.Rnw:640-641 (eval = FALSE)
+### code chunk number 11: dlsem_vignette.Rnw:639-640 (eval = FALSE)
 ###################################################
 ## plot(indus.mod)
 
 
 ###################################################
-### code chunk number 12: dlsem_vignette.Rnw:683-684
+### code chunk number 12: dlsem_vignette.Rnw:682-683
 ###################################################
 causalEff(indus.mod,from="Job",to="Pollution",cumul=T)
 
 
 ###################################################
-### code chunk number 13: dlsem_vignette.Rnw:706-708 (eval = FALSE)
+### code chunk number 13: dlsem_vignette.Rnw:705-707 (eval = FALSE)
 ###################################################
 ## lagPlot(indus.mod,path="Job*Pollution")
 ## lagPlot(indus.mod,path="Job*Consum*Pollution")
 
 
 ###################################################
-### code chunk number 14: dlsem_vignette.Rnw:715-716 (eval = FALSE)
+### code chunk number 14: dlsem_vignette.Rnw:714-715 (eval = FALSE)
 ###################################################
 ## lagPlot(indus.mod,from="Job",to="Pollution")
 
 
 ###################################################
-### code chunk number 15: dlsem_vignette.Rnw:746-764
+### code chunk number 15: dlsem_vignette.Rnw:745-763
 ###################################################
 # model 2: quadratic decreasing lag shapes
 indus.code_2 <- list(
@@ -129,7 +129,7 @@ summary(indus.mod_3)$endogenous
 
 
 ###################################################
-### code chunk number 16: dlsem_vignette.Rnw:774-775
+### code chunk number 16: dlsem_vignette.Rnw:773-774
 ###################################################
 compareModels(list(indus.mod,indus.mod_2,indus.mod_3))
 
