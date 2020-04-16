@@ -29,7 +29,7 @@ as a consequence of intervention. %(Pearl, 2000, page 24).
 See Magrini (2018) for technical details on causal inference in distributed-lag linear structural equation models.
 }
 \references{
-A. Magrini (2018). Linear Markovian Models for Lag Exposure Assessment. Biometrical Letters, 55(2): 179-195. DOI: 10.2478/bile-2018-0012.
+A. Magrini (2018). Linear Markovian models for lag exposure assessment. Biometrical Letters, 55(2): 179-195. DOI: 10.2478/bile-2018-0012.
 
 %J. Pearl (2000). Causality: Models, Reasoning, and Inference. Cambridge University Press. Cambridge, UK. ISBN: 978-0-521-89560-6
 %
@@ -39,8 +39,8 @@ A. Magrini (2018). Linear Markovian Models for Lag Exposure Assessment. Biometri
 \examples{
 data(industry)
 indus.code <- list(
-  Consum~quec.lag(Job,0,5),
-  Pollution~quec.lag(Job,1,8)+quec.lag(Consum,1,7)
+  Consum~ecq(Job,0,5),
+  Pollution~ecq(Job,1,8)+ecq(Consum,1,7)
   )
 indus.mod <- dlsem(indus.code,group="Region",exogenous=c("Population","GDP"),data=industry,
   log=TRUE)

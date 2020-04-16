@@ -1,3 +1,10 @@
+dlsem (2.4.6)
+
+* added the linearly decreasing lag shape
+* changed the name of the lag shape constructors: 'ecq' (endpoint-constrained quadratic), 'qd' (quadratic decreasing), 'ld' (linearly decreasing), 'gam' (gamma) 
+* the method vcovHAC() was replaced by lmHAC()
+* added the method drawSample()
+
 dlsem (2.4.5)
 
 * added the KPSS test
